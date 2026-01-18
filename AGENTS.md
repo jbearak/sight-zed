@@ -71,3 +71,11 @@ The depth captures in `highlights.scm` are kept as:
 3. They're harmless - just fall back to base styling
 
 If Zed adds support for custom theme captures in the future, these would enable depth-based colorization without grammar changes.
+
+## Auto-Closing Pairs Limitation
+
+The `not_in = ["string"]` constraint on double quotes prevents auto-closing inside strings, including compound strings. This means when typing `` `"text"' ``, you must manually type the closing `"`.
+
+**Do not remove this constraint.** Without it, typing `"` inside a compound string produces broken behavior where the first quote does nothing, then typing a second quote produces `"""`, requiring backspace to fix.
+
+This is a Zed API limitation - extensions cannot distinguish between regular strings and compound strings, or programmatically control auto-closing behavior. The current configuration is the least-bad option.
