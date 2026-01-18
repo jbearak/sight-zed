@@ -196,9 +196,10 @@
 
 - [ ] 6.9 Implement `Test-StataAutomationRegistered` function
   - Query registry for `stata.StataOLEApp` ProgID at `HKEY_CLASSES_ROOT`
-  - Verify CLSID reference exists and is valid
-  - Return `$true` if registered, `$false` otherwise
-  - **Validates: Requirements 17.1**
+  - Get CLSID and read `LocalServer32` value to get registered executable path
+  - Strip any arguments (e.g., `/Automation`) from the path
+  - Return hashtable with `IsRegistered` boolean and `RegisteredPath` string
+  - **Validates: Requirements 17.1, 17.10, 17.11**
 
 - [ ] 6.10 Implement `Register-StataAutomation` function
   - Accept Stata executable path as parameter
@@ -208,15 +209,24 @@
   - Handle UAC cancellation gracefully
   - **Validates: Requirements 17.3, 17.6, 17.7**
 
-- [ ] 6.11 Implement `Invoke-AutomationRegistrationCheck` function
+- [ ] 6.11 Implement `Show-RegistrationPrompt` function
+  - Accept message and title parameters
+  - Display popup dialog using `System.Windows.Forms.MessageBox`
+  - Use Yes/No buttons and Question icon
+  - Return `$true` if user clicks Yes, `$false` if No
+  - **Validates: Requirements 17.12, 17.13, 17.14, 17.15**
+
+- [ ] 6.12 Implement `Invoke-AutomationRegistrationCheck` function
   - Check if `-SkipAutomationCheck` is set, skip if so
-  - Call `Test-StataAutomationRegistered` to check current state
-  - If not registered, prompt user for confirmation (unless `-RegisterAutomation` is set)
+  - Call `Test-StataAutomationRegistered` to get registration status and path
+  - Compare registered path against detected Stata path for version mismatch
+  - If version mismatch, show popup with old vs new paths and ask to update
+  - If not registered, show popup asking to register
   - Call `Register-StataAutomation` if user confirms or `-RegisterAutomation` is set
   - Display manual registration instructions on failure
-  - **Validates: Requirements 17.2, 17.4, 17.5, 17.6, 17.7**
+  - **Validates: Requirements 17.2, 17.4, 17.5, 17.6, 17.7, 17.11, 17.12, 17.13, 17.14, 17.15**
 
-- [ ] 6.12 Integrate automation registration into installer main flow
+- [ ] 6.13 Integrate automation registration into installer main flow
   - Call `Invoke-AutomationRegistrationCheck` after Stata detection
   - Pass `-Force` when `-RegisterAutomation` is specified
   - Pass `-Skip` when `-SkipAutomationCheck` is specified

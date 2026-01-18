@@ -137,6 +137,12 @@ This document specifies the requirements for implementing send-to-stata function
 7. IF registration fails, THE Installer SHALL display an error message with the exit code and suggest manual registration steps
 8. THE documentation SHALL explain that registration is a one-time setup step that requires elevation
 9. THE documentation SHALL include manual registration instructions for users who prefer not to use the automated approach
+10. WHEN checking registration status, THE Installer SHALL read the registered executable path from `HKEY_CLASSES_ROOT\CLSID\{...}\LocalServer32`
+11. IF the registered executable path differs from the detected Stata installation path, THEN THE Installer SHALL treat this as a version mismatch requiring re-registration
+12. WHEN a version mismatch is detected, THE Installer SHALL display a popup dialog (via `System.Windows.Forms.MessageBox`) informing the user which version is registered vs detected
+13. THE popup dialog SHALL ask the user if they want to update the registration, with Yes/No buttons
+14. IF the user clicks Yes, THEN THE Installer SHALL proceed with re-registration
+15. IF the user clicks No, THEN THE Installer SHALL skip registration and continue with installation
 
 ### Requirement 8: Zed Tasks Configuration
 
