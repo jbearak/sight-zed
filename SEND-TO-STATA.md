@@ -84,14 +84,16 @@ If you prefer not to use the installer:
        "command": "send-to-stata.sh --statement --file \"$ZED_FILE\" --row \"$ZED_ROW\" --text \"${ZED_SELECTED_TEXT:}\"",
        "use_new_terminal": false,
        "allow_concurrent_runs": true,
-       "reveal": "never"
+       "reveal": "never",
+       "hide": "on_success"
      },
      {
        "label": "Stata: Send File",
        "command": "send-to-stata.sh --file --file \"$ZED_FILE\"",
        "use_new_terminal": false,
        "allow_concurrent_runs": true,
-       "reveal": "never"
+       "reveal": "never",
+       "hide": "on_success"
      }
    ]
    ```
