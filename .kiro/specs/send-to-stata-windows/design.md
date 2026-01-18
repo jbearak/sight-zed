@@ -246,11 +246,13 @@ function Install-Keybindings {
 **Test-StataAutomationRegistered**
 ```powershell
 # Checks if Stata's Automation type library is registered
-# Returns: $true if registered, $false otherwise
+# Returns: Hashtable with 'IsRegistered', 'RegisteredPath', or $null if not registered
 function Test-StataAutomationRegistered {
     # Query registry for stata.StataOLEApp ProgID
     # Check HKEY_CLASSES_ROOT\stata.StataOLEApp
-    # Return $true if key exists with valid CLSID
+    # If exists, get CLSID and read LocalServer32 path
+    # Return @{ IsRegistered = $true; RegisteredPath = "C:\...\StataSE-64.exe" }
+    # Return @{ IsRegistered = $false; RegisteredPath = $null } if not registered
 }
 ```
 
@@ -265,6 +267,18 @@ function Register-StataAutomation {
     # Execute: Start-Process -FilePath $StataPath -ArgumentList "/Register" -Verb RunAs -Wait
     # Capture exit code
     # Return success/failure
+}
+```
+
+**Show-RegistrationPrompt**
+```powershell
+# Displays a popup dialog for registration decisions
+# Parameters: $Message, $Title
+# Returns: $true if user clicked Yes, $false if No
+function Show-RegistrationPrompt {
+    param([string]$Message, [string]$Title)
+    # Use System.Windows.Forms.MessageBox
+    # Return $true for Yes, $false for No
 }
 ```
 
@@ -387,23 +401,31 @@ function Test-StataAutomationRegistered {
     # Check if the ProgID exists in registry
     $progIdPath = "Registry::HKEY_CLASSES_ROOT\stata.StataOLEApp"
     if (-not (Test-Path $progIdPath)) {
-        return $false
+        return @{ IsRegistered = $false; RegisteredPath = $null }
     }
     
-    # Verify it has a valid CLSID reference
+    # Get the CLSID reference
     $clsidPath = Join-Path $progIdPath "CLSID"
     if (-not (Test-Path $clsidPath)) {
-        return $false
+        return @{ IsRegistered = $false; RegisteredPath = $null }
     }
     
     $clsid = (Get-ItemProperty $clsidPath).'(default)'
     if ([string]::IsNullOrEmpty($clsid)) {
-        return $false
+        return @{ IsRegistered = $false; RegisteredPath = $null }
     }
     
-    # Verify the CLSID exists
-    $clsidRegPath = "Registry::HKEY_CLASSES_ROOT\CLSID\$clsid"
-    return (Test-Path $clsidRegPath)
+    # Get the registered executable path from LocalServer32
+    $localServerPath = "Registry::HKEY_CLASSES_ROOT\CLSID\$clsid\LocalServer32"
+    if (-not (Test-Path $localServerPath)) {
+        return @{ IsRegistered = $false; RegisteredPath = $null }
+    }
+    
+    $registeredPath = (Get-ItemProperty $localServerPath).'(default)'
+    # LocalServer32 may include arguments like "/Automation", strip them
+    $registeredPath = ($registeredPath -split ' /')[0].Trim('"')
+    
+    return @{ IsRegistered = $true; RegisteredPath = $registeredPath }
 }
 ```
 
@@ -453,6 +475,19 @@ function Register-StataAutomation {
 The installer checks and prompts for registration during setup:
 
 ```powershell
+function Show-RegistrationPrompt {
+    param([string]$Message, [string]$Title)
+    
+    Add-Type -AssemblyName System.Windows.Forms
+    $result = [System.Windows.Forms.MessageBox]::Show(
+        $Message,
+        $Title,
+        [System.Windows.Forms.MessageBoxButtons]::YesNo,
+        [System.Windows.Forms.MessageBoxIcon]::Question
+    )
+    return ($result -eq [System.Windows.Forms.DialogResult]::Yes)
+}
+
 function Invoke-AutomationRegistrationCheck {
     param(
         [string]$StataPath,
@@ -465,35 +500,55 @@ function Invoke-AutomationRegistrationCheck {
         return
     }
     
-    $isRegistered = Test-StataAutomationRegistered
+    $regStatus = Test-StataAutomationRegistered
     
-    if ($isRegistered -and -not $Force) {
+    # Case 1: Already registered with correct path
+    if ($regStatus.IsRegistered -and $regStatus.RegisteredPath -eq $StataPath -and -not $Force) {
         Write-Host "Stata Automation type library is already registered." -ForegroundColor Green
         return
     }
     
-    if ($Force -or -not $isRegistered) {
-        if (-not $Force) {
-            Write-Host ""
-            Write-Host "Stata Automation type library is not registered." -ForegroundColor Yellow
-            Write-Host "Registration is required for some advanced features and is a one-time setup."
-            Write-Host ""
-            $response = Read-Host "Would you like to register it now? (Y/n)"
-            if ($response -match "^[Nn]") {
-                Write-Host "Skipping registration. You can register later with:"
-                Write-Host "  $StataPath /Register" -ForegroundColor Cyan
-                Write-Host "(Run as Administrator)"
-                return
-            }
-        }
+    # Case 2: Registered but with different path (version mismatch)
+    if ($regStatus.IsRegistered -and $regStatus.RegisteredPath -ne $StataPath) {
+        $oldVersion = [System.IO.Path]::GetDirectoryName($regStatus.RegisteredPath) | Split-Path -Leaf
+        $newVersion = [System.IO.Path]::GetDirectoryName($StataPath) | Split-Path -Leaf
         
-        $success = Register-StataAutomation -StataPath $StataPath
-        if (-not $success) {
-            Write-Host ""
-            Write-Host "Manual registration instructions:" -ForegroundColor Yellow
-            Write-Host "1. Open Command Prompt or PowerShell as Administrator"
-            Write-Host "2. Run: $StataPath /Register" -ForegroundColor Cyan
+        $message = "Stata version mismatch detected.`n`n" +
+                   "Currently registered: $($regStatus.RegisteredPath)`n" +
+                   "Detected installation: $StataPath`n`n" +
+                   "Would you like to update the registration to use the new version?"
+        
+        $userConfirmed = Show-RegistrationPrompt -Message $message -Title "Stata Version Mismatch"
+        
+        if (-not $userConfirmed) {
+            Write-Host "Skipping registration update." -ForegroundColor Yellow
+            return
         }
+    }
+    
+    # Case 3: Not registered at all
+    if (-not $regStatus.IsRegistered -and -not $Force) {
+        $message = "Stata Automation type library is not registered.`n`n" +
+                   "Registration is required for some advanced features and is a one-time setup.`n`n" +
+                   "Would you like to register it now?"
+        
+        $userConfirmed = Show-RegistrationPrompt -Message $message -Title "Stata Registration Required"
+        
+        if (-not $userConfirmed) {
+            Write-Host "Skipping registration. You can register later with:"
+            Write-Host "  $StataPath /Register" -ForegroundColor Cyan
+            Write-Host "(Run as Administrator)"
+            return
+        }
+    }
+    
+    # Proceed with registration
+    $success = Register-StataAutomation -StataPath $StataPath
+    if (-not $success) {
+        Write-Host ""
+        Write-Host "Manual registration instructions:" -ForegroundColor Yellow
+        Write-Host "1. Open Command Prompt or PowerShell as Administrator"
+        Write-Host "2. Run: $StataPath /Register" -ForegroundColor Cyan
     }
 }
 ```
@@ -647,6 +702,9 @@ Ctrl+1 is sent after window activation to ensure the Command window (not another
 
 ### Property 14: Automation Registration Idempotency
 Calling `Register-StataAutomation` when the type library is already registered has no adverse effects; the operation succeeds silently.
+
+### Property 15: Version Mismatch Detection
+If the registered `LocalServer32` path differs from the detected Stata installation path, `Test-StataAutomationRegistered` returns the registered path enabling version mismatch detection.
 
 ## Windows Security Considerations
 
