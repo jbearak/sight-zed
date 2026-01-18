@@ -8,7 +8,7 @@ Add curl-pipe-to-bash installation support to `install-send-to-stata.sh` by dete
 
 - [x] 1. Add GitHub URL constants and fetch function
   - [x] 1.1 Add `GITHUB_RAW_BASE` and `GITHUB_REF` constants at top of script
-    - `GITHUB_RAW_BASE="https://raw.githubusercontent.com/jbearak/sight"`
+    - `GITHUB_RAW_BASE="https://raw.githubusercontent.com/jbearak/sight-zed"`
     - `GITHUB_REF="${SIGHT_GITHUB_REF:-main}"`
     - _Requirements: 3.2, 3.5_
   
@@ -38,7 +38,7 @@ Add curl-pipe-to-bash installation support to `install-send-to-stata.sh` by dete
 - [-] 4. Integration testing from feature branch
   - [-] 4.1 Push changes to feature branch and test curl-pipe installation
     - Push to a feature branch
-    - Run: `SIGHT_GITHUB_REF=<branch> /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight/<branch>/install-send-to-stata.sh)"`
+    - Run: `SIGHT_GITHUB_REF=<branch> /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight-zed/<branch>/install-send-to-stata.sh)"`
     - Verify `~/.local/bin/send-to-stata.sh` is installed and executable
     - _Requirements: 4.1, 4.2, 5.1_
 
