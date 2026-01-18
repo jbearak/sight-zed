@@ -6,7 +6,7 @@ This design specifies the Windows implementation of send-to-stata functionality 
 
 The Windows implementation mirrors the macOS version's architecture but replaces AppleScript with Windows-native automation:
 - **macOS**: AppleScript → `DoCommandAsync`
-- **Windows**: Clipboard + SendKeys → Ctrl+V, Enter
+- **Windows**: Clipboard + SendKeys → Ctrl+1, Ctrl+V, Enter
 
 ### Key Design Decisions
 
@@ -17,6 +17,7 @@ The Windows implementation mirrors the macOS version's architecture but replaces
 5. **Stdin Mode**: Read selected text from stdin to avoid PowerShell interpretation of special characters
 6. **STA Threading**: Require Single-Threaded Apartment mode for clipboard operations
 7. **Focus Acquisition Workaround**: Use ALT key simulation to bypass Windows focus-stealing prevention
+8. **Command Window Focus**: Use Ctrl+1 to ensure Command window has focus before paste
 
 ### Why Not COM Automation?
 
@@ -25,6 +26,14 @@ Stata provides COM Automation (`stata.StataOLEApp`) on Windows, but it has a cri
 Sublime Text plugins work around this by keeping Python running persistently, storing the COM reference in a module-level variable. Zed tasks spawn a new PowerShell process for each invocation, making this approach impractical without a separate daemon process.
 
 The clipboard + SendKeys approach targets the user's **existing** Stata session where their data is already loaded.
+
+### Why Clipboard Instead of Typing via SendKeys?
+
+SendKeys can simulate typing character-by-character, but this approach is fragile and slow. SendKeys uses special escape sequences (`^` for Ctrl, `+` for Shift, `%` for Alt, `{}` for special keys), which conflict with characters common in Stata code. Compound strings containing backticks and braces would require complex escaping. Clipboard transfer is atomic—the entire command arrives intact regardless of special characters—and is significantly faster.
+
+### Why Not Shell Execute?
+
+Double-clicking a `.do` file or using `Start-Process` on it causes Windows to launch a *new* Stata instance rather than sending the file to an existing session. This would discard the user's loaded data, working directory, and defined macros.
 
 ## Architecture
 
@@ -51,7 +60,7 @@ The clipboard + SendKeys approach targets the user's **existing** Stata session 
 │                          │                                           │
 │                          ▼                                           │
 │  ┌─────────────────────────────────────────────────────────────┐    │
-│  │ Focus Acquisition Module (ALT workaround, retry logic)      │    │
+│  │ Focus Acquisition Module (ALT workaround, Ctrl+1, retry)    │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────────┘
                                     │
@@ -76,14 +85,28 @@ The clipboard + SendKeys approach targets the user's **existing** Stata session 
 8. Script simulates ALT keypress to satisfy focus-stealing prevention
 9. Script activates Stata window (SetForegroundWindow)
 10. Script verifies focus acquisition (GetForegroundWindow check)
-11. Script sends Ctrl+V (paste) then Enter (execute)
-12. Stata executes the temp file
+11. Script sends Ctrl+1 (focus Command window)
+12. Script sends Ctrl+V (paste) then Enter (execute)
+13. Stata executes the temp file
 
 ## Components and Interfaces
 
 ### Component 1: send-to-stata.ps1
 
 The main script that handles all send-to-stata operations.
+
+#### Timing Configuration
+
+Timing values are hardcoded at the top of the script. Users who experience issues can adjust these values directly; see README for guidance.
+
+```powershell
+# Timing configuration (adjust if script fails on your system - see README)
+$clipPause = 10   # ms after clipboard copy before sending keys
+$winPause  = 10   # ms between window operations
+$keyPause  = 1    # ms between keystrokes
+```
+
+These values are based on tested configurations and work reliably on modern systems. Increase them if the script fails intermittently on slower machines.
 
 #### Parameters
 
@@ -164,6 +187,7 @@ function Send-ToStata {
     # Restore if minimized
     # Acquire focus with ALT workaround
     # Verify focus
+    # Send Ctrl+1 (focus Command window)
     # Send Ctrl+V, wait, send Enter
 }
 ```
@@ -270,7 +294,7 @@ function Invoke-FocusAcquisition {
     # Step 1: Restore if minimized
     if ([User32]::IsIconic($WindowHandle)) {
         [User32]::ShowWindow($WindowHandle, [User32]::SW_RESTORE)
-        Start-Sleep -Milliseconds 100
+        Start-Sleep -Milliseconds $winPause
     }
     
     # Step 2: Try to acquire focus with retries
@@ -284,7 +308,7 @@ function Invoke-FocusAcquisition {
         [User32]::SetForegroundWindow($WindowHandle) | Out-Null
         
         # Wait for window to activate
-        $delay = 100 * $attempt  # Increasing delay: 100ms, 200ms, 300ms
+        $delay = $winPause * $attempt  # Increasing delay: 10ms, 20ms, 30ms
         Start-Sleep -Milliseconds $delay
         
         # Verify focus was acquired
@@ -297,6 +321,31 @@ function Invoke-FocusAcquisition {
     }
     
     return $false
+}
+```
+
+### Component 5: Keystroke Sequence
+
+The complete keystroke sequence after focus acquisition:
+
+```powershell
+function Send-KeystrokesToStata {
+    param([string]$Command)
+    
+    # Copy command to clipboard
+    [System.Windows.Forms.Clipboard]::SetText($Command)
+    Start-Sleep -Milliseconds $clipPause
+    
+    # Focus the Command window (Ctrl+1)
+    [System.Windows.Forms.SendKeys]::SendWait("^1")
+    Start-Sleep -Milliseconds $winPause
+    
+    # Paste from clipboard (Ctrl+V)
+    [System.Windows.Forms.SendKeys]::SendWait("^v")
+    Start-Sleep -Milliseconds $keyPause
+    
+    # Execute (Enter)
+    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
 }
 ```
 
@@ -444,6 +493,9 @@ The ALT key workaround followed by SetForegroundWindow succeeds in acquiring foc
 ### Property 12: STA Mode Enforcement
 Clipboard operations only succeed when PowerShell is running in STA mode (launched with `-sta` flag).
 
+### Property 13: Command Window Focus
+Ctrl+1 is sent after window activation to ensure the Command window (not another Stata pane) receives the pasted text.
+
 ## Windows Security Considerations
 
 ### User Interface Privilege Isolation (UIPI)
@@ -554,46 +606,12 @@ if (-not $focusAcquired) {
 **SendKeys Execution**
 ```powershell
 try {
-    [System.Windows.Forms.Clipboard]::SetText($command)
-    Start-Sleep -Milliseconds $activationDelay
-    [System.Windows.Forms.SendKeys]::SendWait("^v")  # Ctrl+V
-    Start-Sleep -Milliseconds $interKeyDelay
-    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")  # Enter to execute
+    Send-KeystrokesToStata -Command $command
 } catch {
     Write-Error "Error: Failed to send keystrokes to Stata: $_"
     exit 5
 }
 ```
-
-### Timing and Reliability
-
-SendKeys requires careful timing to ensure reliable execution:
-
-1. **Window Restore Delay**: 100ms after ShowWindow before attempting focus
-2. **Focus Retry Delays**: 100ms, 200ms, 300ms (increasing with each retry)
-3. **Post-Focus Delay**: 100ms after verified focus before SendKeys
-4. **Inter-Key Delay**: 50ms between Ctrl+V and Enter
-
-```powershell
-$restoreDelay = [int]($env:STATA_RESTORE_DELAY ?? 100)
-$activationDelay = [int]($env:STATA_ACTIVATION_DELAY ?? 100)
-$interKeyDelay = [int]($env:STATA_INTERKEY_DELAY ?? 50)
-```
-
-## Stata Command Window Behavior
-
-### Keyboard Shortcuts
-
-The Stata GUI Command window responds to:
-- **Ctrl+V**: Paste from clipboard
-- **Enter**: Execute the current command line
-- **Ctrl+D**: Execute selection in Do-file Editor (not Command window)
-
-**Important**: The spec originally specified Ctrl+D for execution. This is incorrect for the Command window—**Enter** is the correct key. Ctrl+D only works in the Do-file Editor for executing selected code.
-
-### Multi-line Commands
-
-The Command window executes one command at a time. When pasting `do "path"`, it appears as a single line and Enter executes it. The actual multi-line code is in the temp .do file, which Stata processes normally with full support for `///` continuations.
 
 ## Testing Strategy
 
@@ -619,7 +637,7 @@ To support development on macOS while targeting Windows (Requirement 14), the sc
 - `Set-ClipboardContent` - Wrapper for clipboard operations
 - `Find-StataWindow` - Window enumeration via Win32 API
 - `Invoke-FocusAcquisition` - Focus acquisition with ALT workaround
-- `Send-Keystrokes` - SendKeys wrapper
+- `Send-KeystrokesToStata` - SendKeys wrapper
 
 ```powershell
 # Example: Mockable Windows function
@@ -695,10 +713,13 @@ Describe "Statement Detection Properties" {
 
 1. **STA Threading Requirement**: PowerShell must be launched with `-sta` flag for clipboard operations
 2. **Focus Acquisition Module**: ALT key workaround, retry logic, and focus verification
-3. **Minimized Window Handling**: ShowWindow with SW_RESTORE before activation
-4. **UIPI Documentation**: Clear explanation of elevation requirements
-5. **Property 11**: Focus acquisition reliability property
-6. **Property 12**: STA mode enforcement property
+3. **Command Window Focus**: Ctrl+1 sent after window activation to ensure correct target
+4. **Minimized Window Handling**: ShowWindow with SW_RESTORE before activation
+5. **UIPI Documentation**: Clear explanation of elevation requirements
+6. **Hardcoded Timing Values**: 10ms clip pause, 10ms win pause, 1ms key pause
+7. **Property 11**: Focus acquisition reliability property
+8. **Property 12**: STA mode enforcement property
+9. **Property 13**: Command window focus property
 
 ### Changed
 
@@ -706,7 +727,9 @@ Describe "Statement Detection Properties" {
 2. **Window title pattern**: Made more precise to avoid matching Stata Viewer
 3. **Error messages**: Added diagnostic information for elevation issues
 4. **Exit code 5**: Now covers both SendKeys failure and focus acquisition failure
+5. **Configuration**: Hardcoded timing values instead of config file (document in README)
 
 ### Removed
 
-1. **COM Automation discussion**: Moved to "Why Not COM Automation?" section to explain the design decision
+1. **Configuration files**: No .ini or config.json; timing values hardcoded with README documentation
+2. **COM Automation as option**: Moved to design rationale section explaining why it's not used
