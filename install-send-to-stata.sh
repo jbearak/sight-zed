@@ -106,7 +106,7 @@ install_script() {
     for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
       # Create primary shell config if it doesn't exist
       [[ ! -f "$rc" && "$rc" == "$primary_rc" ]] && touch "$rc"
-      if [[ -f "$rc" ]] && ! grep -qF '.local/bin' "$rc"; then
+      if [[ -f "$rc" ]] && ! grep -q 'export PATH=.*\.local/bin' "$rc"; then
         echo "" >> "$rc"
         echo "# Added by send-to-stata installer" >> "$rc"
         echo "$path_line" >> "$rc"
