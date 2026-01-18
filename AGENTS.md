@@ -29,6 +29,18 @@ Copy to project root:
 cp target/wasm32-wasip1/release/sight_extension.wasm extension.wasm
 ```
 
+## Why extension.wasm is Committed
+
+Unlike typical build artifacts, `extension.wasm` is intentionally tracked in git. Zed extensions are distributed directly from git repositories — when users install an extension, Zed clones the repo and expects the pre-built WASM binary to be present. There's no build step during installation.
+
+The `.gitignore` reflects this:
+```
+*.wasm
+!extension.wasm
+```
+
+This excludes all `.wasm` files except `extension.wasm`. After building, you must commit the updated `extension.wasm` for users to receive the new version.
+
 ## Installing the Extension Locally
 
 For development/testing in Zed:
