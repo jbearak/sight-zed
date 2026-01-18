@@ -234,9 +234,9 @@ validate_lsp_release() {
         return 1
     fi
     
-    # Extract asset names from response
+    # Extract asset names from response (portable, no grep -P)
     local assets
-    assets=$(echo "$response" | grep -oP '"name":\s*"\K[^"]+' || true)
+    assets=$(echo "$response" | grep -o '"name":[[:space:]]*"[^"]*"' | sed 's/.*"\([^"]*\)"$/\1/' || true)
     
     # Check for required assets
     local missing_assets=()
