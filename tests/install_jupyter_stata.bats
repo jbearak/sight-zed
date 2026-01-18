@@ -70,7 +70,10 @@ extract_workspace_kernel_script() {
 # Workspace Root Detection Tests
 # ============================================================================
 
-# Helper to run find_workspace_root with a custom home directory
+# Helper to run find_workspace_root with a custom home directory.
+# NOTE: This reimplements the algorithm from install-jupyter-stata.sh to allow
+# testing with a fake home directory. The real script uses Path.home() which
+# can't be easily overridden. Keep this in sync with get_workspace_kernel_script().
 run_find_workspace_root() {
   python3 -c "
 from pathlib import Path
