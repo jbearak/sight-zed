@@ -26,7 +26,7 @@ Execute Stata code directly from Zed with keyboard shortcuts. Works with both th
 | `alt-cmd-enter` | Include statement (preserves locals) |
 | `alt-shift-cmd-enter` | Include file (preserves locals) |
 | `shift-enter` | Paste selection to terminal |
-| `opt-enter` | Paste current line to terminal |
+| `alt-enter` | Paste current line to terminal |
 
 ### Why Separate Installation?
 

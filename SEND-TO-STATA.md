@@ -37,21 +37,21 @@ In `.do` files:
 | `alt-cmd-enter` | Include statement (preserves local macros) |
 | `alt-shift-cmd-enter` | Include file (preserves local macros) |
 | `shift-enter` | Send selection to Stata terminal (quick paste) |
-| `opt-enter` | Send current line to Stata terminal (quick paste) |
+| `alt-enter` | Send current line to Stata terminal (quick paste) |
 
 ### Quick Terminal Shortcuts
 
-The `shift-enter` and `opt-enter` shortcuts use Zed's `SendKeystrokes` to paste code into the active terminal panel:
+The `shift-enter` and `alt-enter` shortcuts use Zed's `SendKeystrokes` to paste code into the active terminal panel:
 
 - **`shift-enter`**: Copies the current selection, switches to the terminal (`ctrl-``), pastes, executes, and switches back
-- **`opt-enter`**: Selects the current line, copies it, switches to the terminal, pastes, executes, switches back, and moves to the next line
+- **`alt-enter`**: Selects the current line, copies it, switches to the terminal, pastes, executes, switches back, and moves to the next line
 
 These shortcuts paste directly into whatever terminal is active in Zed. To use them with Stata, open a terminal panel and launch the Stata CLI (e.g., `stata`, or `stata-mp`). This is particularly useful for:
 
 - **Remote sessions**: When working over SSH, the application shortcuts control your local Stata. These terminal shortcuts send code to the remote Stata session in your terminal.
 - **Multiple sessions**: You can have multiple terminal tabs running different Stata instances and send code to whichever is active. The application shortcuts always target the single Stata app.
 
-Note that `opt-enter` sends only the current line—it doesn't detect multi-line statements with `///` continuations like the application shortcuts do. For multi-line statements, select the text and use `shift-enter`. The two separate shortcuts exist due to a Zed limitation (SendKeystrokes can't conditionally check for a selection).
+Note that `alt-enter` sends only the current line—it doesn't detect multi-line statements with `///` continuations like the application shortcuts do. For multi-line statements, select the text and use `shift-enter`. The two separate shortcuts exist due to a Zed limitation (SendKeystrokes can't conditionally check for a selection).
 
 There's no "send file to terminal" shortcut because Zed's SendKeystrokes doesn't have access to the file path. The application shortcuts can send files because they invoke tasks, which can run scripts with access to `$ZED_FILE`—but there's no way to get script output back into a SendKeystrokes sequence.
 
@@ -172,13 +172,13 @@ If you prefer not to use the installer:
          "alt-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include Statement"}]]],
          "alt-shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include File"}]]],
          "shift-enter": ["workspace::SendKeystrokes", "cmd-c ctrl-` cmd-v enter ctrl-`"],
-         "opt-enter": ["workspace::SendKeystrokes", "cmd-left shift-cmd-right cmd-c ctrl-` cmd-v enter ctrl-` down"]
+         "alt-enter": ["workspace::SendKeystrokes", "cmd-left shift-cmd-right cmd-c ctrl-` cmd-v enter ctrl-` down"]
        }
      }
    ]
    ```
 
-   > **Note**: The keybindings use `action::Sequence` to save the file before sending to Stata, ensuring the latest changes are executed. The `shift-enter` and `opt-enter` shortcuts use `SendKeystrokes` for quick terminal interaction without saving.
+   > **Note**: The keybindings use `action::Sequence` to save the file before sending to Stata, ensuring the latest changes are executed. The `shift-enter` and `alt-enter` shortcuts use `SendKeystrokes` for quick terminal interaction without saving.
 
 ## Troubleshooting
 
