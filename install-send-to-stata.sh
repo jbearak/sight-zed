@@ -101,8 +101,10 @@ install_script() {
     local path_line='export PATH="$HOME/.local/bin:$PATH"'
     local added_to=""
     # Determine primary shell config (create if needed)
+    # Check login shell ($SHELL) and current shell (ps) to handle both cases
     local primary_rc="$HOME/.zshrc"
-    [[ "$SHELL" == */bash ]] && primary_rc="$HOME/.bashrc"
+    local current_shell=$(ps -p $$ -o comm=)
+    [[ "$SHELL" == */bash || "$current_shell" == *bash* ]] && primary_rc="$HOME/.bashrc"
     for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
       # Create primary shell config if it doesn't exist
       [[ ! -f "$rc" && "$rc" == "$primary_rc" ]] && touch "$rc"
