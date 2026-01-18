@@ -56,10 +56,10 @@
 
 ## Task 8: Update AGENTS.md documentation
 **Validates: Requirements 7.1, 7.2, 7.3, 7.4**
-- [ ] 8.1 Add "Extension Build Validation" section to AGENTS.md
-- [ ] 8.2 Document prerequisites (Rust toolchain, tree-sitter CLI, curl, git)
-- [ ] 8.3 Document how to run full validation suite
-- [ ] 8.4 Document how to run individual validation checks
+- [x] 8.1 Add "Extension Build Validation" section to AGENTS.md
+- [x] 8.2 Document prerequisites (Rust toolchain, tree-sitter CLI, curl, git)
+- [x] 8.3 Document how to run full validation suite
+- [x] 8.4 Document how to run individual validation checks
 
 ## Task 9: Integration testing
 **Validates: Requirements 5.1, 5.2, 5.3, 5.4, 5.5**

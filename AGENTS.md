@@ -42,3 +42,31 @@ Or symlink to Zed's extensions directory:
 ```bash
 ln -s $(pwd) ~/.local/share/zed/extensions/installed/sight
 ```
+
+## Extension Build Validation
+
+### Prerequisites
+
+- Rust toolchain with wasm32-wasip1 target
+- tree-sitter CLI
+- curl
+- git
+
+### Running Validation
+
+Full validation suite:
+```bash
+./validate.sh
+```
+
+Individual checks:
+```bash
+./validate.sh --lsp          # Check LSP version
+./validate.sh --grammar-rev  # Check grammar revision
+./validate.sh --build        # Test extension build
+./validate.sh --grammar-build # Test grammar build
+```
+
+### Environment Variables
+
+- `GITHUB_TOKEN`: Optional, prevents API rate limiting when checking versions
