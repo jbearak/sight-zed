@@ -167,3 +167,16 @@ When tasks run through `/bin/zsh -i -c`, there are two easy ways to break quotin
      - `python3 -c 'import os,sys; sys.stdout.write(os.environ.get("ZED_SELECTED_TEXT",""))'`
    - **DO NOT** use shell variable expansion like `printf '%s' "$ZED_SELECTED_TEXT"` or `[ -n "$ZED_SELECTED_TEXT" ]`. The shell will interpret quotes, backticks, and special characters in the variable, breaking compound strings.
    - Python3 reads the raw bytes from the environment without any parsing. This is the only safe approach.
+
+## Send-to-Stata Keybindings
+
+In `.do` files:
+
+| Shortcut | Action |
+|----------|--------|
+| `cmd-enter` | Send statement to Stata (uses `do`) |
+| `shift-cmd-enter` | Send file to Stata (uses `do`) |
+| `alt-cmd-enter` | Include statement (preserves local macros) |
+| `alt-shift-cmd-enter` | Include file (preserves local macros) |
+
+See [SEND-TO-STATA.md](SEND-TO-STATA.md) for full documentation.

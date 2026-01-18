@@ -7,6 +7,7 @@ Send Stata code from Zed editor to the Stata GUI application for execution.
 - **macOS** (required for AppleScript)
 - **Stata** installed in `/Applications/Stata/` (StataMP, StataSE, StataIC, or Stata)
 - **jq** for JSON manipulation (`brew install jq`)
+- **python3** (used to safely handle shell metacharacters in selections)
 - **Zed** editor
 
 ## Quick Start
@@ -31,6 +32,12 @@ In `.do` files:
 |----------|--------|
 | `cmd-enter` | Send current statement (or selection) to Stata |
 | `shift-cmd-enter` | Send entire file to Stata |
+| `alt-cmd-enter` | Include statement (preserves local macros) |
+| `alt-shift-cmd-enter` | Include file (preserves local macros) |
+
+### do vs include
+
+The default keybindings use Stata's `do` command, which isolates local macros to the executed code. The `alt` variants use `include` instead, which preserves local macros in the calling context—useful for debugging when you need to inspect locals after running code.
 
 ### Statement Detection
 
@@ -108,7 +115,23 @@ If you prefer not to use the installer:
      },
      {
        "label": "Stata: Send File",
-      "command": "send-to-stata.sh --file \"$ZED_FILE\"",
+       "command": "send-to-stata.sh --file-mode --file \"$ZED_FILE\"",
+       "use_new_terminal": false,
+       "allow_concurrent_runs": true,
+       "reveal": "never",
+       "hide": "on_success"
+     },
+     {
+       "label": "Stata: Include Statement",
+       "command": "python3 -c 'import os,sys; sys.exit(0 if os.environ.get(\\\"ZED_SELECTED_TEXT\\\", \\\"\\\") else 1)' && python3 -c 'import os,sys; sys.stdout.write(os.environ.get(\\\"ZED_SELECTED_TEXT\\\", \\\"\\\"))' | send-to-stata.sh --statement --include --stdin --file \"$ZED_FILE\" || send-to-stata.sh --statement --include --file \"$ZED_FILE\" --row \"$ZED_ROW\"",
+       "use_new_terminal": false,
+       "allow_concurrent_runs": true,
+       "reveal": "never",
+       "hide": "on_success"
+     },
+     {
+       "label": "Stata: Include File",
+       "command": "send-to-stata.sh --file-mode --include --file \"$ZED_FILE\"",
        "use_new_terminal": false,
        "allow_concurrent_runs": true,
        "reveal": "never",
@@ -116,7 +139,7 @@ If you prefer not to use the installer:
      }
    ]
    ```
-   > **Note**: The "Send Statement" task uses stdin mode (`--stdin`) to handle Stata compound strings (e.g., `` `"text"' ``) and other shell metacharacters correctly. The command must not inline the selection into the zsh command line; use an environment read (e.g. via `python3`) rather than Zed interpolation to avoid parse errors when the selection contains backticks.
+   > **Note**: The "Send Statement" and "Include Statement" tasks use stdin mode (`--stdin`) to handle Stata compound strings (e.g., `` `"text"' ``) and other shell metacharacters correctly. The command must not inline the selection into the zsh command line; use an environment read (e.g. via `python3`) rather than Zed interpolation to avoid parse errors when the selection contains backticks.
 
 3. Add keybindings to `~/.config/zed/keymap.json`:
    ```json
@@ -125,7 +148,9 @@ If you prefer not to use the installer:
        "context": "Editor && extension == do",
        "bindings": {
          "cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send Statement"}]]],
-         "shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send File"}]]]
+         "shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send File"}]]],
+         "alt-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include Statement"}]]],
+         "alt-shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include File"}]]]
        }
      }
    ]

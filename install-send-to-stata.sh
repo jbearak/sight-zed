@@ -96,11 +96,31 @@ install_script() {
   chmod +x "$INSTALL_DIR/send-to-stata.sh"
   print_success "Installed send-to-stata.sh to $INSTALL_DIR"
 
-  # Check PATH
-  if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
-    print_warning "$INSTALL_DIR is not in your PATH"
-    echo "  Add to your shell config (~/.zshrc or ~/.bashrc):"
-    echo "    export PATH=\"\$HOME/.local/bin:\$PATH\""
+  # Check if binary is findable; if not, configure PATH
+  if ! command -v send-to-stata.sh &>/dev/null; then
+    local path_line='export PATH="$HOME/.local/bin:$PATH"'
+    local added_to=""
+    # Determine primary shell config (create if needed)
+    local primary_rc="$HOME/.zshrc"
+    local current_shell=$(ps -p $$ -o comm=)
+    [[ "$SHELL" == */bash || "$current_shell" == *bash* ]] && primary_rc="$HOME/.bashrc"
+    for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
+      [[ ! -f "$rc" && "$rc" == "$primary_rc" ]] && touch "$rc"
+      if [[ -f "$rc" ]] && ! grep -q '\.local/bin' "$rc"; then
+        echo "" >> "$rc"
+        echo "# Added by send-to-stata installer" >> "$rc"
+        echo "$path_line" >> "$rc"
+        added_to="$added_to $rc"
+      fi
+    done
+    if [[ -n "$added_to" ]]; then
+      print_success "Added $INSTALL_DIR to PATH in:$added_to"
+      print_warning "Restart your terminal or run: source ~/.zshrc"
+    else
+      print_warning "$INSTALL_DIR is not in your PATH"
+      echo "  Add to your shell config (~/.zshrc or ~/.bashrc):"
+      echo "    $path_line"
+    fi
   fi
 }
 
@@ -133,7 +153,23 @@ STATA_TASKS=$(
   },
   {
     "label": "Stata: Send File",
-    "command": "send-to-stata.sh --file --file \"$ZED_FILE\"",
+    "command": "send-to-stata.sh --file-mode --file \"$ZED_FILE\"",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": true,
+    "reveal": "never",
+    "hide": "on_success"
+  },
+  {
+    "label": "Stata: Include Statement",
+    "command": "python3 -c 'import os,sys; sys.exit(0 if os.environ.get(\"ZED_SELECTED_TEXT\", \"\") else 1)' && python3 -c 'import os,sys; sys.stdout.write(os.environ.get(\"ZED_SELECTED_TEXT\", \"\"))' | send-to-stata.sh --statement --include --stdin --file \"$ZED_FILE\" || send-to-stata.sh --statement --include --file \"$ZED_FILE\" --row \"$ZED_ROW\"",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": true,
+    "reveal": "never",
+    "hide": "on_success"
+  },
+  {
+    "label": "Stata: Include File",
+    "command": "send-to-stata.sh --file-mode --include --file \"$ZED_FILE\"",
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
     "reveal": "never",
@@ -183,7 +219,9 @@ install_keybindings() {
     "context": "Editor && extension == do",
     "bindings": {
       "cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send Statement"}]]],
-      "shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send File"}]]]
+      "shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send File"}]]],
+      "alt-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include Statement"}]]],
+      "alt-shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include File"}]]]
     }
   }
 ]
@@ -241,16 +279,18 @@ detect_stata() {
 
 # Prints post-installation usage summary.
 print_summary() {
-  echo ""
-  echo "Installation complete!"
-  echo ""
-  echo "Keybindings (in .do files):"
-  echo "  cmd-enter        Send current statement (or selection) to Stata"
-  echo "  shift-cmd-enter  Send entire file to Stata"
-  echo ""
-  echo "Configuration:"
-  echo "  Set STATA_APP environment variable to override Stata variant detection"
-  echo ""
+    echo ""
+    echo "Installation complete!"
+    echo ""
+    echo "Keybindings (in .do files):"
+    echo "  cmd-enter            Send current statement (or selection) to Stata"
+    echo "  shift-cmd-enter      Send entire file to Stata"
+    echo "  alt-cmd-enter        Include statement (preserves local macros)"
+    echo "  alt-shift-cmd-enter  Include file (preserves local macros)"
+    echo ""
+    echo "Configuration:"
+    echo "  Set STATA_APP environment variable to override Stata variant detection"
+    echo ""
 }
 
 # ============================================================================
