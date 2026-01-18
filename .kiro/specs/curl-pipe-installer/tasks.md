@@ -55,7 +55,7 @@ Add curl-pipe-to-bash installation support to `install-send-to-stata.sh` by dete
     - Add git clone as alternative option below
     - _Requirements: 6.5, 6.6_
 
-- [ ] 6. Final checkpoint
+- [x] 6. Final checkpoint
   - Ensure all tests pass, ask the user if questions arise.
   - Verify both installation methods produce working setup
 
