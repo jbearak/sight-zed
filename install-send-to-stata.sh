@@ -13,7 +13,7 @@ INSTALL_DIR="$HOME/.local/bin"
 ZED_CONFIG_DIR="$HOME/.config/zed"
 
 # GitHub raw URL for curl-pipe installation
-GITHUB_RAW_BASE="https://raw.githubusercontent.com/jbearak/sight"
+GITHUB_RAW_BASE="https://raw.githubusercontent.com/jbearak/sight-zed"
 GITHUB_REF="${SIGHT_GITHUB_REF:-main}"
 
 # Colors for output
@@ -99,8 +99,8 @@ fetch_script_from_github() {
     echo "URL: $url"
     echo ""
     echo "Check your internet connection and try again, or install from a local clone:"
-    echo "  git clone https://github.com/jbearak/sight.git"
-    echo "  cd sight && ./install-send-to-stata.sh"
+    echo "  git clone https://github.com/jbearak/sight-zed.git"
+    echo "  cd sight-zed && ./install-send-to-stata.sh"
     exit 1
   fi
   
