@@ -38,7 +38,7 @@ flowchart TD
 ### Data Flow
 
 1. **With selection (stdin mode)**:
-   - Zed task: `echo "$ZED_SELECTED_TEXT" | send-to-stata.sh --statement --stdin --file "$ZED_FILE"`
+   - Zed task: `printf '%s' "${ZED_SELECTED_TEXT:}" | send-to-stata.sh --statement --stdin --file "$ZED_FILE"`
    - Script reads stdin, creates temp file, sends to Stata
 
 2. **Without selection (row mode)**:
