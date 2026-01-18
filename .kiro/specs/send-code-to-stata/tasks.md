@@ -62,44 +62,44 @@ This plan implements the send-to-stata feature using shell scripts integrated wi
     - Verify files persist after script completion
     - **Validates: Requirements 1.5, 2.2, 8.1, 8.2, 8.3**
 
-- [ ] 2. Checkpoint - Verify send script works
+- [x] 2. Checkpoint - Verify send script works
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 3. Create the installer script
-  - [ ] 3.1 Create `install-send-to-stata.sh` with prerequisite checks
+- [x] 3. Create the installer script
+  - [x] 3.1 Create `install-send-to-stata.sh` with prerequisite checks
     - Check for macOS (required for AppleScript)
     - Check for `jq` dependency
     - Provide Homebrew install command if `jq` missing
     - _Requirements: 5.1, 5.2_
 
-  - [ ] 3.2 Implement script installation
+  - [x] 3.2 Implement script installation
     - Create `~/.local/bin/` if needed
     - Copy `send-to-stata.sh` to `~/.local/bin/`
     - Make executable with `chmod +x`
     - Check if `~/.local/bin` is in PATH, warn if not
     - _Requirements: 5.3, 5.7_
 
-  - [ ] 3.3 Implement Zed tasks installation
+  - [x] 3.3 Implement Zed tasks installation
     - Read existing `~/.config/zed/tasks.json` or create empty array
     - Remove any existing "Stata:" prefixed tasks
     - Merge in new Stata task definitions
     - Write back using `jq`
     - _Requirements: 5.4, 6.1_
 
-  - [ ] 3.4 Implement keybindings installation
+  - [x] 3.4 Implement keybindings installation
     - Read existing `~/.config/zed/keymap.json` or create empty array
     - Remove any existing Stata keybindings (by context match)
     - Merge in new keybindings
     - Write back using `jq`
     - _Requirements: 5.5, 6.2_
 
-  - [ ] 3.5 Implement Stata detection and summary
+  - [x] 3.5 Implement Stata detection and summary
     - Detect installed Stata variant
     - Print installation summary
     - Show keybindings
     - _Requirements: 5.6_
 
-  - [ ] 3.6 Implement uninstall option
+  - [x] 3.6 Implement uninstall option
     - Support `--uninstall` flag
     - Remove `send-to-stata.sh` from `~/.local/bin/`
     - Remove Stata tasks from `tasks.json`
