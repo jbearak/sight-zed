@@ -246,22 +246,28 @@ Installed to `~/.config/zed/tasks.json` by the installer:
 [
   {
     "label": "Stata: Send Statement",
-    "command": "send-to-stata.sh",
-    "args": ["--statement", "--file", "$ZED_FILE", "--row", "$ZED_ROW", "--text", "$ZED_SELECTED_TEXT"],
+    "command": "send-to-stata.sh --statement --file \"$ZED_FILE\" --row \"$ZED_ROW\" --text \"${ZED_SELECTED_TEXT:}\"",
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
     "reveal": "never"
   },
   {
     "label": "Stata: Send File",
-    "command": "send-to-stata.sh",
-    "args": ["--file", "--file", "$ZED_FILE"],
+    "command": "send-to-stata.sh --file --file \"$ZED_FILE\"",
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
     "reveal": "never"
   }
 ]
 ```
+
+**Important Implementation Notes:**
+
+1. **Arguments in command string, not args array**: Zed does not reliably pass the `args` array to the command. All arguments must be included in the `command` string itself.
+
+2. **Zed variable syntax**: Zed uses `${VAR:default}` (no dash) for default values, not shell's `${VAR:-default}`. The `${ZED_SELECTED_TEXT:}` syntax provides an empty default when no text is selected.
+
+3. **Task filtering**: Zed filters out tasks when referenced variables are not available. Using `${ZED_SELECTED_TEXT:}` with an empty default ensures the task appears even when no text is selected.
 
 **Task Behavior:**
 - `reveal: "never"` - Don't show terminal panel (AppleScript runs silently)

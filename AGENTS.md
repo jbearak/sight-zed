@@ -107,3 +107,48 @@ Individual checks:
 ### Environment Variables
 
 - `GITHUB_TOKEN`: Optional, prevents API rate limiting when checking versions
+
+
+## Zed Tasks Gotchas
+
+When creating Zed tasks (`~/.config/zed/tasks.json`):
+
+### Args Array Does Not Work
+
+**Do not use the `args` array.** Zed does not reliably pass the `args` array to the command. Put all arguments in the `command` string instead.
+
+Bad (args not passed):
+```json
+{
+  "label": "My Task",
+  "command": "my-script.sh",
+  "args": ["--file", "$ZED_FILE"]
+}
+```
+
+Good (args in command string):
+```json
+{
+  "label": "My Task",
+  "command": "my-script.sh --file \"$ZED_FILE\""
+}
+```
+
+### Variable Default Syntax
+
+Zed uses `${VAR:default}` (no dash) for default values, not shell's `${VAR:-default}`.
+
+- Shell syntax: `${ZED_SELECTED_TEXT:-}` ❌
+- Zed syntax: `${ZED_SELECTED_TEXT:}` ✓
+
+### Task Filtering
+
+Zed filters out tasks when referenced variables are not available. Use default values to ensure tasks always appear:
+
+```json
+{
+  "command": "echo \"${ZED_SELECTED_TEXT:no selection}\""
+}
+```
+
+Without the default, this task would only appear when text is selected.
