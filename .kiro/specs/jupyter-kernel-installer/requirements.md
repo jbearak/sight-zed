@@ -28,6 +28,7 @@ This feature adds a self-contained installer script for setting up stata_kernel 
 3. THE Installer SHALL install `stata_kernel` and `jupyter` packages into the Virtual_Environment
 4. THE Installer SHALL use `pip install --upgrade` to ensure latest versions are installed
 5. IF virtual environment creation fails, THEN THE Installer SHALL display an error and exit with non-zero status
+6. WHEN Python 3.12 or later is detected, THE Installer SHALL upgrade `ipykernel` after installing stata_kernel to fix compatibility issues
 
 ### Requirement 2: Stata Installation Detection
 
@@ -97,6 +98,7 @@ This feature adds a self-contained installer script for setting up stata_kernel 
 3. THE Installer SHALL verify Stata is installed (or `STATA_PATH` is set)
 4. IF any prerequisite is missing, THEN THE Installer SHALL display a helpful error message with installation instructions
 5. THE Installer SHALL check prerequisites before making any changes to the system
+6. WHEN Python 3.12 or later is detected, THE Installer SHALL display a warning that compatibility fixes will be applied automatically
 
 ### Requirement 8: Idempotent Installation
 
