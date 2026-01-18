@@ -88,7 +88,7 @@ def find_workspace_root(start_path: Path) -> Path:
     """
     markers = ['.git', '.stata-project', '.project']
     current = start_path.resolve()
-    home = Path.home()
+    home = Path.home().resolve()  # Resolve to handle macOS symlinks like /var -> /private/var
     
     while current != current.parent:
         # Stop if we've gone above home
