@@ -176,14 +176,15 @@ main() {
 ```json
 {
   "label": "Stata: Send Statement",
-  "command": "if [ -n \"$ZED_SELECTED_TEXT\" ]; then printf '%s' \"$ZED_SELECTED_TEXT\" | send-to-stata.sh --statement --stdin --file \"$ZED_FILE\"; else send-to-stata.sh --statement --file \"$ZED_FILE\" --row \"$ZED_ROW\"; fi"
+  "command": "if [ -n \"${ZED_SELECTED_TEXT:}\" ]; then printf '%s' \"${ZED_SELECTED_TEXT:}\" | send-to-stata.sh --statement --stdin --file \"$ZED_FILE\"; else send-to-stata.sh --statement --file \"$ZED_FILE\" --row \"$ZED_ROW\"; fi"
 }
 ```
 
 **Rationale**:
 - Uses `printf '%s'` instead of `echo` to avoid interpretation of escape sequences
 - Conditional logic in shell to choose between stdin and row modes
-- The `$ZED_SELECTED_TEXT` variable is expanded by Zed before shell execution, but piping it avoids the quoting issues
+- Uses `${ZED_SELECTED_TEXT:}` (with empty default) to prevent Zed from filtering out the task when no text is selected
+- The variable is expanded by Zed before shell execution, but piping it avoids the quoting issues
 
 ## Data Models
 
