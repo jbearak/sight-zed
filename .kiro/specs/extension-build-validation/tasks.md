@@ -39,13 +39,13 @@
 
 ## Task 6: Implement grammar build validator
 **Validates: Requirements 4.1, 4.2, 4.3, 4.4, 4.5**
-- [ ] 6.1 Implement `validate_grammar_build()` function
-- [ ] 6.2 Clone tree-sitter-stata at specified revision to temp directory
-- [ ] 6.3 Execute `tree-sitter build --wasm`
-- [ ] 6.4 Verify `.wasm` file is produced
-- [ ] 6.5 Implement temp directory cleanup (success and failure paths)
-- [ ] 6.6 [PBT] Write property test for grammar build output verification (Property 6)
-- [ ] 6.7 [PBT] Write property test for temporary directory cleanup (Property 7)
+- [x] 6.1 Implement `validate_grammar_build()` function
+- [x] 6.2 Clone tree-sitter-stata at specified revision to temp directory
+- [x] 6.3 Execute `tree-sitter build --wasm`
+- [x] 6.4 Verify `.wasm` file is produced
+- [x] 6.5 Implement temp directory cleanup (success and failure paths)
+- [x] 6.6 [PBT] Write property test for grammar build output verification (Property 6)
+- [x] 6.7 [PBT] Write property test for temporary directory cleanup (Property 7)
 
 ## Task 7: Implement main orchestration and reporting
 **Validates: Requirements 5.3, 5.4, 5.5**
