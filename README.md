@@ -23,10 +23,10 @@ Execute Stata code directly from Zed with keyboard shortcuts. Works with both th
 |----------|--------|
 | `cmd-enter` | Send statement to Stata app |
 | `shift-cmd-enter` | Send file to Stata app |
-| `alt-cmd-enter` | Include statement (preserves locals) |
-| `alt-shift-cmd-enter` | Include file (preserves locals) |
+| `opt-cmd-enter` | Include statement (preserves locals) |
+| `opt-shift-cmd-enter` | Include file (preserves locals) |
 | `shift-enter` | Paste selection to terminal |
-| `alt-enter` | Paste current line to terminal |
+| `opt-enter` | Paste current line to terminal |
 
 ### Why Separate Installation?
 

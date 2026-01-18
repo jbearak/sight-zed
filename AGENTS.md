@@ -181,4 +181,6 @@ In `.do` files:
 | `shift-enter` | Send selection to Stata terminal (quick paste) |
 | `alt-enter` | Send current line to Stata terminal (quick paste) |
 
+In user-facing docs, we write "opt" instead of "alt" because that is how the "alt" key is labeled on Mac keyboards.
+
 See [SEND-TO-STATA.md](SEND-TO-STATA.md) for full documentation.
