@@ -12,6 +12,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_DIR="$HOME/.local/bin"
 ZED_CONFIG_DIR="$HOME/.config/zed"
 
+# GitHub raw URL for curl-pipe installation
+GITHUB_RAW_BASE="https://raw.githubusercontent.com/jbearak/sight"
+GITHUB_REF="${SIGHT_GITHUB_REF:-main}"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -83,6 +87,26 @@ check_prerequisites() {
 # Script Installation
 # ============================================================================
 
+# Fetches send-to-stata.sh from GitHub when running via curl-pipe.
+# Used when no local send-to-stata.sh exists (curl-pipe installation context).
+fetch_script_from_github() {
+  local url="$GITHUB_RAW_BASE/$GITHUB_REF/send-to-stata.sh"
+  print_info "Fetching send-to-stata.sh from GitHub ($GITHUB_REF)..."
+  
+  if ! curl -fsSL "$url" -o "$INSTALL_DIR/send-to-stata.sh"; then
+    print_error "Failed to download send-to-stata.sh from GitHub"
+    echo ""
+    echo "URL: $url"
+    echo ""
+    echo "Check your internet connection and try again, or install from a local clone:"
+    echo "  git clone https://github.com/jbearak/sight.git"
+    echo "  cd sight && ./install-send-to-stata.sh"
+    exit 1
+  fi
+  
+  print_success "Installed send-to-stata.sh to $INSTALL_DIR (from GitHub)"
+}
+
 # Installs send-to-stata.sh to ~/.local/bin.
 install_script() {
   # Create install directory if needed
@@ -91,10 +115,19 @@ install_script() {
     print_success "Created $INSTALL_DIR"
   fi
 
-  # Copy script
-  cp "$SCRIPT_DIR/send-to-stata.sh" "$INSTALL_DIR/"
-  chmod +x "$INSTALL_DIR/send-to-stata.sh"
-  print_success "Installed send-to-stata.sh to $INSTALL_DIR"
+  # Determine source: local file or GitHub
+  local source_script="$SCRIPT_DIR/send-to-stata.sh"
+  
+  if [[ -f "$source_script" ]]; then
+    # Local clone: copy from directory
+    cp "$source_script" "$INSTALL_DIR/"
+    chmod +x "$INSTALL_DIR/send-to-stata.sh"
+    print_success "Installed send-to-stata.sh to $INSTALL_DIR (from local)"
+  else
+    # Curl-pipe: fetch from GitHub
+    fetch_script_from_github
+    chmod +x "$INSTALL_DIR/send-to-stata.sh"
+  fi
 
   # Check if binary is findable; if not, configure PATH
   if ! command -v send-to-stata.sh &>/dev/null; then
