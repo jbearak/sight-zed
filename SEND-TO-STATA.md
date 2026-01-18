@@ -65,6 +65,25 @@ If `~/.local/bin` is not in your PATH, add it:
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
+### Stdin Size Limit
+
+When sending a selection via stdin (`--stdin`), the script enforces a size limit to avoid accidental huge payloads.
+
+- Default: 10MB
+- Configure via:
+
+```bash
+export STATA_STDIN_MAX_BYTES=10485760
+```
+
+### Cleanup on AppleScript Failure
+
+By default, temp `.do` files are kept even if AppleScript fails (useful for debugging). To delete the temp file when AppleScript fails:
+
+```bash
+export STATA_CLEANUP_ON_ERROR=1
+```
+
 ## Manual Installation
 
 If you prefer not to use the installer:
@@ -81,7 +100,7 @@ If you prefer not to use the installer:
    [
      {
        "label": "Stata: Send Statement",
-       "command": "if [ -n \"${ZED_SELECTED_TEXT:}\" ]; then printf '%s' \"${ZED_SELECTED_TEXT:}\" | send-to-stata.sh --statement --stdin --file \"$ZED_FILE\"; else send-to-stata.sh --statement --file \"$ZED_FILE\" --row \"$ZED_ROW\"; fi",
+       "command": "if [ -n \\\"${ZED_SELECTED_TEXT:}\\\" ]; then printf '%s' \\\"${ZED_SELECTED_TEXT:}\\\" | send-to-stata.sh --statement --stdin --file \\\"$ZED_FILE\\\"; else send-to-stata.sh --statement --file \\\"$ZED_FILE\\\" --row \\\"$ZED_ROW\\\"; fi",
        "use_new_terminal": false,
        "allow_concurrent_runs": true,
        "reveal": "never",
@@ -89,7 +108,7 @@ If you prefer not to use the installer:
      },
      {
        "label": "Stata: Send File",
-       "command": "send-to-stata.sh --file --file \"$ZED_FILE\"",
+       "command": "send-to-stata.sh --file --file \\\"$ZED_FILE\\\"",
        "use_new_terminal": false,
        "allow_concurrent_runs": true,
        "reveal": "never",
@@ -97,7 +116,6 @@ If you prefer not to use the installer:
      }
    ]
    ```
-
    > **Note**: The "Send Statement" task uses stdin mode (`--stdin`) to handle Stata compound strings (e.g., `` `"text"' ``) and other shell metacharacters correctly. When text is selected, it's piped to the script via stdin; otherwise, the script detects the statement at the cursor position. The `${ZED_SELECTED_TEXT:}` syntax (with empty default) ensures the task is always available, even when no text is selected.
 
 3. Add keybindings to `~/.config/zed/keymap.json`:

@@ -344,7 +344,7 @@ generate_metachar_string() {
         content=$(generate_metachar_string)
         
         local temp_file
-        temp_file=$(printf '%s' "$content" | bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; stdin_content=\$(read_stdin_content); create_temp_file \"\$stdin_content\"")
+temp_file=$(printf '%s' "$content" | bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; f=\$(create_temp_file_path); read_stdin_to_file \"\$f\" 0 >/dev/null; echo \"\$f\"")
         
         if [[ ! -f "$temp_file" ]]; then
             echo "FAIL: iteration=$i, temp file not created"
@@ -380,7 +380,7 @@ generate_metachar_string() {
         local content="${compound_patterns[$idx]}"
         
         local temp_file
-        temp_file=$(printf '%s' "$content" | bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; stdin_content=\$(read_stdin_content); create_temp_file \"\$stdin_content\"")
+temp_file=$(printf '%s' "$content" | bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; f=\$(create_temp_file_path); read_stdin_to_file \"\$f\" 0 >/dev/null; echo \"\$f\"")
         
         local file_content
         file_content=$(cat "$temp_file")
@@ -407,7 +407,7 @@ generate_metachar_string() {
         done
         
         local temp_file
-        temp_file=$(printf '%s' "$content" | bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; stdin_content=\$(read_stdin_content); create_temp_file \"\$stdin_content\"")
+temp_file=$(printf '%s' "$content" | bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; f=\$(create_temp_file_path); read_stdin_to_file \"\$f\" 0 >/dev/null; echo \"\$f\"")
         
         local file_content
         file_content=$(cat "$temp_file")

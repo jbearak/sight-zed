@@ -89,6 +89,17 @@ call_func() {
     [[ "$output" == *"Stata: Send File"* ]]
 }
 
+@test "tasks: Send Statement command preserves selection bytes (no extra quoting)" {
+    # Expand STATA_TASKS inside the sourced installer script (not in this test process).
+    run bash -c 'source "$1"; printf "%s\n" "$STATA_TASKS"' bash "$SCRIPT"
+    [ "$status" -eq 0 ]
+
+    # Must not wrap/escape the selection by printing extra quotes.
+    [[ "$output" == *"printf '%s'"* ]]
+    [[ "$output" == *"\${ZED_SELECTED_TEXT:}"* ]]
+    [[ "$output" != *"printf '"'"'%s'"'"'"* ]]
+}
+
 @test "tasks: merges with existing tasks" {
     mkdir -p "$ZED_CONFIG_DIR"
     echo '[{"label": "Other Task", "command": "echo"}]' > "$ZED_CONFIG_DIR/tasks.json"

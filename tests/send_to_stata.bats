@@ -103,30 +103,62 @@ teardown() {
 
 @test "stdin: simple content via stdin" {
     local content="display 123"
-    temp_file=$(echo "$content" | bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; stdin_content=\$(read_stdin_content); create_temp_file \"\$stdin_content\"")
+    temp_file=$(printf '%s' "$content" | bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; f=\$(create_temp_file_path); read_stdin_to_file \"\$f\" 0 >/dev/null; echo \"\$f\"")
     [ -f "$temp_file" ]
     [ "$(cat "$temp_file")" = "$content" ]
 }
 
 @test "stdin: compound string via stdin" {
-    local content='`"test"'"'"
-    temp_file=$(printf '%s' "$content" | bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; stdin_content=\$(read_stdin_content); create_temp_file \"\$stdin_content\"")
+    # Stata compound string: `"test"'
+    local content=$'`"test"\''
+    temp_file=$(printf '%s' "$content" | bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; f=\$(create_temp_file_path); read_stdin_to_file \"\$f\" 0 >/dev/null; echo \"\$f\"")
     [ -f "$temp_file" ]
     [ "$(cat "$temp_file")" = "$content" ]
 }
 
 @test "stdin: content with backticks" {
     local content='display `var`'
-    temp_file=$(printf '%s' "$content" | bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; stdin_content=\$(read_stdin_content); create_temp_file \"\$stdin_content\"")
+    temp_file=$(printf '%s' "$content" | bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; f=\$(create_temp_file_path); read_stdin_to_file \"\$f\" 0 >/dev/null; echo \"\$f\"")
     [ -f "$temp_file" ]
     [ "$(cat "$temp_file")" = "$content" ]
 }
 
 @test "stdin: content with dollar signs" {
     local content='display $var'
-    temp_file=$(printf '%s' "$content" | bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; stdin_content=\$(read_stdin_content); create_temp_file \"\$stdin_content\"")
+    temp_file=$(printf '%s' "$content" | bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; f=\$(create_temp_file_path); read_stdin_to_file \"\$f\" 0 >/dev/null; echo \"\$f\"")
     [ -f "$temp_file" ]
     [ "$(cat "$temp_file")" = "$content" ]
+}
+
+@test "stdin: preserves trailing newline" {
+    # Two bytes: 'a' + '\n'
+    temp_file=$(printf 'a\n' | bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; f=\$(create_temp_file_path); read_stdin_to_file \"\$f\" 0 >/dev/null; echo \"\$f\"")
+    [ -f "$temp_file" ]
+
+    run wc -c < "$temp_file"
+    [ "$status" -eq 0 ]
+    [[ "$(echo "$output" | tr -d ' ')" -eq 2 ]]
+
+    # Verify exact bytes: 0x61 0x0a
+    run od -An -tx1 -v "$temp_file"
+    [ "$status" -eq 0 ]
+    hex=$(echo "$output" | tr -d ' \n')
+    [ "$hex" = "610a" ]
+}
+
+@test "stdin: enforces size limit" {
+    run bash -c "source '$SCRIPT'; f=\$(mktemp); printf 'ab' | read_stdin_to_file \"\$f\" 1"
+    [ "$status" -eq 7 ]
+    [[ "$output" == *"stdin content too large"* ]]
+}
+
+@test "applescript: cleanup on error deletes temp file when enabled" {
+    temp_file=$(bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; create_temp_file 'display 1'")
+    [ -f "$temp_file" ]
+
+    run bash -c "export STATA_CLEANUP_ON_ERROR=1; source '$SCRIPT'; send_to_stata DefinitelyNotAStataApp '$temp_file'"
+    [ "$status" -eq 5 ]
+    [ ! -f "$temp_file" ]
 }
 
 @test "stdin: empty stdin with --row fallback" {

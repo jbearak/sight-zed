@@ -67,5 +67,8 @@ The solution must provide a robust mechanism to transfer arbitrary Stata code fr
 
 1. IF stdin read fails THEN the Send_To_Stata_Script SHALL exit with a distinct error code and descriptive message
 2. IF the stdin content exceeds a reasonable size limit THEN the Send_To_Stata_Script SHALL handle it gracefully
+   - The size limit SHALL be configurable via an environment variable (e.g., `STATA_STDIN_MAX_BYTES`)
+   - The default size limit SHALL be large enough for typical interactive use (e.g., 10MB)
+   - When exceeded, the script SHALL exit with a distinct error code and message
 3. WHEN an error occurs during stdin processing THEN the Send_To_Stata_Script SHALL clean up any partial Temp_Files created
 

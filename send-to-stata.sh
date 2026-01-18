@@ -22,6 +22,8 @@
 #   3 - Temp file creation failed
 #   4 - Stata not found
 #   5 - AppleScript execution failed
+#   6 - Stdin read failed
+#   7 - Stdin content too large
 
 set -euo pipefail
 
@@ -50,7 +52,9 @@ Options:
   --stdin           Read text from stdin (mutually exclusive with --text)
 
 Environment Variables:
-  STATA_APP         Stata application name (StataMP, StataSE, StataIC, Stata)
+  STATA_APP              Stata application name (StataMP, StataSE, StataIC, Stata)
+  STATA_STDIN_MAX_BYTES  Max bytes allowed in --stdin mode (default: 10485760)
+  STATA_CLEANUP_ON_ERROR If set to 1, delete temp file on AppleScript failure
 
 Exit Codes:
   0 - Success
@@ -60,6 +64,7 @@ Exit Codes:
   4 - Stata not found
   5 - AppleScript execution failed
   6 - Stdin read failed
+  7 - Stdin content too large
 EOF
 }
 
@@ -179,16 +184,38 @@ validate_arguments() {
 # Stdin Reading
 # ============================================================================
 
-# Reads all content from stdin.
-# Output: Prints content to stdout
-# Exit Codes: 6 - Stdin read failed
-read_stdin_content() {
-    local content
-    if ! content=$(cat); then
+# Reads all content from stdin and writes it to a file.
+#
+# Arguments:
+#   $1 - out_file: Destination file path
+#   $2 - max_bytes: Maximum bytes allowed (0 means unlimited)
+#
+# Output:
+#   Prints the number of bytes written to stdout
+#
+# Exit Codes:
+#   6 - Stdin read failed
+#   7 - Stdin content too large
+read_stdin_to_file() {
+    local out_file="$1"
+    local max_bytes="$2"
+
+    if ! cat > "$out_file"; then
         echo "Error: Failed to read from stdin" >&2
+        rm -f "$out_file" 2>/dev/null || true
         exit 6
     fi
-    printf '%s' "$content"
+
+    local byte_count
+    byte_count=$(wc -c < "$out_file" | tr -d ' ')
+
+    if [[ "$max_bytes" -gt 0 && "$byte_count" -gt "$max_bytes" ]]; then
+        echo "Error: stdin content too large (${byte_count} bytes; max ${max_bytes})" >&2
+        rm -f "$out_file" 2>/dev/null || true
+        exit 7
+    fi
+
+    echo "$byte_count"
 }
 
 # ============================================================================
@@ -341,23 +368,18 @@ detect_statement() {
 # Temp File Creation
 # ============================================================================
 
-# Creates a temporary file with the given content.
+# Creates an empty temporary .do file.
 # The temp file is created in $TMPDIR (or /tmp as fallback) with a unique name.
-#
-# Arguments:
-#   $1 - content: The content to write to the temp file
 #
 # Output:
 #   Prints the path to the created temp file to stdout
 #
 # Exit Codes:
 #   3 - Temp file creation failed
-create_temp_file() {
-    local content="$1"
-    
+create_temp_file_path() {
     # Determine temp directory: use $TMPDIR if set, otherwise /tmp
     local temp_dir="${TMPDIR:-/tmp}"
-    
+
     # Create temp file with mktemp
     # macOS mktemp requires X's at the end, so we create without .do suffix first
     # then rename to add the .do extension
@@ -366,7 +388,7 @@ create_temp_file() {
         echo "Error: Cannot create temp file" >&2
         exit 3
     }
-    
+
     # Rename to add .do extension
     local temp_file="${temp_base}.do"
     if ! mv "$temp_base" "$temp_file" 2>/dev/null; then
@@ -374,16 +396,24 @@ create_temp_file() {
         rm -f "$temp_base" 2>/dev/null
         exit 3
     fi
-    
-    # Write content to temp file
+
+    echo "$temp_file"
+}
+
+# Creates a temporary file with the given content.
+# Note: bash variables cannot represent NUL bytes; use stdin mode for robust transfer.
+create_temp_file() {
+    local content="$1"
+
+    local temp_file
+    temp_file=$(create_temp_file_path)
+
     if ! printf '%s' "$content" > "$temp_file" 2>/dev/null; then
         echo "Error: Cannot write to temp file: $temp_file" >&2
-        # Clean up the temp file we created
         rm -f "$temp_file" 2>/dev/null
         exit 3
     fi
-    
-    # Return the temp file path
+
     echo "$temp_file"
 }
 
@@ -418,18 +448,21 @@ escape_for_applescript() {
 send_to_stata() {
     local stata_app="$1"
     local temp_file="$2"
-    
+
     # Escape the temp file path for AppleScript
     local escaped_path
     escaped_path=$(escape_for_applescript "$temp_file")
-    
+
     # Build the AppleScript command
     local applescript_cmd="tell application \"${stata_app}\" to DoCommandAsync \"do \\\"${escaped_path}\\\"\""
-    
+
     # Execute via osascript
     local error_output
     if ! error_output=$(osascript -e "$applescript_cmd" 2>&1); then
         echo "Error: AppleScript failed: $error_output" >&2
+        if [[ "${STATA_CLEANUP_ON_ERROR:-0}" == "1" ]]; then
+            rm -f "$temp_file" 2>/dev/null || true
+        fi
         exit 5
     fi
 }
@@ -456,40 +489,44 @@ main() {
     # Detect Stata application
     STATA_APP_NAME=$(detect_stata_app)
 
-    # Determine the code to send based on mode
-    local code_to_send=""
-    
+    # Create temp file and write the code to send based on mode
+    local temp_file
+    temp_file=$(create_temp_file_path)
+
     case "$MODE" in
         statement)
             if [[ "$STDIN_MODE" == true ]]; then
-                local stdin_content
-                stdin_content=$(read_stdin_content)
-                if [[ -n "$stdin_content" ]]; then
-                    code_to_send="$stdin_content"
-                elif [[ -n "$ROW" ]]; then
-                    # Fall back to row detection if stdin is empty
-                    code_to_send=$(detect_statement "$FILE_PATH" "$ROW")
-                else
-                    echo "Error: stdin is empty and no --row provided" >&2
-                    exit 1
+                # Read stdin to temp file first so we can:
+                # - preserve bytes (including trailing newlines)
+                # - avoid holding the entire selection in memory
+                # - detect empty stdin for --row fallback
+                local max_bytes="${STATA_STDIN_MAX_BYTES:-10485760}"
+                local byte_count
+                byte_count=$(read_stdin_to_file "$temp_file" "$max_bytes")
+
+                if [[ "$byte_count" -eq 0 ]]; then
+                    if [[ -n "$ROW" ]]; then
+                        # Fall back to row detection if stdin is empty
+                        detect_statement "$FILE_PATH" "$ROW" > "$temp_file"
+                    else
+                        echo "Error: stdin is empty and no --row provided" >&2
+                        rm -f "$temp_file" 2>/dev/null || true
+                        exit 1
+                    fi
                 fi
             elif [[ -n "$TEXT" ]]; then
                 # Use selected text directly
-                code_to_send="$TEXT"
+                printf '%s' "$TEXT" > "$temp_file"
             else
                 # Detect statement at cursor position
-                code_to_send=$(detect_statement "$FILE_PATH" "$ROW")
+                detect_statement "$FILE_PATH" "$ROW" > "$temp_file"
             fi
             ;;
         file)
-            # Read entire file
-            code_to_send=$(cat "$FILE_PATH")
+            # Copy entire file to temp file without losing trailing newlines
+            cat "$FILE_PATH" > "$temp_file"
             ;;
     esac
-
-    # Create temp file with the code to send
-    local temp_file
-    temp_file=$(create_temp_file "$code_to_send")
 
     # Send to Stata via AppleScript
     send_to_stata "$STATA_APP_NAME" "$temp_file"

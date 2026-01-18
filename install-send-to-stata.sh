@@ -84,10 +84,11 @@ install_script() {
 # Note: Zed uses ${VAR:default} syntax (no dash), not shell's ${VAR:-default}
 # Note: Send Statement uses stdin mode for robust compound string handling
 # Note: ${ZED_SELECTED_TEXT:} uses empty default to prevent task filtering when no selection
-STATA_TASKS='[
+STATA_TASKS=$(cat <<'EOF'
+[
   {
     "label": "Stata: Send Statement",
-    "command": "if [ -n \"${ZED_SELECTED_TEXT:}\" ]; then printf '"'"'%s'"'"' \"${ZED_SELECTED_TEXT:}\" | send-to-stata.sh --statement --stdin --file \"$ZED_FILE\"; else send-to-stata.sh --statement --file \"$ZED_FILE\" --row \"$ZED_ROW\"; fi",
+    "command": "if [ -n \\\"${ZED_SELECTED_TEXT:}\\\" ]; then printf '%s' \\\"${ZED_SELECTED_TEXT:}\\\" | send-to-stata.sh --statement --stdin --file \\\"$ZED_FILE\\\"; else send-to-stata.sh --statement --file \\\"$ZED_FILE\\\" --row \\\"$ZED_ROW\\\"; fi",
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
     "reveal": "never",
@@ -95,13 +96,15 @@ STATA_TASKS='[
   },
   {
     "label": "Stata: Send File",
-    "command": "send-to-stata.sh --file --file \"$ZED_FILE\"",
+    "command": "send-to-stata.sh --file --file \\\"$ZED_FILE\\\"",
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
     "reveal": "never",
     "hide": "on_success"
   }
-]'
+]
+EOF
+)
 
 install_tasks() {
     local tasks_file="$ZED_CONFIG_DIR/tasks.json"
