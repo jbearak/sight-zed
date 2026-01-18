@@ -63,6 +63,6 @@
 
 ## Task 9: Integration testing
 **Validates: Requirements 5.1, 5.2, 5.3, 5.4, 5.5**
-- [ ] 9.1 Test full validation suite against current extension configuration
-- [ ] 9.2 Verify script works in CI environment (no interactive prompts)
-- [ ] 9.3 Test error cases (invalid version, invalid revision, build failures)
+- [x] 9.1 Test full validation suite against current extension configuration
+- [x] 9.2 Verify script works in CI environment (no interactive prompts)
+- [x] 9.3 Test error cases (invalid version, invalid revision, build failures)
