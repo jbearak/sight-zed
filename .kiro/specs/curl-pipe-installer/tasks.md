@@ -42,7 +42,20 @@ Add curl-pipe-to-bash installation support to `install-send-to-stata.sh` by dete
     - Verify `~/.local/bin/send-to-stata.sh` is installed and executable
     - _Requirements: 4.1, 4.2, 5.1_
 
-- [ ] 5. Final checkpoint
+- [x] 5. Update documentation with curl-pipe installation instructions
+  - [x] 5.1 Update README.md installation section
+    - Add curl-pipe command after "Send to Stata (Optional)" intro paragraph, before keybindings table
+    - Remove "Quick Install" subsection and "Why Separate Installation?" subsection
+    - Refactor "Building from Source" into two subsections: "Zed Extension" and "Send-to-Stata"
+    - Move git clone installation to new "Send-to-Stata" subsection
+    - _Requirements: 6.1, 6.2, 6.3, 6.4_
+  
+  - [x] 5.2 Update SEND-TO-STATA.md Quick Start section
+    - Present curl-pipe command as primary method
+    - Add git clone as alternative option below
+    - _Requirements: 6.5, 6.6_
+
+- [ ] 6. Final checkpoint
   - Ensure all tests pass, ask the user if questions arise.
   - Verify both installation methods produce working setup
 
