@@ -6,7 +6,7 @@ This plan implements stdin-based input for `send-to-stata.sh` to handle Stata co
 
 ## Tasks
 
-- [ ] 1. Add stdin mode to send-to-stata.sh
+- [x] 1. Add stdin mode to send-to-stata.sh
   - [ ] 1.1 Add --stdin flag parsing in parse_arguments function
     - Add `STDIN_MODE=false` global variable initialization
     - Add case for `--stdin)` that sets `STDIN_MODE=true`
@@ -35,7 +35,7 @@ This plan implements stdin-based input for `send-to-stata.sh` to handle Stata co
     - Document exit code 6
     - _Requirements: 1.1_
 
-- [ ] 2. Add unit tests for stdin mode
+- [x] 2. Add unit tests for stdin mode
   - [ ] 2.1 Add argument parsing tests for --stdin
     - Test `--stdin` flag is recognized
     - Test `--stdin` and `--text` mutual exclusivity error
@@ -50,12 +50,12 @@ This plan implements stdin-based input for `send-to-stata.sh` to handle Stata co
     - Test empty stdin without `--row` error
     - _Requirements: 1.2, 1.3, 1.4, 4.1, 4.2_
 
-- [ ] 3. Checkpoint - Verify script changes work
+- [x] 3. Checkpoint - Verify script changes work
   - Ensure all existing tests still pass
   - Ensure new stdin tests pass
   - Ask user if questions arise
 
-- [ ] 4. Add property tests for stdin mode
+- [x] 4. Add property tests for stdin mode
   - [ ] 4.1 Write property test for stdin round-trip preservation
     - **Property 1: Stdin Content Round-Trip Preservation**
     - Generate random strings with shell metacharacters
@@ -70,7 +70,7 @@ This plan implements stdin-based input for `send-to-stata.sh` to handle Stata co
     - Minimum 100 iterations
     - **Validates: Requirements 2.1, 2.2**
 
-- [ ] 5. Update Zed task definitions
+- [x] 5. Update Zed task definitions
   - [ ] 5.1 Update STATA_TASKS in install-send-to-stata.sh
     - Change "Send Statement" task to use conditional stdin piping
     - Use: `if [ -n \"$ZED_SELECTED_TEXT\" ]; then printf '%s' \"$ZED_SELECTED_TEXT\" | send-to-stata.sh --statement --stdin --file \"$ZED_FILE\"; else send-to-stata.sh --statement --file \"$ZED_FILE\" --row \"$ZED_ROW\"; fi`
@@ -81,11 +81,11 @@ This plan implements stdin-based input for `send-to-stata.sh` to handle Stata co
     - Update manual installation instructions with new task format
     - _Requirements: 3.3_
 
-- [ ] 6. Add test fixture for compound strings
+- [x] 6. Add test fixture for compound strings
   - Create tests/fixtures/compound_strings.do with various compound string examples
   - _Requirements: 4.2_
 
-- [ ] 7. Final checkpoint - Ensure all tests pass
+- [x] 7. Final checkpoint - Ensure all tests pass
   - Run full test suite
   - Verify backward compatibility
   - Ask user if questions arise
