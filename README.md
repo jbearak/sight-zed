@@ -53,7 +53,7 @@ Execute Stata code in Zed's built-in REPL panel using [stata_kernel](https://kyl
 2. Open the REPL panel (View → Toggle REPL)
 3. Select a kernel:
    - **Stata** — starts in the file's directory
-   - **Stata (Workspace)** — starts in the workspace root (looks for `.git`)
+   - **Stata (Workspace)** — starts in the workspace root (looks for project markers)
 
 ### Choosing a Kernel
 
