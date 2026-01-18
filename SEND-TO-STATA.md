@@ -1,6 +1,8 @@
 # Send Code to Stata
 
-Send Stata code from Zed editor to the Stata GUI application for execution.
+Send Stata code from Zed editor to Stata for execution. Supports two modes:
+- **Stata application** (macOS): Uses AppleScript to send code to the Stata app
+- **Terminal sessions**: Pastes code into the active terminal (works with SSH, multiple sessions)
 
 ## Prerequisites
 
@@ -38,12 +40,34 @@ In `.do` files:
 |----------|--------|
 | `cmd-enter` | Send current statement (or selection) to Stata |
 | `shift-cmd-enter` | Send entire file to Stata |
-| `alt-cmd-enter` | Include statement (preserves local macros) |
-| `alt-shift-cmd-enter` | Include file (preserves local macros) |
+| `opt-cmd-enter` | Include statement (preserves local macros) |
+| `opt-shift-cmd-enter` | Include file (preserves local macros) |
+| `shift-enter` | Send selection to Stata terminal (quick paste) |
+| `opt-enter` | Send current line to Stata terminal (quick paste) |
+
+### Quick Terminal Shortcuts
+
+The `shift-enter` and `opt-enter` shortcuts use Zed's `SendKeystrokes` to paste code into the active terminal panel:
+
+- **`shift-enter`**: Copies the current selection, switches to the terminal (`ctrl-``), pastes, and executes
+- **`opt-enter`**: Selects the current line, copies it, switches to the terminal, pastes, and executes (functionally equivalent to selecting a line and pressing `shift-enter`)
+
+Both shortcuts copy the selected text to your Mac's clipboard. After execution, focus remains in the terminal—any subsequent keystrokes go to the terminal, not the editor. Press `ctrl-`` to return focus to the editor.
+
+These shortcuts paste directly into whatever terminal is active in Zed. To use them with Stata, open a terminal panel and launch the Stata CLI (e.g., `stata`, or `stata-mp`). This is particularly useful for:
+
+- **Remote sessions**: When working over SSH, the application shortcuts control your local Stata. These terminal shortcuts send code to the remote Stata session in your terminal.
+- **Multiple sessions**: You can have multiple terminal tabs running different Stata instances and send code to whichever is active. The application shortcuts always target the single Stata app.
+
+Note that `opt-enter` sends only the current line—it doesn't detect multi-line statements with `///` continuations like the application shortcuts do. For multi-line statements, select the text and use `shift-enter`. The two separate shortcuts exist due to a Zed limitation (SendKeystrokes can't conditionally check for a selection).
+
+**Important**: You cannot use `shift-enter` or `opt-enter` to send statements with `///` continuation lines. Stata's console does not accept continuation syntax when code is pasted directly—it will print an error. For multi-line statements with continuations, use `cmd-enter` instead, which writes the code to a temp file and executes it via `do`.
+
+There's no "send file to terminal" shortcut because Zed's SendKeystrokes doesn't have access to the file path. The application shortcuts can send files because they invoke tasks, which can run scripts with access to `$ZED_FILE`—but there's no way to get script output back into a SendKeystrokes sequence.
 
 ### do vs include
 
-The default keybindings use Stata's `do` command, which isolates local macros to the executed code. The `alt` variants use `include` instead, which preserves local macros in the calling context—useful for debugging when you need to inspect locals after running code.
+The default keybindings use Stata's `do` command, which isolates local macros to the executed code. The `opt` variants use `include` instead, which preserves local macros in the calling context—useful for debugging when you need to inspect locals after running code.
 
 ### Statement Detection
 
@@ -156,13 +180,15 @@ If you prefer not to use the installer:
          "cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send Statement"}]]],
          "shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send File"}]]],
          "alt-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include Statement"}]]],
-         "alt-shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include File"}]]]
+         "alt-shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include File"}]]],
+         "shift-enter": ["workspace::SendKeystrokes", "cmd-c ctrl-` cmd-v enter"],
+         "alt-enter": ["workspace::SendKeystrokes", "cmd-left shift-cmd-right cmd-c ctrl-` cmd-v enter"]
        }
      }
    ]
    ```
 
-   > **Note**: The keybindings use `action::Sequence` to save the file before sending to Stata, ensuring the latest changes are executed.
+   > **Note**: The keybindings use `action::Sequence` to save the file before sending to Stata, ensuring the latest changes are executed. The `shift-enter` and `opt-enter` shortcuts use `SendKeystrokes` for quick terminal interaction without saving.
 
 ## Troubleshooting
 
