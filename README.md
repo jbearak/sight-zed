@@ -38,6 +38,49 @@ Execute Stata code directly from Zed with keyboard shortcuts. Works with both th
 
 See [SEND-TO-STATA.md](SEND-TO-STATA.md) for full documentation, configuration options, and troubleshooting.
 
+## Jupyter REPL (Optional)
+
+Execute Stata code in Zed's built-in REPL panel using [stata_kernel](https://kylebarron.dev/stata_kernel/). This provides an interactive environment without switching to the Stata application.
+
+**Install (macOS only):**
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-stata.sh)"
+```
+
+**Usage:**
+1. Open a `.do` file
+2. Open the REPL panel (View → Toggle REPL)
+3. Select a kernel:
+   - **Stata** — starts in the file's directory
+   - **Stata (Workspace)** — starts in the workspace root (looks for project markers)
+
+### Choosing a Kernel
+
+| Kernel | Working Directory | Best For |
+|--------|-------------------|----------|
+| Stata | File's directory | Scripts with paths relative to the script |
+| Stata (Workspace) | Project root | Scripts with paths relative to the project root |
+
+The workspace kernel walks up from the file's directory looking for `.git`, `.stata-project`, or `.project` markers to find the project root. If no marker is found, it falls back to the file's directory.
+
+### Setting a Default Kernel
+
+Add to `~/.config/zed/settings.json`:
+
+```json
+{
+  "jupyter": {
+    "kernel_selections": {
+      "stata": "stata_workspace"
+    }
+  }
+}
+```
+
+**Configuration:** The installer creates `~/.stata_kernel.conf` with auto-detected settings. Edit this file to customize graph format, cache directory, and other options.
+
+
 ## Building from Source
 
 ### Zed Extension
@@ -56,6 +99,16 @@ If you prefer to install from a local clone instead of curl-pipe:
 git clone https://github.com/jbearak/sight-zed
 cd sight-zed
 ./install-send-to-stata.sh
+```
+
+### Jupyter Kernel
+
+Install stata_kernel from a local clone:
+
+```bash
+git clone https://github.com/jbearak/sight-zed
+cd sight-zed
+./install-jupyter-stata.sh
 ```
 
 ## Related Projects
