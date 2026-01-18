@@ -84,7 +84,7 @@ New function to download the script from GitHub:
 
 ```bash
 # GitHub raw URL components
-GITHUB_RAW_BASE="https://raw.githubusercontent.com/jbearak/sight"
+GITHUB_RAW_BASE="https://raw.githubusercontent.com/jbearak/sight-zed"
 GITHUB_REF="${SIGHT_GITHUB_REF:-main}"
 
 fetch_script_from_github() {
@@ -182,8 +182,8 @@ if ! curl -fsSL "$GITHUB_RAW_URL" -o "$INSTALL_DIR/send-to-stata.sh"; then
   print_error "Failed to download send-to-stata.sh from GitHub"
   echo ""
   echo "Check your internet connection and try again, or install from a local clone:"
-  echo "  git clone https://github.com/jbearak/sight.git"
-  echo "  cd sight && ./install-send-to-stata.sh"
+  echo "  git clone https://github.com/jbearak/sight-zed.git"
+  echo "  cd sight-zed && ./install-send-to-stata.sh"
   exit 1
 fi
 ```
@@ -265,7 +265,7 @@ test -x "$HOME/.local/bin/send-to-stata.sh" && echo "Success"
 **End-to-End Curl-Pipe Test (after merge):**
 ```bash
 # Test curl-pipe installation (requires network)
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight/main/install-send-to-stata.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.sh)"
 
 # Verify installation
 test -x "$HOME/.local/bin/send-to-stata.sh"
@@ -282,7 +282,7 @@ git clone https://github.com/jbearak/sight-zed.git /tmp/sight-local
 cp "$HOME/.local/bin/send-to-stata.sh" /tmp/local-installed.sh
 
 # Method 2: Curl-pipe (after uninstall)
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight/main/install-send-to-stata.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.sh)"
 cp "$HOME/.local/bin/send-to-stata.sh" /tmp/curl-installed.sh
 
 # Compare
