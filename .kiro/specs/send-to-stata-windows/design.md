@@ -277,8 +277,33 @@ function Register-StataAutomation {
 # Returns: $true if user clicked Yes, $false if No
 function Show-RegistrationPrompt {
     param([string]$Message, [string]$Title)
-    # Use System.Windows.Forms.MessageBox
+    # Use System.Windows.Forms.MessageBox with Yes/No buttons
     # Return $true for Yes, $false for No
+}
+```
+
+**Invoke-AutomationRegistrationCheck**
+```powershell
+# Orchestrates the automation registration check and prompts
+# Parameters: $StataPath, $Force (for -RegisterAutomation), $Skip (for -SkipAutomationCheck)
+function Invoke-AutomationRegistrationCheck {
+    param(
+        [string]$StataPath,
+        [switch]$Force,
+        [switch]$Skip
+    )
+    # If $Skip, return immediately
+    # Call Test-StataAutomationRegistered
+    # If registered with correct path and not $Force, return (already registered)
+    # If registered with different path (version mismatch):
+    #   - Show popup with old vs new paths
+    #   - Ask user if they want to update registration
+    #   - If No, skip and continue
+    # If not registered:
+    #   - Show popup asking to register
+    #   - If No, display manual instructions and continue
+    # If user confirms or $Force, call Register-StataAutomation
+    # Display success/failure message
 }
 ```
 
@@ -642,6 +667,8 @@ Tasks must launch PowerShell with `-sta` flag for clipboard operations:
 
 ### Zed Keybinding Configuration
 
+Standard keybindings for send-to-stata tasks:
+
 ```json
 {
   "context": "Editor && extension == do",
@@ -653,6 +680,28 @@ Tasks must launch PowerShell with `-sta` flag for clipboard operations:
   }
 }
 ```
+
+### Quick Terminal Keybindings
+
+Terminal keybindings for pasting code directly to an active terminal panel (useful for SSH, WSL, or multiple Stata terminal sessions):
+
+```json
+{
+  "context": "Editor && extension == do",
+  "bindings": {
+    "shift-enter": ["editor::Copy", "terminal_panel::ToggleFocus", "terminal::Paste", "SendKeystrokes", "enter"],
+    "alt-enter": ["editor::SelectLine", "editor::Copy", "terminal_panel::ToggleFocus", "terminal::Paste", "SendKeystrokes", "enter"]
+  }
+}
+```
+
+**Behavior:**
+- `shift-enter`: Copies current selection, switches to terminal, pastes, and executes
+- `alt-enter`: Selects current line, copies, switches to terminal, pastes, and executes
+
+**Limitations:**
+- `alt-enter` sends only the current line—it does not detect multi-line statements with `///` continuations
+- `///` continuation syntax cannot be pasted directly to Stata's console; users should use `ctrl-enter` for multi-line statements
 
 ## Design Properties
 
