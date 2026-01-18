@@ -112,11 +112,11 @@ This plan implements the send-to-stata feature using shell scripts integrated wi
     - Test uninstall functionality
     - _Requirements: 5.1-5.8_
 
-- [ ] 4. Checkpoint - Verify installer works
+- [x] 4. Checkpoint - Verify installer works
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Create documentation
-  - [ ] 5.1 Create `SEND-TO-STATA.md` documentation file
+- [x] 5. Create documentation
+  - [x] 5.1 Create `SEND-TO-STATA.md` documentation file
     - Prerequisites section
     - Quick start with installer command
     - Manual installation steps
