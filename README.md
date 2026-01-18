@@ -13,7 +13,7 @@ A Zed editor extension providing Stata language support using the [Sight LSP](ht
 
 Install from the Zed extension marketplace by searching for "Sight" or "Stata".
 
-That's it—you'll have syntax highlighting, completions, and diagnostics working immediately.
+Syntax highlighting, completions, and diagnostics will work immediately once you open a ".do" file.
 
 ## Send to Stata (Optional)
 
