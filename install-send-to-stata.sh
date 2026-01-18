@@ -222,8 +222,8 @@ install_keybindings() {
       "shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send File"}]]],
       "alt-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include Statement"}]]],
       "alt-shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include File"}]]],
-      "shift-enter": ["workspace::SendKeystrokes", "cmd-c ctrl-` cmd-v enter ctrl-`"],
-      "alt-enter": ["workspace::SendKeystrokes", "cmd-left shift-cmd-right cmd-c ctrl-` cmd-v enter ctrl-` down"]
+      "shift-enter": ["workspace::SendKeystrokes", "cmd-c ctrl-` cmd-v enter"],
+      "alt-enter": ["workspace::SendKeystrokes", "cmd-left shift-cmd-right cmd-c ctrl-` cmd-v enter down"]
     }
   }
 ]
