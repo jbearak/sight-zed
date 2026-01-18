@@ -52,10 +52,18 @@ teardown() {
 
 # Extract the embedded Python script from the installer
 extract_workspace_kernel_script() {
-  sed -n '/^get_workspace_kernel_script()/,/^PYTHON_EOF$/p' install-jupyter-stata.sh | \
+  local script
+  script=$(sed -n '/^get_workspace_kernel_script()/,/^PYTHON_EOF$/p' install-jupyter-stata.sh | \
     sed '1d;$d' | \
     sed "s/^  cat << 'PYTHON_EOF'//" | \
-    sed '/^$/d'
+    sed '/^$/d')
+  
+  # Validate extraction produced the expected Python script
+  if [[ -z "$script" ]] || ! echo "$script" | grep -q "def find_workspace_root"; then
+    echo "ERROR: Failed to extract workspace kernel script from installer" >&2
+    return 1
+  fi
+  echo "$script"
 }
 
 # ============================================================================
