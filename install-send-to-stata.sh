@@ -140,12 +140,6 @@ install_keybindings() {
     }
   },
   {
-    "context": "(Editor && mode == full)",
-    "bindings": {
-      "cmd-shift-enter": "null"
-    }
-  },
-  {
     "context": "Editor && extension == do",
     "bindings": {
       "cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send Statement"}]]],
