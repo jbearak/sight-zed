@@ -49,10 +49,10 @@
 
 ## Task 7: Implement main orchestration and reporting
 **Validates: Requirements 5.3, 5.4, 5.5**
-- [ ] 7.1 Implement main() function to orchestrate validations
-- [ ] 7.2 Add human-readable output formatting for each validation
-- [ ] 7.3 Implement exit code logic (0 for all pass, non-zero for any failure)
-- [ ] 7.4 [PBT] Write property test for exit code correctness (Property 4)
+- [x] 7.1 Implement main() function to orchestrate validations
+- [x] 7.2 Add human-readable output formatting for each validation
+- [x] 7.3 Implement exit code logic (0 for all pass, non-zero for any failure)
+- [x] 7.4 [PBT] Write property test for exit code correctness (Property 4)
 
 ## Task 8: Update AGENTS.md documentation
 **Validates: Requirements 7.1, 7.2, 7.3, 7.4**
