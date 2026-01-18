@@ -152,3 +152,15 @@ Zed filters out tasks when referenced variables are not available. Use default v
 ```
 
 Without the default, this task would only appear when text is selected.
+
+### Quoting & Compound Strings (Critical)
+
+When tasks run through `/bin/zsh -i -c`, there are two easy ways to break quoting:
+
+1. Do not double-escape quotes inside the JSON `command`.
+   - Correct (JSON contains `\"` to produce a literal `"` in the command string): `\"$ZED_FILE\"`
+   - Incorrect: `\\\"$ZED_FILE\\\"` (the backslashes become literal characters, so the script receives a filename that includes `"` and file checks fail).
+
+2. Do not inline the selected text into the command using Zed interpolation (`${ZED_SELECTED_TEXT:}`) when you need to support backticks.
+   - Zed interpolation happens before the shell parses the command; if the selection contains backticks (Stata compound strings like `` `"1234"' ``), zsh will attempt command substitution and you can get parse errors like `parse error near else`.
+   - Use `$ZED_SELECTED_TEXT` (environment variable) and quote it: `"$ZED_SELECTED_TEXT"`. Backticks inside the *value* do not trigger shell parsing.

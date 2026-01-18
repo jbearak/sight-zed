@@ -82,13 +82,17 @@ install_script() {
 # Task definitions to install
 # Note: Args must be in command string, not args array (Zed doesn't pass args array correctly)
 # Note: Zed uses ${VAR:default} syntax (no dash), not shell's ${VAR:-default}
-# Note: Send Statement uses stdin mode for robust compound string handling
-# Note: ${ZED_SELECTED_TEXT:} uses empty default to prevent task filtering when no selection
+# Note: Send Statement uses stdin mode for robust compound string handling.
+# IMPORTANT: Do NOT inline selected text into the command via ${ZED_SELECTED_TEXT:}.
+# Zed's interpolation happens before the shell parses the command; if the selection
+# contains backticks (e.g. Stata compound strings), zsh will treat them as command
+# substitution and the task will fail to parse. Use the environment variable
+# $ZED_SELECTED_TEXT instead.
 STATA_TASKS=$(cat <<'EOF'
 [
   {
     "label": "Stata: Send Statement",
-    "command": "if [ -n \\\"${ZED_SELECTED_TEXT:}\\\" ]; then printf '%s' \\\"${ZED_SELECTED_TEXT:}\\\" | send-to-stata.sh --statement --stdin --file \\\"$ZED_FILE\\\"; else send-to-stata.sh --statement --file \\\"$ZED_FILE\\\" --row \\\"$ZED_ROW\\\"; fi",
+    "command": "if [ -n \"$ZED_SELECTED_TEXT\" ]; then printf '%s' \"$ZED_SELECTED_TEXT\" | send-to-stata.sh --statement --stdin --file \"$ZED_FILE\"; else send-to-stata.sh --statement --file \"$ZED_FILE\" --row \"$ZED_ROW\"; fi",
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
     "reveal": "never",
@@ -96,7 +100,7 @@ STATA_TASKS=$(cat <<'EOF'
   },
   {
     "label": "Stata: Send File",
-    "command": "send-to-stata.sh --file --file \\\"$ZED_FILE\\\"",
+    "command": "send-to-stata.sh --file --file \"$ZED_FILE\"",
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
     "reveal": "never",

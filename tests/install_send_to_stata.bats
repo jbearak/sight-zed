@@ -96,7 +96,7 @@ call_func() {
 
     # Must not wrap/escape the selection by printing extra quotes.
     [[ "$output" == *"printf '%s'"* ]]
-    [[ "$output" == *"\${ZED_SELECTED_TEXT:}"* ]]
+    [[ "$output" == *"\$ZED_SELECTED_TEXT"* ]]
     [[ "$output" != *"printf '"'"'%s'"'"'"* ]]
 }
 
