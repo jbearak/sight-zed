@@ -214,6 +214,28 @@ execution_mode = EXECUTION_MODE_PLACEHOLDER
 EOF
 }
 
+# Updates a single setting in the config file, adding it if missing.
+# Args: $1=key, $2=value
+update_config_setting() {
+  local key="$1" value="$2"
+  local tmp_file
+  tmp_file=$(mktemp)
+  trap "rm -f '$tmp_file'" RETURN
+  
+  if grep -q "^${key}[[:space:]]*=" "$CONFIG_FILE"; then
+    sed "s|^${key}[[:space:]]*=.*|${key} = ${value}|" "$CONFIG_FILE" > "$tmp_file"
+    mv "$tmp_file" "$CONFIG_FILE"
+  elif grep -q "^#[[:space:]]*${key}[[:space:]]*=" "$CONFIG_FILE"; then
+    sed "s|^#[[:space:]]*${key}[[:space:]]*=.*|${key} = ${value}|" "$CONFIG_FILE" > "$tmp_file"
+    mv "$tmp_file" "$CONFIG_FILE"
+  else
+    # Setting doesn't exist - add after [stata_kernel] section header
+    sed "/^\[stata_kernel\]/a\\
+${key} = ${value}" "$CONFIG_FILE" > "$tmp_file"
+    mv "$tmp_file" "$CONFIG_FILE"
+  fi
+}
+
 # Writes or updates the configuration file.
 write_config() {
   if [[ ! -f "$CONFIG_FILE" ]]; then
@@ -225,27 +247,8 @@ write_config() {
     print_success "Created configuration at $CONFIG_FILE"
   else
     # Update existing config - preserve user settings
-    local tmp_file
-    tmp_file=$(mktemp)
-    
-    # Update stata_path
-    if grep -q "^stata_path" "$CONFIG_FILE"; then
-      sed "s|^stata_path.*|stata_path = $STATA_PATH|" "$CONFIG_FILE" > "$tmp_file"
-      mv "$tmp_file" "$CONFIG_FILE"
-    elif grep -q "^# *stata_path" "$CONFIG_FILE"; then
-      sed "s|^# *stata_path.*|stata_path = $STATA_PATH|" "$CONFIG_FILE" > "$tmp_file"
-      mv "$tmp_file" "$CONFIG_FILE"
-    fi
-    
-    # Update execution_mode
-    if grep -q "^execution_mode" "$CONFIG_FILE"; then
-      sed "s|^execution_mode.*|execution_mode = $EXECUTION_MODE|" "$CONFIG_FILE" > "$tmp_file"
-      mv "$tmp_file" "$CONFIG_FILE"
-    elif grep -q "^# *execution_mode" "$CONFIG_FILE"; then
-      sed "s|^# *execution_mode.*|execution_mode = $EXECUTION_MODE|" "$CONFIG_FILE" > "$tmp_file"
-      mv "$tmp_file" "$CONFIG_FILE"
-    fi
-    
+    update_config_setting "stata_path" "$STATA_PATH"
+    update_config_setting "execution_mode" "$EXECUTION_MODE"
     chmod 600 "$CONFIG_FILE"
     print_success "Updated configuration at $CONFIG_FILE"
   fi
