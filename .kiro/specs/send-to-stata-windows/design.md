@@ -290,6 +290,37 @@ Note: Windows uses `ctrl` instead of macOS `cmd`. The keybinding pattern matches
 - macOS: `cmd-enter`, `shift-cmd-enter`, `alt-cmd-enter`, `alt-shift-cmd-enter`
 - Windows: `ctrl-enter`, `shift-ctrl-enter`, `alt-ctrl-enter`, `alt-shift-ctrl-enter`
 
+### Quick Terminal Keybindings Configuration
+
+For users working with Stata in terminal sessions (SSH, WSL, or multiple Stata instances), the installer also configures quick terminal shortcuts:
+
+```json
+{
+    "context": "Editor && extension == do",
+    "bindings": {
+        "shift-enter": ["workspace::SendKeystrokes", "ctrl-c ctrl-` ctrl-v enter"],
+        "alt-enter": ["workspace::SendKeystrokes", "ctrl-shift-k ctrl-c ctrl-` ctrl-v enter"]
+    }
+}
+```
+
+| Shortcut | Action | Description |
+|----------|--------|-------------|
+| `shift-enter` | Paste selection to terminal | Copies selection, switches to terminal, pastes, executes |
+| `alt-enter` | Paste current line to terminal | Selects line, copies, switches to terminal, pastes, executes |
+
+**Design Rationale**: These keybindings use Zed's `SendKeystrokes` action with Windows-appropriate key sequences:
+- `ctrl-c` - Copy to clipboard
+- `ctrl-`` ` - Toggle terminal panel
+- `ctrl-v` - Paste
+- `enter` - Execute
+- `ctrl-shift-k` - Select current line (for `alt-enter`)
+
+**Limitations** (to be documented):
+1. `alt-enter` sends only the current line—it does not detect multi-line statements with `///` continuations
+2. `///` continuation syntax cannot be pasted directly to Stata's console; users should use `ctrl-enter` for multi-line statements
+3. These shortcuts are designed for terminal-based Stata sessions (SSH, WSL, multiple instances)
+
 
 
 ## Correctness Properties
@@ -349,6 +380,12 @@ Note: Windows uses `ctrl` instead of macOS `cmd`. The keybinding pattern matches
 *For any* web installation from the main branch, the installer SHALL verify the SHA-256 checksum of the downloaded send-to-stata.ps1 against the embedded expected value, and SHALL fail if they do not match.
 
 **Validates: Requirements 7.10**
+
+### Property 10: Platform-Independent Logic Isolation
+
+*For any* invocation of the Send_Script, the platform-independent logic (argument parsing, statement detection, file operations) SHALL be separable from Windows-specific APIs (clipboard, SendKeys, window activation), such that unit tests can execute on non-Windows platforms by stubbing only the Windows-specific functions.
+
+**Validates: Requirements 14.1, 14.2**
 
 ## Error Handling
 
@@ -455,6 +492,35 @@ This feature requires both unit tests and property-based tests:
 - **Unit tests**: Verify specific examples, edge cases, and error conditions
 - **Property tests**: Verify universal properties across generated inputs
 
+### Cross-Platform Testability Architecture
+
+To support development on macOS while targeting Windows (Requirement 14), the script separates concerns:
+
+**Platform-Independent Functions** (testable on any OS):
+- `Get-StatementAtRow` - Statement detection with continuation markers
+- Argument parsing and validation
+- File reading and content processing
+- Temp file path generation
+- Command string formatting (`do`/`include`)
+
+**Windows-Specific Functions** (mockable for cross-platform tests):
+- `Set-ClipboardContent` - Wrapper for clipboard operations
+- `Find-StataWindow` - Window enumeration via Win32 API
+- `Invoke-WindowActivation` - SetForegroundWindow wrapper
+- `Send-Keystrokes` - SendKeys wrapper
+
+```powershell
+# Example: Mockable Windows function
+function Set-ClipboardContent {
+    param([string]$Text)
+    if ($script:MockClipboard) {
+        $script:ClipboardContent = $Text
+        return
+    }
+    [System.Windows.Forms.Clipboard]::SetText($Text)
+}
+```
+
 ### Property-Based Testing Framework
 
 Use **Pester** with custom generators for property-based testing in PowerShell:
@@ -496,6 +562,7 @@ Describe "Statement Detection Properties" {
 - Property 7: Temp file characteristics
 - Property 8: Config file preservation
 - Property 9: Checksum verification
+- Property 10: Platform-independent logic isolation
 
 **Integration Tests**
 - End-to-end flow with mocked Stata window
@@ -506,11 +573,31 @@ Describe "Statement Detection Properties" {
 
 ```
 tests/
-├── send-to-stata.Tests.ps1      # Main script tests
+├── send-to-stata.Tests.ps1          # Main script tests
 ├── install-send-to-stata.Tests.ps1  # Installer tests
-├── Generators.ps1               # Random data generators
-└── Mocks.ps1                    # Mock functions for Stata/filesystem
+├── Generators.ps1                   # Random data generators
+├── Mocks.ps1                        # Mock functions for Stata/filesystem
+└── CrossPlatform.ps1                # Platform detection and test skipping
 ```
+
+### Cross-Platform Test Execution
+
+Tests are runnable via Pester on both Windows and macOS/Linux:
+
+```bash
+# Run all tests (skips Windows-specific on non-Windows)
+pwsh -Command "Invoke-Pester"
+
+# Run only unit tests (cross-platform)
+pwsh -Command "Invoke-Pester -Tag 'Unit'"
+
+# Run integration tests (Windows only)
+pwsh -Command "Invoke-Pester -Tag 'Integration'"
+```
+
+**CI Pipeline Configuration**:
+- macOS runners: Execute unit tests and property tests for platform-independent logic
+- Windows runners: Execute full test suite including integration tests with actual Stata window automation
 
 ### Generator Examples
 

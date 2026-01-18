@@ -138,15 +138,23 @@ This document specifies the requirements for implementing send-to-stata function
 4. THE Installer SHALL bind `alt-shift-ctrl-enter` to "Stata: Include File" in .do files
 5. WHEN keybindings are created, THE Installer SHALL save the file before executing the task
 
-### Requirement 10: Terminal Keybindings Configuration
+### Requirement 10: Quick Terminal Keybindings Configuration
 
-**User Story:** As a Zed user who SSHs into remote machines or uses WSL, I want terminal-compatible keyboard shortcuts, so that I can send code to Stata from terminal contexts.
+**User Story:** As a Zed user who works with Stata in terminal sessions (SSH, WSL, or multiple Stata instances), I want quick keyboard shortcuts to paste code directly into the active terminal panel.
 
 #### Acceptance Criteria
 
-1. THE Installer SHALL bind `alt-enter` to "Stata: Send Statement" in .do files (terminal-compatible)
-2. THE Installer SHALL bind `shift-alt-enter` to "Stata: Send File" in .do files (terminal-compatible)
-3. THE documentation SHALL note that terminal keybindings are useful for SSH sessions to Linux/Mac machines or when using WSL
+1. THE Installer SHALL bind `shift-enter` to paste the current selection to the terminal in .do files
+2. THE Installer SHALL bind `alt-enter` to select and paste the current line to the terminal in .do files
+3. WHEN `shift-enter` is pressed, THE keybinding SHALL copy the selection, switch to terminal, paste, and execute
+4. WHEN `alt-enter` is pressed, THE keybinding SHALL select the current line, copy it, switch to terminal, paste, and execute
+5. THE keybindings SHALL use Zed's `SendKeystrokes` action with Windows-appropriate key sequences (ctrl-c, ctrl-`, ctrl-v, enter)
+6. THE documentation SHALL note that terminal shortcuts are useful for:
+   - SSH sessions to remote machines running Stata
+   - WSL environments
+   - Multiple concurrent Stata terminal sessions
+7. THE documentation SHALL note that `alt-enter` sends only the current line and does not detect multi-line statements with `///` continuations
+8. THE documentation SHALL note that `///` continuation syntax cannot be pasted directly to Stata's console—users should use `ctrl-enter` for multi-line statements
 
 ### Requirement 11: Error Handling and Exit Codes
 
@@ -182,6 +190,25 @@ This document specifies the requirements for implementing send-to-stata function
 2. THE Installer SHALL be compatible with PowerShell 5.0 and later
 3. THE Send_Script SHALL NOT require any compiled executables or external dependencies beyond PowerShell
 4. THE Send_Script SHALL use only built-in .NET assemblies (System.Windows.Forms, Microsoft.VisualBasic)
+
+### Requirement 14: Cross-Platform Testability
+
+**User Story:** As a developer working on macOS, I want to run unit tests for the PowerShell scripts without a Windows machine, so that I can iterate quickly during development.
+
+#### Acceptance Criteria
+
+1. THE Send_Script SHALL separate platform-independent logic (argument parsing, statement detection, file operations) from Windows-specific APIs (clipboard, SendKeys, window activation)
+2. THE Send_Script SHALL expose Windows-specific operations through mockable functions that can be stubbed during testing
+3. THE test suite SHALL use Pester (PowerShell's testing framework) which runs on both Windows and macOS/Linux via `pwsh`
+4. THE test suite SHALL include unit tests for:
+   - Argument parsing and validation
+   - Statement detection with continuation markers
+   - File reading and temp file creation
+   - Include vs do mode selection
+   - Error handling and exit codes
+5. THE test suite SHALL skip Windows-specific integration tests when running on non-Windows platforms
+6. THE test suite SHALL be runnable via `pwsh -Command "Invoke-Pester"` on macOS
+7. THE CI pipeline SHALL run unit tests on macOS and full integration tests on Windows
 
 ## Out of Scope
 
