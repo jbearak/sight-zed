@@ -84,7 +84,7 @@ STATA_TASKS='[
   {
     "label": "Stata: Send Statement",
     "command": "send-to-stata.sh",
-    "args": ["--statement", "--file", "$ZED_FILE", "--row", "$ZED_ROW", "--text", "$ZED_SELECTED_TEXT"],
+    "args": ["--statement", "--file", "$ZED_FILE", "--row", "${ZED_ROW:-1}", "--text", "${ZED_SELECTED_TEXT:-}"],
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
     "reveal": "never"
@@ -122,30 +122,51 @@ install_tasks() {
 # ============================================================================
 
 # Keybinding definitions to install
-STATA_KEYBINDINGS='[
-  {
-    "context": "Editor && extension == do",
-    "bindings": {
-      "cmd-enter": ["task::Spawn", { "task_name": "Stata: Send Statement" }],
-      "shift-cmd-enter": ["task::Spawn", { "task_name": "Stata: Send File" }]
-    }
-  }
-]'
+# Uses action::Sequence to save the file before spawning the task
+# Nullifies the default cmd-enter binding in the broader context to prevent newline insertion
 
 install_keybindings() {
     local keymap_file="$ZED_CONFIG_DIR/keymap.json"
+    
+    # Define keybindings JSON inline to avoid shell escaping issues
+    local stata_keybindings
+    stata_keybindings=$(cat << 'EOF'
+[
+  {
+    "context": "Editor && extension == do",
+    "bindings": {
+      "cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send Statement"}]]],
+      "shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send File"}]]]
+    }
+  },
+  {
+    "context": "Editor && mode == full && extension == do",
+    "bindings": {
+      "cmd-enter": null
+    }
+  }
+]
+EOF
+)
     
     # Create config dir if needed
     mkdir -p "$ZED_CONFIG_DIR"
     
     # Create or update keymap.json
     if [[ ! -f "$keymap_file" ]]; then
-        echo "$STATA_KEYBINDINGS" > "$keymap_file"
+        echo "$stata_keybindings" > "$keymap_file"
     else
-        # Remove existing Stata keybindings (by context match), then add new ones
-        jq --argjson new "$STATA_KEYBINDINGS" '
-            [.[] | select(.context == "Editor && extension == do" | not)] + $new
-        ' "$keymap_file" > "${keymap_file}.tmp" && mv "${keymap_file}.tmp" "$keymap_file"
+        # Try to parse existing file; if it fails (e.g., JSON5 with trailing commas),
+        # filter out Stata entries manually or just merge
+        local filtered
+        if filtered=$(jq '[.[] | select((.context | test("extension == do$")) | not)]' "$keymap_file" 2>/dev/null); then
+            # Successfully parsed, merge with new keybindings
+            echo "$stata_keybindings" | jq -s '.[0] + .[1]' <(echo "$filtered") - > "${keymap_file}.tmp" && mv "${keymap_file}.tmp" "$keymap_file"
+        else
+            # Parse failed (likely JSON5), just overwrite with our keybindings
+            # User will need to re-add any custom keybindings
+            echo "$stata_keybindings" > "$keymap_file"
+        fi
     fi
     print_success "Installed keybindings to $keymap_file"
 }
@@ -219,7 +240,7 @@ uninstall() {
     local keymap_file="$ZED_CONFIG_DIR/keymap.json"
     if [[ -f "$keymap_file" ]]; then
         local before_count=$(jq 'length' "$keymap_file")
-        jq '[.[] | select(.context == "Editor && extension == do" | not)]' "$keymap_file" > "${keymap_file}.tmp"
+        jq '[.[] | select((.context | test("extension == do\\$")) | not)]' "$keymap_file" > "${keymap_file}.tmp"
         local after_count=$(jq 'length' "${keymap_file}.tmp")
         mv "${keymap_file}.tmp" "$keymap_file"
         if [[ "$before_count" != "$after_count" ]]; then
