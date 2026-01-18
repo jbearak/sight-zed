@@ -96,11 +96,26 @@ install_script() {
   chmod +x "$INSTALL_DIR/send-to-stata.sh"
   print_success "Installed send-to-stata.sh to $INSTALL_DIR"
 
-  # Check PATH
+  # Check PATH and add to shell configs if needed
   if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
-    print_warning "$INSTALL_DIR is not in your PATH"
-    echo "  Add to your shell config (~/.zshrc or ~/.bashrc):"
-    echo "    export PATH=\"\$HOME/.local/bin:\$PATH\""
+    local path_line='export PATH="$HOME/.local/bin:$PATH"'
+    local added_to=""
+    for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
+      if [[ -f "$rc" ]] && ! grep -qF '.local/bin' "$rc"; then
+        echo "" >> "$rc"
+        echo "# Added by send-to-stata installer" >> "$rc"
+        echo "$path_line" >> "$rc"
+        added_to="$added_to $rc"
+      fi
+    done
+    if [[ -n "$added_to" ]]; then
+      print_success "Added $INSTALL_DIR to PATH in:$added_to"
+      print_warning "Restart your terminal or run: source ~/.zshrc"
+    else
+      print_warning "$INSTALL_DIR is not in your PATH"
+      echo "  Add to your shell config (~/.zshrc or ~/.bashrc):"
+      echo "    $path_line"
+    fi
   fi
 }
 
