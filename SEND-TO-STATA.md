@@ -81,7 +81,7 @@ If you prefer not to use the installer:
    [
      {
        "label": "Stata: Send Statement",
-       "command": "send-to-stata.sh --statement --file \"$ZED_FILE\" --row \"$ZED_ROW\" --text \"${ZED_SELECTED_TEXT:}\"",
+       "command": "if [ -n \"$ZED_SELECTED_TEXT\" ]; then printf '%s' \"$ZED_SELECTED_TEXT\" | send-to-stata.sh --statement --stdin --file \"$ZED_FILE\"; else send-to-stata.sh --statement --file \"$ZED_FILE\" --row \"$ZED_ROW\"; fi",
        "use_new_terminal": false,
        "allow_concurrent_runs": true,
        "reveal": "never",
@@ -97,6 +97,8 @@ If you prefer not to use the installer:
      }
    ]
    ```
+
+   > **Note**: The "Send Statement" task uses stdin mode (`--stdin`) to handle Stata compound strings (e.g., `` `"text"' ``) and other shell metacharacters correctly. When text is selected, it's piped to the script via stdin; otherwise, the script detects the statement at the cursor position.
 
 3. Add keybindings to `~/.config/zed/keymap.json`:
    ```json
