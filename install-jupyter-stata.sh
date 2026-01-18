@@ -249,9 +249,9 @@ EOF
 }
 
 # Escapes a string for use in sed replacement.
-# Handles: & \ | (delimiter) and newlines
+# Handles: \ (escape char), & (match ref), | (delimiter)
 escape_sed_replacement() {
-  printf '%s' "$1" | sed -e 's/[&\|]/\\&/g'
+  printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/[&|]/\\&/g'
 }
 
 # Updates a single setting in the config file, adding it if missing.
