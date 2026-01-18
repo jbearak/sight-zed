@@ -49,13 +49,13 @@ This plan implements the send-to-stata feature using shell scripts integrated wi
     - Test path escaping
     - _Requirements: 7.1, 7.2, 7.3, 7.4_
 
-  - [ ] 1.7 Write property test for statement detection
+  - [x] 1.7 Write property test for statement detection
     - **Property 1: Statement Detection with Continuations**
     - Generate random Stata files with continuation markers
     - Verify correct statement boundaries for any cursor position
     - **Validates: Requirements 1.2, 1.3, 1.4, 4.1, 4.3, 4.4, 4.5**
 
-  - [ ] 1.8 Write property test for temp file creation
+  - [x] 1.8 Write property test for temp file creation
     - **Property 4: Temp File Creation**
     - Verify unique filenames across multiple invocations
     - Verify files created in correct directory
