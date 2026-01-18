@@ -106,7 +106,7 @@ This plan implements the send-to-stata feature using shell scripts integrated wi
     - Remove Stata keybindings from `keymap.json`
     - _Requirements: 5.8_
 
-  - [ ] 3.7 Write unit tests for installer script
+  - [x] 3.7 Write unit tests for installer script
     - Test prerequisite checks
     - Test JSON merging logic
     - Test uninstall functionality
