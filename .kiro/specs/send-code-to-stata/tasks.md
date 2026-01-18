@@ -35,7 +35,7 @@ This plan implements the send-to-stata feature using shell scripts integrated wi
     - Exit with code 3 if creation fails
     - _Requirements: 1.5, 2.2, 8.1, 8.2_
 
-  - [ ] 1.5 Implement AppleScript execution
+  - [x] 1.5 Implement AppleScript execution
     - Build AppleScript command with proper escaping
     - Escape backslashes and double quotes in path
     - Execute via `osascript`
