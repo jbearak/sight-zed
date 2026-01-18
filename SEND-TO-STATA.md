@@ -1,6 +1,8 @@
 # Send Code to Stata
 
-Send Stata code from Zed editor to the Stata GUI application for execution.
+Send Stata code from Zed editor to Stata for execution. Supports two modes:
+- **Stata application** (macOS): Uses AppleScript to send code to the Stata app
+- **Terminal sessions**: Pastes code into the active terminal (works with SSH, multiple sessions)
 
 ## Prerequisites
 
@@ -46,10 +48,10 @@ The `shift-enter` and `opt-enter` shortcuts use Zed's `SendKeystrokes` to paste 
 
 These shortcuts paste directly into whatever terminal is active in Zed. To use them with Stata, open a terminal panel and launch the Stata CLI (e.g., `stata`, or `stata-mp`). This is particularly useful for:
 
-- **Remote sessions**: When working over SSH, the GUI shortcuts control your local machine. These terminal shortcuts send code to the remote Stata session in your terminal.
-- **Multiple sessions**: You can have multiple terminal tabs running different Stata instances and send code to whichever is active. The GUI shortcuts always target the single Stata GUI application.
+- **Remote sessions**: When working over SSH, the application shortcuts control your local Stata. These terminal shortcuts send code to the remote Stata session in your terminal.
+- **Multiple sessions**: You can have multiple terminal tabs running different Stata instances and send code to whichever is active. The application shortcuts always target the single Stata app.
 
-Note that `opt-enter` sends only the current line—it doesn't detect multi-line statements with `///` continuations like the GUI shortcuts do. For multi-line statements, select the text and use `shift-enter`. The two separate shortcuts exist due to a Zed limitation (SendKeystrokes can't conditionally check for a selection).
+Note that `opt-enter` sends only the current line—it doesn't detect multi-line statements with `///` continuations like the application shortcuts do. For multi-line statements, select the text and use `shift-enter`. The two separate shortcuts exist due to a Zed limitation (SendKeystrokes can't conditionally check for a selection).
 
 ### do vs include
 
