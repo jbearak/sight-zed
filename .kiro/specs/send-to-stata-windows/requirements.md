@@ -122,6 +122,22 @@ This document specifies the requirements for implementing send-to-stata function
 10. WHEN running via web installation from the main branch, THE Installer SHALL verify the SHA-256 checksum of send-to-stata.ps1
 11. THE Installer SHALL support a SIGHT_GITHUB_REF environment variable to override the branch/tag for testing
 
+### Requirement 17: Stata Automation Type Library Registration
+
+**User Story:** As a Windows user, I want the installer to automatically register Stata's Automation type library, so that I don't have to manually run elevated commands.
+
+#### Acceptance Criteria
+
+1. WHEN the Installer runs, THE Installer SHALL check if Stata's Automation type library is already registered by querying the registry for `stata.StataOLEApp`
+2. IF the type library is not registered and a Stata installation is found, THEN THE Installer SHALL prompt the user to register it
+3. WHEN registration is requested, THE Installer SHALL launch an elevated PowerShell process to execute `{StataExecutable} /Register`
+4. THE Installer SHALL support a `-RegisterAutomation` switch to explicitly request type library registration
+5. THE Installer SHALL support a `-SkipAutomationCheck` switch to skip the registration check entirely
+6. WHEN registration succeeds, THE Installer SHALL display a success message
+7. IF registration fails, THE Installer SHALL display an error message with the exit code and suggest manual registration steps
+8. THE documentation SHALL explain that registration is a one-time setup step that requires elevation
+9. THE documentation SHALL include manual registration instructions for users who prefer not to use the automated approach
+
 ### Requirement 8: Zed Tasks Configuration
 
 **User Story:** As a Zed user, I want tasks configured for all send modes, so that I can use the task picker or keybindings.

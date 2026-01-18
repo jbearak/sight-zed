@@ -200,7 +200,9 @@ The installer script that sets up the environment.
 
 ```powershell
 param(
-    [switch]$Uninstall       # Remove all installed components
+    [switch]$Uninstall,           # Remove all installed components
+    [switch]$RegisterAutomation,  # Explicitly request type library registration
+    [switch]$SkipAutomationCheck  # Skip the automation registration check
 )
 ```
 
@@ -238,6 +240,31 @@ function Install-Keybindings {
     # Add standard keybindings (ctrl-enter, shift-ctrl-enter, alt-ctrl-enter, alt-shift-ctrl-enter)
     # Add terminal keybindings (alt-enter, shift-alt-enter)
     # Write back to file
+}
+```
+
+**Test-StataAutomationRegistered**
+```powershell
+# Checks if Stata's Automation type library is registered
+# Returns: $true if registered, $false otherwise
+function Test-StataAutomationRegistered {
+    # Query registry for stata.StataOLEApp ProgID
+    # Check HKEY_CLASSES_ROOT\stata.StataOLEApp
+    # Return $true if key exists with valid CLSID
+}
+```
+
+**Register-StataAutomation**
+```powershell
+# Registers Stata's Automation type library (requires elevation)
+# Parameters: $StataPath - path to Stata executable
+# Returns: $true on success, $false on failure
+function Register-StataAutomation {
+    param([string]$StataPath)
+    # Launch elevated PowerShell process
+    # Execute: Start-Process -FilePath $StataPath -ArgumentList "/Register" -Verb RunAs -Wait
+    # Capture exit code
+    # Return success/failure
 }
 ```
 
@@ -346,6 +373,128 @@ function Send-KeystrokesToStata {
     
     # Execute (Enter)
     [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+}
+```
+
+### Component 6: Stata Automation Registration
+
+Handles one-time registration of Stata's Automation type library, which requires elevation.
+
+#### Registry Check
+
+```powershell
+function Test-StataAutomationRegistered {
+    # Check if the ProgID exists in registry
+    $progIdPath = "Registry::HKEY_CLASSES_ROOT\stata.StataOLEApp"
+    if (-not (Test-Path $progIdPath)) {
+        return $false
+    }
+    
+    # Verify it has a valid CLSID reference
+    $clsidPath = Join-Path $progIdPath "CLSID"
+    if (-not (Test-Path $clsidPath)) {
+        return $false
+    }
+    
+    $clsid = (Get-ItemProperty $clsidPath).'(default)'
+    if ([string]::IsNullOrEmpty($clsid)) {
+        return $false
+    }
+    
+    # Verify the CLSID exists
+    $clsidRegPath = "Registry::HKEY_CLASSES_ROOT\CLSID\$clsid"
+    return (Test-Path $clsidRegPath)
+}
+```
+
+#### Elevated Registration
+
+```powershell
+function Register-StataAutomation {
+    param([string]$StataPath)
+    
+    # Validate Stata path exists
+    if (-not (Test-Path $StataPath)) {
+        Write-Error "Stata executable not found: $StataPath"
+        return $false
+    }
+    
+    Write-Host "Registering Stata Automation type library..."
+    Write-Host "This requires administrator privileges. A UAC prompt will appear."
+    
+    try {
+        # Launch Stata with /Register flag using elevation
+        $process = Start-Process -FilePath $StataPath `
+                                 -ArgumentList "/Register" `
+                                 -Verb RunAs `
+                                 -Wait `
+                                 -PassThru
+        
+        if ($process.ExitCode -eq 0) {
+            Write-Host "Stata Automation type library registered successfully." -ForegroundColor Green
+            return $true
+        } else {
+            Write-Error "Registration failed with exit code: $($process.ExitCode)"
+            return $false
+        }
+    } catch {
+        if ($_.Exception.Message -match "canceled by the user") {
+            Write-Warning "Registration canceled by user."
+        } else {
+            Write-Error "Registration failed: $_"
+        }
+        return $false
+    }
+}
+```
+
+#### Installer Integration
+
+The installer checks and prompts for registration during setup:
+
+```powershell
+function Invoke-AutomationRegistrationCheck {
+    param(
+        [string]$StataPath,
+        [switch]$Force,
+        [switch]$Skip
+    )
+    
+    if ($Skip) {
+        Write-Verbose "Skipping Automation registration check"
+        return
+    }
+    
+    $isRegistered = Test-StataAutomationRegistered
+    
+    if ($isRegistered -and -not $Force) {
+        Write-Host "Stata Automation type library is already registered." -ForegroundColor Green
+        return
+    }
+    
+    if ($Force -or -not $isRegistered) {
+        if (-not $Force) {
+            Write-Host ""
+            Write-Host "Stata Automation type library is not registered." -ForegroundColor Yellow
+            Write-Host "Registration is required for some advanced features and is a one-time setup."
+            Write-Host ""
+            $response = Read-Host "Would you like to register it now? (Y/n)"
+            if ($response -match "^[Nn]") {
+                Write-Host "Skipping registration. You can register later with:"
+                Write-Host "  $StataPath /Register" -ForegroundColor Cyan
+                Write-Host "(Run as Administrator)"
+                return
+            }
+        }
+        
+        $success = Register-StataAutomation -StataPath $StataPath
+        if (-not $success) {
+            Write-Host ""
+            Write-Host "Manual registration instructions:" -ForegroundColor Yellow
+            Write-Host "1. Open Command Prompt or PowerShell as Administrator"
+            Write-Host "2. Run: $StataPath /Register" -ForegroundColor Cyan
+        }
+    }
 }
 ```
 
@@ -495,6 +644,9 @@ Clipboard operations only succeed when PowerShell is running in STA mode (launch
 
 ### Property 13: Command Window Focus
 Ctrl+1 is sent after window activation to ensure the Command window (not another Stata pane) receives the pasted text.
+
+### Property 14: Automation Registration Idempotency
+Calling `Register-StataAutomation` when the type library is already registered has no adverse effects; the operation succeeds silently.
 
 ## Windows Security Considerations
 

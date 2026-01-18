@@ -137,8 +137,10 @@
 
 - [ ] 6.1 Create `install-send-to-stata.ps1` with parameter block
   - Define `-Uninstall` switch parameter
+  - Define `-RegisterAutomation` switch parameter
+  - Define `-SkipAutomationCheck` switch parameter
   - Detect local vs web installation mode
-  - **Validates: Requirements 7.7, 7.8**
+  - **Validates: Requirements 7.7, 7.8, 17.4, 17.5**
 
 - [ ] 6.2 Implement `Install-Script` function
   - Create `$env:APPDATA\Zed\stata\` directory if needed
@@ -191,6 +193,34 @@
   - Verify skip when `SIGHT_GITHUB_REF` is set
   - Run 100+ iterations
   - **Validates: Design Property 9**
+
+- [ ] 6.9 Implement `Test-StataAutomationRegistered` function
+  - Query registry for `stata.StataOLEApp` ProgID at `HKEY_CLASSES_ROOT`
+  - Verify CLSID reference exists and is valid
+  - Return `$true` if registered, `$false` otherwise
+  - **Validates: Requirements 17.1**
+
+- [ ] 6.10 Implement `Register-StataAutomation` function
+  - Accept Stata executable path as parameter
+  - Launch elevated PowerShell process using `Start-Process -Verb RunAs`
+  - Execute `{StataExecutable} /Register`
+  - Capture and return exit code
+  - Handle UAC cancellation gracefully
+  - **Validates: Requirements 17.3, 17.6, 17.7**
+
+- [ ] 6.11 Implement `Invoke-AutomationRegistrationCheck` function
+  - Check if `-SkipAutomationCheck` is set, skip if so
+  - Call `Test-StataAutomationRegistered` to check current state
+  - If not registered, prompt user for confirmation (unless `-RegisterAutomation` is set)
+  - Call `Register-StataAutomation` if user confirms or `-RegisterAutomation` is set
+  - Display manual registration instructions on failure
+  - **Validates: Requirements 17.2, 17.4, 17.5, 17.6, 17.7**
+
+- [ ] 6.12 Integrate automation registration into installer main flow
+  - Call `Invoke-AutomationRegistrationCheck` after Stata detection
+  - Pass `-Force` when `-RegisterAutomation` is specified
+  - Pass `-Skip` when `-SkipAutomationCheck` is specified
+  - **Validates: Requirements 17.2, 17.4, 17.5**
 
 ## Task 7: Implement Cross-Platform Test Infrastructure
 
@@ -266,3 +296,13 @@
   - Link to SEND-TO-STATA.md Windows section
   - Note PowerShell 5.0+ requirement
   - **Validates: Requirements 13.1, 13.2**
+
+- [ ] 9.3 Document Stata Automation type library registration
+  - Explain that registration is a one-time setup step
+  - Document the `-RegisterAutomation` and `-SkipAutomationCheck` flags
+  - Include manual registration instructions:
+    - Open Command Prompt or PowerShell as Administrator
+    - Navigate to Stata installation directory
+    - Run `StataSE.exe /Register` (or appropriate variant)
+  - Note that registration requires elevation (UAC prompt)
+  - **Validates: Requirements 17.8, 17.9**
