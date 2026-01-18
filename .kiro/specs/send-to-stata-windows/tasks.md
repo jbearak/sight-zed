@@ -315,5 +315,5 @@
     - Navigate to Stata installation directory
     - Run `StataSE.exe /Register` (or appropriate variant)
   - Note that registration requires elevation (UAC prompt)
-  - Advise users to re-run the installer after upgrading Stata to update registration
+  - In troubleshooting section: if send-to-stata stops working after upgrading Stata, re-run the installer to fix
   - **Validates: Requirements 17.8, 17.9, 17.16**
