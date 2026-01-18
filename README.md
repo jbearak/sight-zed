@@ -89,7 +89,7 @@ Add to `~/.config/zed/settings.json`:
 | Quick data exploration | Jupyter REPL | Inline results, fast iteration |
 | Testing individual commands | Jupyter REPL | Interactive feedback |
 | Loops with many iterations | Send to Stata | Avoids kernel hang issues |
-| Operations > several seconds | Send to Stata | No completion detection overhead |
+| Operations > several seconds | Send to Stata | Avoids potential instability |
 | Graph-heavy workflows | Send to Stata | Graphs can trigger kernel hangs |
 | Production batch jobs | Send to Stata | Reliable unattended execution |
 
