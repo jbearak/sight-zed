@@ -53,6 +53,8 @@ These shortcuts paste directly into whatever terminal is active in Zed. To use t
 
 Note that `opt-enter` sends only the current line—it doesn't detect multi-line statements with `///` continuations like the application shortcuts do. For multi-line statements, select the text and use `shift-enter`. The two separate shortcuts exist due to a Zed limitation (SendKeystrokes can't conditionally check for a selection).
 
+**Important**: You cannot use `shift-enter` or `opt-enter` to send statements with `///` continuation lines. Stata's console does not accept continuation syntax when code is pasted directly—it will print an error. For multi-line statements with continuations, use `cmd-enter` instead, which writes the code to a temp file and executes it via `do`.
+
 There's no "send file to terminal" shortcut because Zed's SendKeystrokes doesn't have access to the file path. The application shortcuts can send files because they invoke tasks, which can run scripts with access to `$ZED_FILE`—but there's no way to get script output back into a SendKeystrokes sequence.
 
 ### do vs include
