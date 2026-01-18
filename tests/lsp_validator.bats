@@ -386,14 +386,14 @@ generate_random_version() {
     [ "$normalized" = "v" ]
 }
 
-# Test: Empty version string
+# Test: Empty version string returns error
 @test "Property 5: normalize_version handles empty string" {
-    local version=""
-    local normalized
-    normalized=$(normalize_version "$version")
+    run normalize_version ""
     
-    # Should add v prefix to empty string
-    [ "$normalized" = "v" ]
+    # Should return exit code 1 for empty input
+    [ "$status" -eq 1 ]
+    # Output should be empty
+    [ -z "$output" ]
 }
 
 #######################################
