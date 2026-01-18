@@ -80,11 +80,6 @@ Add to `~/.config/zed/settings.json`:
 
 **Configuration:** The installer creates `~/.stata_kernel.conf` with auto-detected settings. Edit this file to customize graph format, cache directory, and other options.
 
-**Uninstall:**
-
-```bash
-./install-jupyter-stata.sh --uninstall
-```
 
 ## Building from Source
 
