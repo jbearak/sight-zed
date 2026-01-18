@@ -38,6 +38,29 @@ Execute Stata code directly from Zed with keyboard shortcuts. Works with both th
 
 See [SEND-TO-STATA.md](SEND-TO-STATA.md) for full documentation, configuration options, and troubleshooting.
 
+## Jupyter REPL (Optional)
+
+Execute Stata code in Zed's built-in REPL panel using [stata_kernel](https://kylebarron.dev/stata_kernel/). This provides an interactive environment without switching to the Stata application.
+
+**Install (macOS only):**
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-stata.sh)"
+```
+
+**Usage:**
+1. Open a `.do` file
+2. Open the REPL panel (View → Toggle REPL)
+3. Select "Stata" as the kernel
+
+**Configuration:** The installer creates `~/.stata_kernel.conf` with auto-detected settings. Edit this file to customize graph format, cache directory, and other options. See the [stata_kernel documentation](https://kylebarron.dev/stata_kernel/using_stata_kernel/configuration/) for all options.
+
+**Uninstall:**
+
+```bash
+./install-jupyter-stata.sh --uninstall
+```
+
 ## Building from Source
 
 ### Zed Extension
@@ -56,6 +79,16 @@ If you prefer to install from a local clone instead of curl-pipe:
 git clone https://github.com/jbearak/sight-zed
 cd sight-zed
 ./install-send-to-stata.sh
+```
+
+### Jupyter Kernel
+
+Install stata_kernel from a local clone:
+
+```bash
+git clone https://github.com/jbearak/sight-zed
+cd sight-zed
+./install-jupyter-stata.sh
 ```
 
 ## Related Projects
