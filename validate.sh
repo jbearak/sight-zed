@@ -180,9 +180,13 @@ extract_grammar_revision() {
 # Examples:
 #   1.2.3 -> v1.2.3
 #   v1.2.3 -> v1.2.3
-#   "" -> v
+#   "" -> (empty, returns 1)
 normalize_version() {
     local version="$1"
+    if [[ -z "$version" ]]; then
+        echo ""
+        return 1
+    fi
     if [[ "$version" =~ ^v ]]; then
         echo "$version"
     else
