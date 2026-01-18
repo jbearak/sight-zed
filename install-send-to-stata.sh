@@ -221,7 +221,9 @@ install_keybindings() {
       "cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send Statement"}]]],
       "shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send File"}]]],
       "alt-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include Statement"}]]],
-      "alt-shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include File"}]]]
+      "alt-shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include File"}]]],
+      "shift-enter": ["workspace::SendKeystrokes", "cmd-c ctrl-` cmd-v enter ctrl-`"],
+      "opt-enter": ["workspace::SendKeystrokes", "cmd-left shift-cmd-right cmd-c ctrl-` cmd-v enter ctrl-` down"]
     }
   }
 ]
@@ -287,6 +289,8 @@ print_summary() {
     echo "  shift-cmd-enter      Send entire file to Stata"
     echo "  alt-cmd-enter        Include statement (preserves local macros)"
     echo "  alt-shift-cmd-enter  Include file (preserves local macros)"
+    echo "  shift-enter          Send selection to Stata terminal (quick paste)"
+    echo "  opt-enter            Send current line to Stata terminal (quick paste)"
     echo ""
     echo "Configuration:"
     echo "  Set STATA_APP environment variable to override Stata variant detection"
