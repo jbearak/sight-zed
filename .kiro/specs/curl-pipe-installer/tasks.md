@@ -36,7 +36,7 @@ Add curl-pipe-to-bash installation support to `install-send-to-stata.sh` by dete
   - Test detection by running from temp directory without send-to-stata.sh
 
 - [-] 4. Integration testing from feature branch
-  - [ ] 4.1 Push changes to feature branch and test curl-pipe installation
+  - [-] 4.1 Push changes to feature branch and test curl-pipe installation
     - Push to a feature branch
     - Run: `SIGHT_GITHUB_REF=<branch> /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight/<branch>/install-send-to-stata.sh)"`
     - Verify `~/.local/bin/send-to-stata.sh` is installed and executable

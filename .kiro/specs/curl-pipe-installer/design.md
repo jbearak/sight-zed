@@ -97,8 +97,8 @@ fetch_script_from_github() {
     echo "URL: $url"
     echo ""
     echo "Check your internet connection and try again, or install from a local clone:"
-    echo "  git clone https://github.com/jbearak/sight.git"
-    echo "  cd sight && ./install-send-to-stata.sh"
+    echo "  git clone https://github.com/jbearak/sight-zed.git"
+    echo "  cd sight-zed && ./install-send-to-stata.sh"
     exit 1
   fi
   
@@ -111,7 +111,7 @@ fetch_script_from_github() {
 New constant added at the top of the script:
 
 ```bash
-GITHUB_RAW_BASE="https://raw.githubusercontent.com/jbearak/sight"
+GITHUB_RAW_BASE="https://raw.githubusercontent.com/jbearak/sight-zed"
 GITHUB_REF="${SIGHT_GITHUB_REF:-main}"
 ```
 
@@ -123,7 +123,7 @@ The `SIGHT_GITHUB_REF` environment variable allows testing against a branch befo
 
 ```bash
 # Test against a feature branch
-SIGHT_GITHUB_REF=feature-branch /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight/feature-branch/install-send-to-stata.sh)"
+SIGHT_GITHUB_REF=feature-branch /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight-zed/feature-branch/install-send-to-stata.sh)"
 
 # Or export for multiple tests
 export SIGHT_GITHUB_REF=my-branch
@@ -256,7 +256,7 @@ The `SIGHT_GITHUB_REF` environment variable enables testing curl-pipe installati
 git push origin feature/curl-pipe-installer
 
 # 2. Test curl-pipe installation from that branch
-SIGHT_GITHUB_REF=feature/curl-pipe-installer /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight/feature/curl-pipe-installer/install-send-to-stata.sh)"
+SIGHT_GITHUB_REF=curl-pipe-installer /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight-zed/curl-pipe-installer/install-send-to-stata.sh)"
 
 # 3. Verify installation
 test -x "$HOME/.local/bin/send-to-stata.sh" && echo "Success"
@@ -277,7 +277,7 @@ test -x "$HOME/.local/bin/send-to-stata.sh"
 ```bash
 # Install via both methods, compare results
 # Method 1: Local clone
-git clone https://github.com/jbearak/sight.git /tmp/sight-local
+git clone https://github.com/jbearak/sight-zed.git /tmp/sight-local
 /tmp/sight-local/install-send-to-stata.sh
 cp "$HOME/.local/bin/send-to-stata.sh" /tmp/local-installed.sh
 
