@@ -191,12 +191,12 @@ install_packages() {
   
   # stata_kernel pins old ipykernel (<5.0.0) which uses the deprecated 'imp' module
   # removed in Python 3.12. Upgrade ipykernel to fix compatibility.
-  local py_version
+  local py_version py_major py_minor
   py_version=$("$VENV_DIR/bin/python" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-  local py_minor
+  py_major=$(echo "$py_version" | cut -d. -f1)
   py_minor=$(echo "$py_version" | cut -d. -f2)
   
-  if [[ "$py_minor" -ge 12 ]]; then
+  if [[ "$py_major" -eq 3 ]] && [[ "$py_minor" -ge 12 ]]; then
     print_info "Upgrading ipykernel for Python $py_version compatibility..."
     if ! "$VENV_DIR/bin/pip" install --upgrade ipykernel &>/dev/null; then
       print_warning "Failed to upgrade ipykernel - kernel may not start correctly"
