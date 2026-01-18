@@ -179,6 +179,6 @@ In `.do` files:
 | `alt-cmd-enter` | Include statement (preserves local macros) |
 | `alt-shift-cmd-enter` | Include file (preserves local macros) |
 | `shift-enter` | Send selection to Stata terminal (quick paste) |
-| `opt-enter` | Send current line to Stata terminal (quick paste) |
+| `alt-enter` | Send current line to Stata terminal (quick paste) |
 
 See [SEND-TO-STATA.md](SEND-TO-STATA.md) for full documentation.
