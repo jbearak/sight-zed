@@ -8,7 +8,13 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Handle curl-pipe context where BASH_SOURCE is empty
+if [[ -n "${BASH_SOURCE[0]:-}" ]]; then
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+  # Curl-pipe context: no local directory
+  SCRIPT_DIR=""
+fi
 INSTALL_DIR="$HOME/.local/bin"
 ZED_CONFIG_DIR="$HOME/.config/zed"
 
@@ -116,9 +122,10 @@ install_script() {
   fi
 
   # Determine source: local file or GitHub
-  local source_script="$SCRIPT_DIR/send-to-stata.sh"
+  # In curl-pipe context, SCRIPT_DIR is empty so we fetch from GitHub
+  local source_script="${SCRIPT_DIR:+$SCRIPT_DIR/}send-to-stata.sh"
   
-  if [[ -f "$source_script" ]]; then
+  if [[ -n "$SCRIPT_DIR" && -f "$source_script" ]]; then
     # Local clone: copy from directory
     cp "$source_script" "$INSTALL_DIR/"
     chmod +x "$INSTALL_DIR/send-to-stata.sh"
@@ -409,6 +416,7 @@ main() {
 }
 
 # Only run main if script is executed directly (not sourced)
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+# In curl-pipe context, BASH_SOURCE is empty, so always run main
+if [[ -z "${BASH_SOURCE[0]:-}" ]] || [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   main "$@"
 fi
