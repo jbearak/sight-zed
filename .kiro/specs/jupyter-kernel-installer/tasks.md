@@ -25,7 +25,9 @@ This plan implements `install-jupyter-stata.sh`, a self-contained installer scri
     - Verify `python3` command exists
     - Verify venv module is available (`python3 -m venv --help`)
     - Display helpful error with install instructions if missing
-    - _Requirements: 7.2_
+    - Set PYTHON_CMD variable for venv creation
+    - Detect Python version and warn about 3.12+ compatibility
+    - _Requirements: 7.2, 7.6_
   - [x] 2.3 Implement `check_prerequisites()` that calls both checks
     - _Requirements: 7.5_
 
@@ -49,7 +51,7 @@ This plan implements `install-jupyter-stata.sh`, a self-contained installer scri
   - [x] 4.1 Implement `create_venv()` function
     - Create parent directory `~/.local/share/stata_kernel` if needed
     - Check if venv already exists and is valid (has bin/python)
-    - Create new venv with `python3 -m venv "$VENV_DIR"` if needed
+    - Create new venv with `$PYTHON_CMD -m venv "$VENV_DIR"` if needed
     - Handle errors and display appropriate messages
     - _Requirements: 1.1, 1.2, 1.5_
   - [x] 4.2 Implement `install_packages()` function
@@ -57,7 +59,8 @@ This plan implements `install-jupyter-stata.sh`, a self-contained installer scri
     - Run `pip install --upgrade pip`
     - Run `pip install --upgrade stata_kernel jupyter`
     - Verify installation succeeded
-    - _Requirements: 1.3, 1.4_
+    - Detect venv Python version; if 3.12+, upgrade ipykernel for compatibility
+    - _Requirements: 1.3, 1.4, 1.6_
 
 - [x] 5. Implement configuration management
   - [x] 5.1 Implement `get_config_template()` function

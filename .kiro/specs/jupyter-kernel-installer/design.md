@@ -105,6 +105,8 @@ GITHUB_REF="${SIGHT_GITHUB_REF:-main}"
 ### Component: Prerequisite Checks
 
 ```bash
+PYTHON_CMD=""  # Set by check_python3()
+
 check_macos() {
   # Verify running on macOS (required for Stata path conventions)
   # Exit with error if not Darwin
@@ -114,6 +116,10 @@ check_python3() {
   # Verify python3 is available
   # Check that python3 can create venv (venv module available)
   # Exit with helpful error if missing
+  
+  # Set PYTHON_CMD to "python3"
+  # Detect Python version (major.minor)
+  # If Python 3.12+, warn about compatibility (handled automatically)
 }
 
 check_prerequisites() {
@@ -159,7 +165,7 @@ detect_stata_app() {
 create_venv() {
   # Create venv directory parent if needed
   # If venv already exists and is valid, reuse it
-  # Otherwise create new venv with: python3 -m venv "$VENV_DIR"
+  # Otherwise create new venv with: $PYTHON_CMD -m venv "$VENV_DIR"
   # Return success/failure
 }
 
@@ -168,6 +174,11 @@ install_packages() {
   # pip install --upgrade pip
   # pip install --upgrade stata_kernel jupyter
   # Verify installation succeeded
+  
+  # Python 3.12+ compatibility fix:
+  # stata_kernel pins ipykernel <5.0.0, which uses the deprecated 'imp' module
+  # removed in Python 3.12. Detect venv Python version and upgrade ipykernel
+  # if running Python 3.12+ to fix the compatibility issue.
 }
 ```
 
@@ -339,6 +350,17 @@ Critical: The `language` field must be `stata` (lowercase) for Zed to match it w
 | `STATA_PATH` | (auto-detect) | Override Stata executable path |
 | `STATA_EXECUTION_MODE` | (auto-detect) | Override execution mode |
 | `SIGHT_GITHUB_REF` | `main` | GitHub ref for curl-pipe install |
+
+### Python Version Compatibility
+
+stata_kernel pins `ipykernel <5.0.0`, which uses the deprecated `imp` module that was removed in Python 3.12. This causes the kernel to fail silently on startup with Python 3.12+.
+
+The installer handles this automatically:
+1. Detects the Python version during prerequisite checks
+2. Warns users about Python 3.12+ compatibility
+3. After installing stata_kernel, upgrades ipykernel to a compatible version
+
+This ensures the kernel works regardless of which Python version the user has installed.
 
 
 
