@@ -51,9 +51,34 @@ Execute Stata code in Zed's built-in REPL panel using [stata_kernel](https://kyl
 **Usage:**
 1. Open a `.do` file
 2. Open the REPL panel (View → Toggle REPL)
-3. Select "Stata" as the kernel
+3. Select a kernel:
+   - **Stata** — starts in the file's directory
+   - **Stata (Workspace)** — starts in the workspace root (looks for `.git`)
 
-**Configuration:** The installer creates `~/.stata_kernel.conf` with auto-detected settings. Edit this file to customize graph format, cache directory, and other options. See the [stata_kernel documentation](https://kylebarron.dev/stata_kernel/using_stata_kernel/configuration/) for all options.
+### Choosing a Kernel
+
+| Kernel | Working Directory | Best For |
+|--------|-------------------|----------|
+| Stata | File's directory | Scripts with paths relative to the script |
+| Stata (Workspace) | Project root | Scripts with paths relative to the project root |
+
+The workspace kernel walks up from the file's directory looking for `.git`, `.stata-project`, or `.project` markers to find the project root. If no marker is found, it falls back to the file's directory.
+
+### Setting a Default Kernel
+
+Add to `~/.config/zed/settings.json`:
+
+```json
+{
+  "jupyter": {
+    "kernel_selections": {
+      "stata": "stata_workspace"
+    }
+  }
+}
+```
+
+**Configuration:** The installer creates `~/.stata_kernel.conf` with auto-detected settings. Edit this file to customize graph format, cache directory, and other options.
 
 **Uninstall:**
 

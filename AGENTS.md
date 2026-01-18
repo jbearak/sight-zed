@@ -196,3 +196,41 @@ The installer (`install-send-to-stata.sh`) embeds a SHA-256 checksum of `send-to
 The checksum ensures the two scripts stay in sync and detects accidental mismatches or CDN caching issues. It doesn't protect against a compromised GitHub account (an attacker could modify both files). Verification is skipped when users specify a custom `SIGHT_GITHUB_REF` for testing branches.
 
 If you forget to update the checksum, curl-pipe installations will fail with a checksum mismatch error.
+
+## Jupyter Stata Kernel Variants
+
+The `install-jupyter-stata.sh` installer creates two Jupyter kernels:
+
+| Kernel | Working Directory | Use Case |
+|--------|-------------------|----------|
+| **Stata** | File's directory | Scripts that use paths relative to the script location |
+| **Stata (Workspace)** | Workspace root | Scripts that use paths relative to the project root |
+
+### How Workspace Detection Works
+
+The "Stata (Workspace)" kernel walks up from the file's directory looking for these marker files (in order):
+1. `.git` — Git repository root
+2. `.stata-project` — Stata-specific project marker
+3. `.project` — Generic project marker
+
+If no marker is found, it falls back to the file's directory (same as the standard kernel).
+
+### Setting a Default Kernel
+
+Users can set a default kernel in `~/.config/zed/settings.json`:
+
+```json
+{
+  "jupyter": {
+    "kernel_selections": {
+      "stata": "stata_workspace"
+    }
+  }
+}
+```
+
+### Why Two Kernels?
+
+Zed's REPL starts kernels in the file's directory, not the workspace root. This breaks Stata code that uses relative paths expecting to run from the project root (e.g., `use "data/mydata.dta"`). The workspace kernel solves this by changing to the project root before starting Stata.
+
+The standard kernel is kept for scripts that intentionally use paths relative to the script's location.

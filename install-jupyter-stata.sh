@@ -15,8 +15,7 @@ set -euo pipefail
 VENV_DIR="$HOME/.local/share/stata_kernel/venv"
 CONFIG_FILE="$HOME/.stata_kernel.conf"
 KERNEL_DIR="$HOME/Library/Jupyter/kernels/stata"
-GITHUB_RAW_BASE="https://raw.githubusercontent.com/jbearak/sight-zed"
-GITHUB_REF="${SIGHT_GITHUB_REF:-main}"
+WORKSPACE_KERNEL_DIR="$HOME/Library/Jupyter/kernels/stata_workspace"
 
 # Colors for output
 RED='\033[0;31m'
@@ -255,6 +254,7 @@ update_config_setting() {
   local key="$1" value="$2"
   local tmp_file
   tmp_file=$(mktemp)
+  # shellcheck disable=SC2064  # Intentional: expand now, not at signal time (local var)
   trap "rm -f '$tmp_file'" RETURN
   
   if grep -q "^${key}[[:space:]]*=" "$CONFIG_FILE"; then
@@ -319,6 +319,116 @@ verify_kernel_spec() {
 }
 
 # ============================================================================
+# Workspace Kernel (changes to workspace root before starting Stata)
+# ============================================================================
+
+# The wrapper kernel Python script (embedded)
+get_workspace_kernel_script() {
+  cat << 'PYTHON_EOF'
+#!/usr/bin/env python3
+"""
+Wrapper kernel for stata_kernel that changes to workspace root before starting.
+
+This kernel finds the workspace root by looking for marker files (.git, .stata-project)
+and changes to that directory before delegating to stata_kernel.
+"""
+
+import os
+import sys
+from pathlib import Path
+
+
+def find_workspace_root(start_path: Path) -> Path:
+    """
+    Walk up from start_path looking for workspace markers.
+    Returns the workspace root, or start_path if no marker found.
+    """
+    markers = ['.git', '.stata-project', '.project']
+    
+    current = start_path.resolve()
+    
+    # Don't go above home directory
+    # Resolve home to handle symlinks like /var -> /private/var on macOS
+    home = Path.home().resolve()
+    
+    while current != current.parent:
+        # Stop if we've gone above home
+        try:
+            current.relative_to(home)
+        except ValueError:
+            break
+            
+        for marker in markers:
+            if (current / marker).exists():
+                return current
+        current = current.parent
+    
+    # No marker found, return original (resolved)
+    return start_path.resolve()
+
+
+def main():
+    # Get the current working directory (set by Zed to file's directory)
+    cwd = Path.cwd()
+    
+    # Find workspace root
+    workspace_root = find_workspace_root(cwd)
+    
+    # Change to workspace root
+    os.chdir(workspace_root)
+    
+    # Now import and run stata_kernel
+    from stata_kernel import kernel
+    from ipykernel.kernelapp import IPKernelApp
+    
+    IPKernelApp.launch_instance(kernel_class=kernel.StataKernel)
+
+
+if __name__ == '__main__':
+    main()
+PYTHON_EOF
+}
+
+# Installs the workspace kernel alongside the standard stata kernel.
+install_workspace_kernel() {
+  print_info "Installing workspace kernel..."
+  
+  # Create kernel directory
+  mkdir -p "$WORKSPACE_KERNEL_DIR"
+  
+  # Write the wrapper script
+  local wrapper_script="$WORKSPACE_KERNEL_DIR/stata_workspace_kernel.py"
+  get_workspace_kernel_script > "$wrapper_script"
+  chmod +x "$wrapper_script"
+  
+  # Create kernel.json
+  local kernel_json="$WORKSPACE_KERNEL_DIR/kernel.json"
+  cat > "$kernel_json" << EOF
+{
+  "argv": [
+    "$VENV_DIR/bin/python",
+    "$wrapper_script",
+    "-f", "{connection_file}"
+  ],
+  "display_name": "Stata (Workspace)",
+  "language": "stata"
+}
+EOF
+  
+  print_success "Installed workspace kernel at $WORKSPACE_KERNEL_DIR"
+}
+
+# Removes the workspace kernel.
+uninstall_workspace_kernel() {
+  if [[ -d "$WORKSPACE_KERNEL_DIR" ]]; then
+    rm -rf "$WORKSPACE_KERNEL_DIR"
+    print_success "Removed workspace kernel"
+  else
+    print_info "Workspace kernel not found (already removed)"
+  fi
+}
+
+# ============================================================================
 # Uninstallation
 # ============================================================================
 
@@ -344,6 +454,9 @@ uninstall() {
   else
     print_info "Kernel spec not found (already removed)"
   fi
+  
+  # Remove workspace kernel
+  uninstall_workspace_kernel
   
   # Optionally remove config
   if [[ "$remove_config" == "true" ]]; then
@@ -375,12 +488,29 @@ print_summary() {
   echo "  Execution Mode:   $EXECUTION_MODE"
   echo "  Configuration:    $CONFIG_FILE"
   echo ""
+  echo "  Two kernels are installed:"
+  echo ""
+  echo "    Stata             Starts in the file's directory"
+  echo "                      Use for scripts with paths relative to the script"
+  echo ""
+  echo "    Stata (Workspace) Starts in the workspace root (looks for .git)"
+  echo "                      Use for scripts with paths relative to the project"
+  echo ""
+  echo "  The workspace kernel walks up from the file's directory looking for"
+  echo "  .git, .stata-project, or .project markers to find the project root."
+  echo ""
   echo "  Usage in Zed:"
   echo "    1. Open a .do file"
   echo "    2. Open the REPL panel (View → Toggle REPL)"
-  echo "    3. Select 'Stata' as the kernel"
+  echo "    3. Select 'Stata' or 'Stata (Workspace)' as the kernel"
   echo ""
-  echo "  Documentation: https://kylebarron.dev/stata_kernel/"
+  echo "  To set a default kernel, add to ~/.config/zed/settings.json:"
+  echo ""
+  echo "    \"jupyter\": {"
+  echo "      \"kernel_selections\": {"
+  echo "        \"stata\": \"stata_workspace\""
+  echo "      }"
+  echo "    }"
   echo ""
 }
 
@@ -423,6 +553,7 @@ main() {
   write_config
   register_kernel
   verify_kernel_spec
+  install_workspace_kernel
   
   print_summary
 }
