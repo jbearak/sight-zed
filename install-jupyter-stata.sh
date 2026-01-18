@@ -82,7 +82,8 @@ check_prerequisites() {
 # ============================================================================
 
 # Global variables set by detect_stata_app
-STATA_PATH=""
+# Preserve STATA_PATH if set by user as environment variable
+STATA_PATH="${STATA_PATH:-}"
 STATA_EDITION=""
 EXECUTION_MODE=""
 
