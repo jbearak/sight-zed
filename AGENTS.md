@@ -29,6 +29,18 @@ Copy to project root:
 cp target/wasm32-wasip1/release/sight_extension.wasm extension.wasm
 ```
 
+## Why extension.wasm is Committed
+
+Unlike typical build artifacts, `extension.wasm` is intentionally tracked in git. Zed extensions are distributed directly from git repositories — when users install an extension, Zed clones the repo and expects the pre-built WASM binary to be present. There's no build step during installation.
+
+The `.gitignore` reflects this:
+```
+*.wasm
+!extension.wasm
+```
+
+This excludes all `.wasm` files except `extension.wasm`. After building, you must commit the updated `extension.wasm` for users to receive the new version.
+
 ## Installing the Extension Locally
 
 For development/testing in Zed:
@@ -42,6 +54,31 @@ Or symlink to Zed's extensions directory:
 ```bash
 ln -s $(pwd) ~/.local/share/zed/extensions/installed/sight
 ```
+
+## Depth Colorization (Not Currently Functional)
+
+The `highlights.scm` file contains depth-based captures for nested strings and macros:
+- `@string.depth.1` through `@string.depth.6` for compound strings
+- `@variable.macro.local.depth.1` through `@variable.macro.local.depth.6` for local macros
+
+**These captures currently do nothing in Zed.** Zed themes only support a fixed set of highlight captures (`@string`, `@variable`, `@keyword`, etc.). Custom captures like `@string.depth.1` fall back to the base capture or are ignored entirely.
+
+The depth-aware node types in the grammar (`compound_string_depth_1-6`, `local_macro_depth_1-6`) are **shared with the VS Code extension**, which does support depth colorization via TextMate scope injection. Don't remove these from the grammar.
+
+The depth captures in `highlights.scm` are kept as:
+1. Documentation of intended behavior
+2. Future-proofing if Zed adds custom capture support
+3. They're harmless - just fall back to base styling
+
+If Zed adds support for custom theme captures in the future, these would enable depth-based colorization without grammar changes.
+
+## Auto-Closing Pairs Limitation
+
+The `not_in = ["string"]` constraint on double quotes prevents auto-closing inside strings, including compound strings. This means when typing `` `"text"' ``, you must manually type the closing `"`.
+
+**Do not remove this constraint.** Without it, typing `"` inside a compound string produces broken behavior where the first quote does nothing, then typing a second quote produces `"""`, requiring backspace to fix.
+
+This is a Zed API limitation - extensions cannot distinguish between regular strings and compound strings, or programmatically control auto-closing behavior. The current configuration is the least-bad option.
 
 ## Extension Build Validation
 
