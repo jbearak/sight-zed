@@ -94,10 +94,10 @@ call_func() {
     run bash -c 'source "$1"; printf "%s\n" "$STATA_TASKS"' bash "$SCRIPT"
     [ "$status" -eq 0 ]
 
-    # Must use shell test and printf to read ZED_SELECTED_TEXT without python3 dependency.
-    [[ "$output" == *"if [ -n"* ]]
+    # Must not wrap/escape the selection by printing extra quotes.
+    [[ "$output" == *"python3 -c"* ]]
     [[ "$output" == *"ZED_SELECTED_TEXT"* ]]
-    [[ "$output" == *"printf '%s'"* ]]
+    [[ "$output" != *"printf '"'"'%s'"'"'"* ]]
 }
 
 @test "tasks: merges with existing tasks" {

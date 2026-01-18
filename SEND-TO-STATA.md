@@ -100,7 +100,7 @@ If you prefer not to use the installer:
    [
      {
        "label": "Stata: Send Statement",
-       "command": "if [ -n \"$ZED_SELECTED_TEXT\" ]; then printf '%s' \"$ZED_SELECTED_TEXT\" | send-to-stata.sh --statement --stdin --file \"$ZED_FILE\"; else send-to-stata.sh --statement --file \"$ZED_FILE\" --row \"$ZED_ROW\"; fi",
+       "command": "python3 -c 'import os,sys; sys.exit(0 if os.environ.get(\\\"ZED_SELECTED_TEXT\\\", \\\"\\\") else 1)' && python3 -c 'import os,sys; sys.stdout.write(os.environ.get(\\\"ZED_SELECTED_TEXT\\\", \\\"\\\"))' | send-to-stata.sh --statement --stdin --file \"$ZED_FILE\" || send-to-stata.sh --statement --file \"$ZED_FILE\" --row \"$ZED_ROW\"",
        "use_new_terminal": false,
        "allow_concurrent_runs": true,
        "reveal": "never",
@@ -116,7 +116,7 @@ If you prefer not to use the installer:
      }
    ]
    ```
-   > **Note**: The "Send Statement" task uses stdin mode (`--stdin`) to handle Stata compound strings (e.g., `` `"text"' ``) and other shell metacharacters correctly. The command reads `$ZED_SELECTED_TEXT` at runtime using shell test and printf to avoid the python3 dependency and prevent Zed interpolation issues with backticks.
+   > **Note**: The "Send Statement" task uses stdin mode (`--stdin`) to handle Stata compound strings (e.g., `` `"text"' ``) and other shell metacharacters correctly. The command must not inline the selection into the zsh command line; use an environment read (e.g. via `python3`) rather than Zed interpolation to avoid parse errors when the selection contains backticks.
 
 3. Add keybindings to `~/.config/zed/keymap.json`:
    ```json
