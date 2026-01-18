@@ -100,7 +100,12 @@ install_script() {
   if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
     local path_line='export PATH="$HOME/.local/bin:$PATH"'
     local added_to=""
+    # Determine primary shell config (create if needed)
+    local primary_rc="$HOME/.zshrc"
+    [[ "$SHELL" == */bash ]] && primary_rc="$HOME/.bashrc"
     for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
+      # Create primary shell config if it doesn't exist
+      [[ ! -f "$rc" && "$rc" == "$primary_rc" ]] && touch "$rc"
       if [[ -f "$rc" ]] && ! grep -qF '.local/bin' "$rc"; then
         echo "" >> "$rc"
         echo "# Added by send-to-stata installer" >> "$rc"
