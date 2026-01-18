@@ -6,7 +6,7 @@ This design specifies the Windows implementation of send-to-stata functionality 
 
 The Windows implementation mirrors the macOS version's architecture but replaces AppleScript with Windows-native automation:
 - **macOS**: AppleScript → `DoCommandAsync`
-- **Windows**: Clipboard + SendKeys → Ctrl+V, Ctrl+D
+- **Windows**: Clipboard + SendKeys → Ctrl+V, Enter
 
 ### Key Design Decisions
 
@@ -15,6 +15,16 @@ The Windows implementation mirrors the macOS version's architecture but replaces
 3. **SendKeys via .NET**: Use `System.Windows.Forms.SendKeys` for keystroke simulation
 4. **Temp File Execution**: Write code to temp .do file, send `do`/`include` command (same as macOS)
 5. **Stdin Mode**: Read selected text from stdin to avoid PowerShell interpretation of special characters
+6. **STA Threading**: Require Single-Threaded Apartment mode for clipboard operations
+7. **Focus Acquisition Workaround**: Use ALT key simulation to bypass Windows focus-stealing prevention
+
+### Why Not COM Automation?
+
+Stata provides COM Automation (`stata.StataOLEApp`) on Windows, but it has a critical limitation: **Stata Automation is a single-use out-of-process server**, meaning `CreateObject("stata.StataOLEApp")` always launches a new Stata instance. The COM reference is tied to the script's lifetime—when the PowerShell script exits, the reference is released and Stata closes.
+
+Sublime Text plugins work around this by keeping Python running persistently, storing the COM reference in a module-level variable. Zed tasks spawn a new PowerShell process for each invocation, making this approach impractical without a separate daemon process.
+
+The clipboard + SendKeys approach targets the user's **existing** Stata session where their data is already loaded.
 
 ## Architecture
 
@@ -22,7 +32,7 @@ The Windows implementation mirrors the macOS version's architecture but replaces
 ┌─────────────────────────────────────────────────────────────────────┐
 │                           Zed Editor                                 │
 │  ┌─────────────────────────────────────────────────────────────┐    │
-│  │  Keybinding (ctrl-enter) → Task → PowerShell Command        │    │
+│  │  Keybinding (ctrl-enter) → Task → PowerShell -sta Command   │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────────┘
                                     │
@@ -38,13 +48,18 @@ The Windows implementation mirrors the macOS version's architecture but replaces
 │  │ Stata        │→ │ Window       │  ┌──────────────────────────┐   │
 │  │ Detector     │  │ Activator    │→ │ Clipboard + SendKeys     │   │
 │  └──────────────┘  └──────────────┘  └──────────────────────────┘   │
+│                          │                                           │
+│                          ▼                                           │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │ Focus Acquisition Module (ALT workaround, retry logic)      │    │
+│  └─────────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         Stata GUI                                    │
 │  ┌─────────────────────────────────────────────────────────────┐    │
-│  │  Command Window receives: do "C:\...\temp.do"               │    │
+│  │  Command Window receives: do "C:\...\temp.do" + Enter        │    │
 │  └─────────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -52,13 +67,17 @@ The Windows implementation mirrors the macOS version's architecture but replaces
 ### Data Flow
 
 1. User presses keybinding in Zed (e.g., `ctrl-enter`)
-2. Zed task spawns PowerShell with arguments
+2. Zed task spawns PowerShell **with `-sta` flag** and arguments
 3. Script reads code (from stdin, file, or row detection)
 4. Script writes code to temp .do file
-5. Script copies `do "temp_path"` to clipboard
-6. Script finds and activates Stata window
-7. Script sends Ctrl+V (paste) then Ctrl+D (execute)
-8. Stata executes the temp file
+5. Script copies `do "temp_path"` to clipboard (requires STA mode)
+6. Script finds Stata window by process name and title pattern
+7. Script restores window if minimized (ShowWindow SW_RESTORE)
+8. Script simulates ALT keypress to satisfy focus-stealing prevention
+9. Script activates Stata window (SetForegroundWindow)
+10. Script verifies focus acquisition (GetForegroundWindow check)
+11. Script sends Ctrl+V (paste) then Enter (execute)
+12. Stata executes the temp file
 
 ## Components and Interfaces
 
@@ -99,8 +118,9 @@ function Find-StataInstallation {
 # Finds running Stata window by process name and window title
 # Returns: Process object with MainWindowHandle, or $null
 function Find-StataWindow {
-    # Get processes matching Stata* pattern
-    # Filter by window title containing "Stata/"
+    # Get processes matching Stata* or StataNow* pattern
+    # Filter by window title matching "Stata/(MP|SE|BE|IC)" or "StataNow/(MP|SE|BE|IC)"
+    # Exclude Stata Viewer and other auxiliary windows
     # Return first match
 }
 ```
@@ -139,9 +159,12 @@ function New-TempDoFile {
 function Send-ToStata {
     param([string]$TempFilePath, [switch]$UseInclude)
     # Build command: do "path" or include "path"
-    # Copy to clipboard
-    # Find and activate Stata window
-    # Send Ctrl+V, wait, send Ctrl+D
+    # Copy to clipboard (requires STA mode)
+    # Find Stata window
+    # Restore if minimized
+    # Acquire focus with ALT workaround
+    # Verify focus
+    # Send Ctrl+V, wait, send Enter
 }
 ```
 
@@ -175,7 +198,7 @@ function Install-Script {
 function Install-Tasks {
     # Read existing tasks.json (or create empty array)
     # Remove existing Stata: tasks
-    # Add new Stata tasks
+    # Add new Stata tasks with -sta flag
     # Write back to file
 }
 ```
@@ -196,25 +219,85 @@ function Install-Keybindings {
 
 ### Component 3: Window Activation Module
 
-Uses Win32 API via .NET for window management.
+Uses Win32 API via .NET for window management. This is the most critical component for reliability.
 
 ```powershell
 # Add required assemblies
 Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName Microsoft.VisualBasic
 
-# For window activation, use SetForegroundWindow via P/Invoke
+# Win32 API declarations for window management
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
-public class Win32 {
+
+public class User32 {
+    // Window activation
     [DllImport("user32.dll")]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
     
     [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+    
+    [DllImport("user32.dll")]
     public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+    
+    [DllImport("user32.dll")]
+    public static extern bool IsIconic(IntPtr hWnd);  // Check if minimized
+    
+    // Keyboard simulation for ALT workaround
+    [DllImport("user32.dll")]
+    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+    
+    // Constants
+    public const int SW_RESTORE = 9;
+    public const byte VK_MENU = 0x12;  // ALT key
+    public const uint KEYEVENTF_KEYUP = 0x0002;
 }
 "@
+```
+
+### Component 4: Focus Acquisition Module
+
+Handles the complex task of reliably activating the Stata window despite Windows focus-stealing prevention.
+
+```powershell
+function Invoke-FocusAcquisition {
+    param(
+        [IntPtr]$WindowHandle,
+        [int]$MaxRetries = 3
+    )
+    
+    # Step 1: Restore if minimized
+    if ([User32]::IsIconic($WindowHandle)) {
+        [User32]::ShowWindow($WindowHandle, [User32]::SW_RESTORE)
+        Start-Sleep -Milliseconds 100
+    }
+    
+    # Step 2: Try to acquire focus with retries
+    for ($attempt = 1; $attempt -le $MaxRetries; $attempt++) {
+        # Simulate ALT keypress to satisfy "last input event" requirement
+        # This is the key workaround for Windows focus-stealing prevention
+        [User32]::keybd_event([User32]::VK_MENU, 0, 0, [UIntPtr]::Zero)      # ALT down
+        [User32]::keybd_event([User32]::VK_MENU, 0, [User32]::KEYEVENTF_KEYUP, [UIntPtr]::Zero)  # ALT up
+        
+        # Now SetForegroundWindow should succeed
+        [User32]::SetForegroundWindow($WindowHandle) | Out-Null
+        
+        # Wait for window to activate
+        $delay = 100 * $attempt  # Increasing delay: 100ms, 200ms, 300ms
+        Start-Sleep -Milliseconds $delay
+        
+        # Verify focus was acquired
+        $currentForeground = [User32]::GetForegroundWindow()
+        if ($currentForeground -eq $WindowHandle) {
+            return $true
+        }
+        
+        Write-Verbose "Focus acquisition attempt $attempt failed, retrying..."
+    }
+    
+    return $false
+}
 ```
 
 ## Data Models
@@ -228,7 +311,7 @@ public class Win32 {
 | 2 | Source file not found or unreadable |
 | 3 | Temp file creation failed |
 | 4 | Stata not found (installation or running instance) |
-| 5 | SendKeys execution failed |
+| 5 | SendKeys execution failed or focus acquisition failed |
 
 ### Stata Search Paths
 
@@ -255,152 +338,157 @@ $Variants = @(
     "StataIC.exe"
 )
 
-# Fallback path (no version number)
-$FallbackPath = "C:\Stata\"
+$FallbackPaths = @(
+    "C:\Stata\"
+)
+```
+
+### Window Title Patterns
+
+```powershell
+# More precise pattern to avoid matching Stata Viewer or other windows
+$StataTitlePatterns = @(
+    "^Stata/(MP|SE|BE|IC)",      # Standard Stata
+    "^StataNow/(MP|SE|BE|IC)"    # StataNow variant
+)
+
+# Process name patterns
+$StataProcessPatterns = @(
+    "StataMP*",
+    "StataSE*",
+    "StataBE*",
+    "StataIC*"
+)
 ```
 
 ### Zed Task Configuration
 
-```json
-{
-    "label": "Stata: Send Statement",
-    "command": "powershell.exe -ExecutionPolicy Bypass -File \"$env:APPDATA\\Zed\\stata\\send-to-stata.ps1\" -Statement -Stdin -File \"$ZED_FILE\" -Row $ZED_ROW",
-    "use_new_terminal": false,
-    "allow_concurrent_runs": true,
-    "reveal": "never",
-    "hide": "on_success"
-}
-```
-
-### Keybinding Configuration
+Tasks must launch PowerShell with `-sta` flag for clipboard operations:
 
 ```json
 {
-    "context": "Editor && extension == do",
-    "bindings": {
-        "ctrl-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send Statement"}]]],
-        "shift-ctrl-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send File"}]]],
-        "alt-ctrl-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include Statement"}]]],
-        "alt-shift-ctrl-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include File"}]]]
-    }
+  "label": "Stata: Send Statement",
+  "command": "powershell.exe",
+  "args": [
+    "-sta",
+    "-ExecutionPolicy", "Bypass",
+    "-File", "${APPDATA}\\Zed\\stata\\send-to-stata.ps1",
+    "-Statement",
+    "-Stdin",
+    "-File", "$ZED_FILE",
+    "-Row", "$ZED_ROW"
+  ],
+  "use_new_terminal": false,
+  "allow_concurrent_runs": true,
+  "reveal": "never",
+  "hide": "on_success"
 }
 ```
 
-Note: Windows uses `ctrl` instead of macOS `cmd`. The keybinding pattern matches macOS:
-- macOS: `cmd-enter`, `shift-cmd-enter`, `alt-cmd-enter`, `alt-shift-cmd-enter`
-- Windows: `ctrl-enter`, `shift-ctrl-enter`, `alt-ctrl-enter`, `alt-shift-ctrl-enter`
+**Critical**: The `-sta` flag must come before other arguments. Without it, `[System.Windows.Forms.Clipboard]::SetText()` throws a `ThreadStateException` because PowerShell 5.0/5.1 console runs in MTA (multi-threaded apartment) mode by default.
 
-### Quick Terminal Keybindings Configuration
-
-For users working with Stata in terminal sessions (SSH, WSL, or multiple Stata instances), the installer also configures quick terminal shortcuts:
+### Zed Keybinding Configuration
 
 ```json
 {
-    "context": "Editor && extension == do",
-    "bindings": {
-        "shift-enter": ["workspace::SendKeystrokes", "ctrl-c ctrl-` ctrl-v enter"],
-        "alt-enter": ["workspace::SendKeystrokes", "ctrl-shift-k ctrl-c ctrl-` ctrl-v enter"]
-    }
+  "context": "Editor && extension == do",
+  "bindings": {
+    "ctrl-enter": ["workspace::Save", ["task::Spawn", { "task_name": "Stata: Send Statement" }]],
+    "shift-ctrl-enter": ["workspace::Save", ["task::Spawn", { "task_name": "Stata: Send File" }]],
+    "alt-ctrl-enter": ["workspace::Save", ["task::Spawn", { "task_name": "Stata: Include Statement" }]],
+    "alt-shift-ctrl-enter": ["workspace::Save", ["task::Spawn", { "task_name": "Stata: Include File" }]]
+  }
 }
 ```
 
-| Shortcut | Action | Description |
-|----------|--------|-------------|
-| `shift-enter` | Paste selection to terminal | Copies selection, switches to terminal, pastes, executes |
-| `alt-enter` | Paste current line to terminal | Selects line, copies, switches to terminal, pastes, executes |
+## Design Properties
 
-**Design Rationale**: These keybindings use Zed's `SendKeystrokes` action with Windows-appropriate key sequences:
-- `ctrl-c` - Copy to clipboard
-- `ctrl-`` ` - Toggle terminal panel
-- `ctrl-v` - Paste
-- `enter` - Execute
-- `ctrl-shift-k` - Select current line (for `alt-enter`)
-
-**Limitations** (to be documented):
-1. `alt-enter` sends only the current line—it does not detect multi-line statements with `///` continuations
-2. `///` continuation syntax cannot be pasted directly to Stata's console; users should use `ctrl-enter` for multi-line statements
-3. These shortcuts are designed for terminal-based Stata sessions (SSH, WSL, multiple instances)
-
-
-
-## Correctness Properties
-
-*A property is a characteristic or behavior that should hold true across all valid executions of a system—essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
+These properties MUST hold for any valid implementation:
 
 ### Property 1: STATA_PATH Override
+IF `$env:STATA_PATH` is set to a valid executable path, THEN auto-detection is skipped entirely.
 
-*For any* value of the STATA_PATH environment variable pointing to a valid executable, the script SHALL use that path and skip auto-detection entirely, regardless of what Stata installations exist on the system.
-
-**Validates: Requirements 1.3**
-
-### Property 2: Stata Search Order
-
-*For any* filesystem state with multiple Stata installations, the script SHALL return the first match when searching: versions 19→13, then paths (Program Files → Program Files (x86) → C:\), then variants (StataMP-64 → StataSE-64 → StataBE-64 → StataIC-64 → StataMP → StataSE → StataBE → StataIC), then fallback C:\Stata\.
-
-**Validates: Requirements 1.1, 1.2, 1.5**
+### Property 2: Search Order Determinism
+Given multiple Stata installations, the search order is deterministic: newer versions before older, Program Files before Program Files (x86) before C:\, 64-bit variants before 32-bit.
 
 ### Property 3: Multi-line Statement Detection
+For any cursor position within a multi-line statement (connected by `///`), `Get-StatementAtRow` returns the complete statement including all continuation lines.
 
-*For any* Stata file containing statements with continuation markers (`///`), and *for any* cursor position within a multi-line statement, the `Get-StatementAtRow` function SHALL return the complete statement including all continuation lines, with line breaks preserved.
+### Property 4: Stdin Content Preservation
+Any text piped to stdin (including compound strings with backticks and quotes) is written to the temp file byte-for-byte identical.
 
-**Validates: Requirements 2.3, 2.4, 2.5**
-
-### Property 4: Stdin Content Round-Trip
-
-*For any* text content (including compound strings with backticks and quotes), reading from stdin and writing to a temp file SHALL preserve the content exactly—the temp file content SHALL be byte-for-byte identical to the stdin input.
-
-**Validates: Requirements 2.1, 2.6, 12.1, 12.2, 12.3**
-
-### Property 5: File Content Round-Trip
-
-*For any* source file, reading in file mode and writing to a temp file SHALL preserve all content exactly—including line breaks, whitespace, and special characters.
-
-**Validates: Requirements 3.1, 3.2**
+### Property 5: File Content Preservation  
+In file mode, the temp file content is byte-for-byte identical to the source file content.
 
 ### Property 6: Command Format by Mode
-
-*For any* temp file path, the generated Stata command SHALL be `do "{path}"` when Include mode is false, and `include "{path}"` when Include mode is true.
-
-**Validates: Requirements 4.1, 4.2, 4.3**
+- `Include = $false` → command is `do "{path}"`
+- `Include = $true` → command is `include "{path}"`
 
 ### Property 7: Temp File Characteristics
-
-*For any* temp file created by the script, the file SHALL: (a) be located in the system temp directory, (b) have a `.do` extension, and (c) have a unique filename that does not collide with existing files.
-
-**Validates: Requirements 6.1, 6.2**
+Every temp file: (a) is in the system temp directory, (b) has `.do` extension, (c) has a unique filename.
 
 ### Property 8: Config File Preservation
-
-*For any* existing tasks.json or keymap.json containing non-Stata entries, running the installer SHALL preserve all non-Stata entries while adding/updating only Stata-related entries.
-
-**Validates: Requirements 7.5, 7.6**
+Installing/uninstalling preserves all non-Stata entries in tasks.json and keymap.json.
 
 ### Property 9: Checksum Verification
-
-*For any* web installation from the main branch, the installer SHALL verify the SHA-256 checksum of the downloaded send-to-stata.ps1 against the embedded expected value, and SHALL fail if they do not match.
-
-**Validates: Requirements 7.10**
+Web installation from main branch verifies SHA-256 checksum; non-main branches skip verification.
 
 ### Property 10: Platform-Independent Logic Isolation
+All platform-independent functions (argument parsing, statement detection, file I/O) execute without calling Windows-specific APIs when mocks are enabled.
 
-*For any* invocation of the Send_Script, the platform-independent logic (argument parsing, statement detection, file operations) SHALL be separable from Windows-specific APIs (clipboard, SendKeys, window activation), such that unit tests can execute on non-Windows platforms by stubbing only the Windows-specific functions.
+### Property 11: Focus Acquisition Reliability
+The ALT key workaround followed by SetForegroundWindow succeeds in acquiring focus when:
+- Both processes run at medium integrity level (standard user)
+- The target window is not minimized OR is restored first via ShowWindow
 
-**Validates: Requirements 14.1, 14.2**
+### Property 12: STA Mode Enforcement
+Clipboard operations only succeed when PowerShell is running in STA mode (launched with `-sta` flag).
+
+## Windows Security Considerations
+
+### User Interface Privilege Isolation (UIPI)
+
+UIPI prevents a lower-integrity process from sending input to a higher-integrity process. This means:
+
+- **Works**: Non-elevated script → Non-elevated Stata ✓
+- **Fails silently**: Non-elevated script → Elevated Stata ✗
+
+If Stata is "Run as Administrator" and the script is not elevated, `SendInput`/`SendKeys` calls will **silently fail**—Windows drops the messages without error. The script should detect this condition and display a helpful error message.
+
+### Focus-Stealing Prevention
+
+Windows prevents background processes from stealing focus. `SetForegroundWindow` only succeeds if one of these conditions is met:
+1. The calling process is the foreground process
+2. The calling process was started by the foreground process
+3. **The calling process received the last input event**
+
+Condition 3 is the workaround: by simulating an ALT keypress via `keybd_event` immediately before `SetForegroundWindow`, the script satisfies this requirement.
+
+```powershell
+# This is why we simulate ALT before SetForegroundWindow
+[User32]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero)      # ALT down
+[User32]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)      # ALT up
+[User32]::SetForegroundWindow($hwnd)                    # Now this works
+```
+
+### PowerShell Execution Policy
+
+The `irm | iex` pattern (web installation) bypasses execution policy because policy only applies to `.ps1` files, not piped strings. The Zed tasks use `-ExecutionPolicy Bypass` to run the installed script without requiring system-wide policy changes.
 
 ## Error Handling
 
-### Exit Code Strategy
+### Error Messages by Exit Code
 
-The script uses consistent exit codes matching the macOS implementation:
-
-| Exit Code | Condition | Error Message |
-|-----------|-----------|---------------|
-| 0 | Success | (none) |
-| 1 | Invalid arguments | "Error: {specific issue}" |
-| 2 | File not found/unreadable | "Error: Cannot read file: {path}" |
-| 3 | Temp file creation failed | "Error: Cannot create temp file" |
-| 4 | Stata not found | "Error: No Stata installation found" or "Error: No running Stata instance found" |
-| 5 | SendKeys execution failed | "Error: Failed to send keystrokes to Stata" |
+| Exit Code | Condition | Message |
+|-----------|-----------|---------|
+| 1 | Mutually exclusive options | "Error: Cannot specify both -Statement and -FileMode" |
+| 1 | Missing required parameter | "Error: -File parameter is required" |
+| 2 | File not found | "Error: Cannot read file: {path}" |
+| 3 | Temp file creation failed | "Error: Cannot create temp file: {exception}" |
+| 4 | Stata not installed | "Error: No Stata installation found. Set STATA_PATH environment variable or install Stata" |
+| 4 | Stata not running | "Error: No running Stata instance found. Start Stata before sending code" |
+| 5 | Focus acquisition failed | "Error: Failed to activate Stata window after 3 attempts. Stata may be running as Administrator—try restarting Stata without elevation" |
+| 5 | SendKeys failed | "Error: Failed to send keystrokes to Stata: {exception}" |
 
 ### Error Handling Patterns
 
@@ -438,15 +526,13 @@ try {
 
 **Stata Detection**
 ```powershell
-# Installation detection
+# Installation detection (informational only—we don't need the path, just a running instance)
 $stataPath = Find-StataInstallation
 if (-not $stataPath) {
-    Write-Error "Error: No Stata installation found"
-    Write-Error "Set STATA_PATH environment variable or install Stata"
-    exit 4
+    Write-Warning "No Stata installation found in standard locations"
 }
 
-# Running instance detection
+# Running instance detection (required)
 $stataWindow = Find-StataWindow
 if (-not $stataWindow) {
     Write-Error "Error: No running Stata instance found"
@@ -455,15 +541,24 @@ if (-not $stataWindow) {
 }
 ```
 
+**Focus Acquisition with Retry**
+```powershell
+$focusAcquired = Invoke-FocusAcquisition -WindowHandle $stataWindow.MainWindowHandle -MaxRetries 3
+if (-not $focusAcquired) {
+    Write-Error "Error: Failed to activate Stata window after 3 attempts"
+    Write-Error "Stata may be running as Administrator—try restarting Stata without elevation"
+    exit 5
+}
+```
+
 **SendKeys Execution**
 ```powershell
 try {
-    # Activate window and send keystrokes
-    [Win32]::SetForegroundWindow($stataWindow.MainWindowHandle)
-    Start-Sleep -Milliseconds 100
+    [System.Windows.Forms.Clipboard]::SetText($command)
+    Start-Sleep -Milliseconds $activationDelay
     [System.Windows.Forms.SendKeys]::SendWait("^v")  # Ctrl+V
-    Start-Sleep -Milliseconds 50
-    [System.Windows.Forms.SendKeys]::SendWait("^d")  # Ctrl+D
+    Start-Sleep -Milliseconds $interKeyDelay
+    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")  # Enter to execute
 } catch {
     Write-Error "Error: Failed to send keystrokes to Stata: $_"
     exit 5
@@ -474,14 +569,31 @@ try {
 
 SendKeys requires careful timing to ensure reliable execution:
 
-1. **Window Activation Delay**: 100ms after `SetForegroundWindow` before sending keys
-2. **Inter-Key Delay**: 50ms between Ctrl+V and Ctrl+D
-3. **Configurable via Environment**: `$env:STATA_SENDKEYS_DELAY` can override defaults
+1. **Window Restore Delay**: 100ms after ShowWindow before attempting focus
+2. **Focus Retry Delays**: 100ms, 200ms, 300ms (increasing with each retry)
+3. **Post-Focus Delay**: 100ms after verified focus before SendKeys
+4. **Inter-Key Delay**: 50ms between Ctrl+V and Enter
 
 ```powershell
+$restoreDelay = [int]($env:STATA_RESTORE_DELAY ?? 100)
 $activationDelay = [int]($env:STATA_ACTIVATION_DELAY ?? 100)
 $interKeyDelay = [int]($env:STATA_INTERKEY_DELAY ?? 50)
 ```
+
+## Stata Command Window Behavior
+
+### Keyboard Shortcuts
+
+The Stata GUI Command window responds to:
+- **Ctrl+V**: Paste from clipboard
+- **Enter**: Execute the current command line
+- **Ctrl+D**: Execute selection in Do-file Editor (not Command window)
+
+**Important**: The spec originally specified Ctrl+D for execution. This is incorrect for the Command window—**Enter** is the correct key. Ctrl+D only works in the Do-file Editor for executing selected code.
+
+### Multi-line Commands
+
+The Command window executes one command at a time. When pasting `do "path"`, it appears as a single line and Enter executes it. The actual multi-line code is in the temp .do file, which Stata processes normally with full support for `///` continuations.
 
 ## Testing Strategy
 
@@ -506,7 +618,7 @@ To support development on macOS while targeting Windows (Requirement 14), the sc
 **Windows-Specific Functions** (mockable for cross-platform tests):
 - `Set-ClipboardContent` - Wrapper for clipboard operations
 - `Find-StataWindow` - Window enumeration via Win32 API
-- `Invoke-WindowActivation` - SetForegroundWindow wrapper
+- `Invoke-FocusAcquisition` - Focus acquisition with ALT workaround
 - `Send-Keystrokes` - SendKeys wrapper
 
 ```powershell
@@ -517,57 +629,13 @@ function Set-ClipboardContent {
         $script:ClipboardContent = $Text
         return
     }
+    # Verify STA mode
+    if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne 'STA') {
+        throw "Clipboard operations require STA mode. Launch PowerShell with -sta flag."
+    }
     [System.Windows.Forms.Clipboard]::SetText($Text)
 }
 ```
-
-### Property-Based Testing Framework
-
-Use **Pester** with custom generators for property-based testing in PowerShell:
-
-```powershell
-# Example property test structure
-Describe "Statement Detection Properties" {
-    It "Property 3: Multi-line statement detection - detects complete statement from any position" -Tag "Feature: send-to-stata-windows, Property 3: Multi-line Statement Detection" {
-        # Generate random Stata files with continuation markers
-        # For each cursor position within a multi-line statement
-        # Verify complete statement is returned
-        foreach ($_ in 1..100) {
-            $file = New-RandomStataFile -WithContinuations
-            $statement = Get-RandomMultiLineStatement -File $file
-            $randomLine = Get-Random -Minimum $statement.StartLine -Maximum $statement.EndLine
-            
-            $result = Get-StatementAtRow -FilePath $file.Path -Row $randomLine
-            $result | Should -Be $statement.Content
-        }
-    }
-}
-```
-
-### Test Categories
-
-**Unit Tests (Specific Examples)**
-- Argument parsing with valid/invalid inputs
-- Exit codes for each error condition
-- Stata path detection with mocked filesystem
-- Window title matching patterns
-
-**Property Tests (Universal Properties)**
-- Property 1: STATA_PATH override behavior
-- Property 2: Search order correctness
-- Property 3: Multi-line statement detection
-- Property 4: Stdin content round-trip
-- Property 5: File content round-trip
-- Property 6: Command format by mode
-- Property 7: Temp file characteristics
-- Property 8: Config file preservation
-- Property 9: Checksum verification
-- Property 10: Platform-independent logic isolation
-
-**Integration Tests**
-- End-to-end flow with mocked Stata window
-- Installer creates correct file structure
-- Uninstaller removes all components
 
 ### Test File Structure
 
@@ -576,7 +644,7 @@ tests/
 ├── send-to-stata.Tests.ps1          # Main script tests
 ├── install-send-to-stata.Tests.ps1  # Installer tests
 ├── Generators.ps1                   # Random data generators
-├── Mocks.ps1                        # Mock functions for Stata/filesystem
+├── Mocks.ps1                        # Mock functions for Windows APIs
 └── CrossPlatform.ps1                # Platform detection and test skipping
 ```
 
@@ -599,50 +667,46 @@ pwsh -Command "Invoke-Pester -Tag 'Integration'"
 - macOS runners: Execute unit tests and property tests for platform-independent logic
 - Windows runners: Execute full test suite including integration tests with actual Stata window automation
 
-### Generator Examples
+### Property-Based Testing
+
+Each property test MUST:
+1. Run at least 100 iterations
+2. Include a tag referencing the design property
+3. Use random data generators for inputs
 
 ```powershell
-# Generate random Stata file with continuation markers
-function New-RandomStataFile {
-    param([switch]$WithContinuations)
-    
-    $lines = @()
-    $numStatements = Get-Random -Minimum 3 -Maximum 10
-    
-    for ($i = 0; $i -lt $numStatements; $i++) {
-        if ($WithContinuations -and (Get-Random -Maximum 2) -eq 1) {
-            # Multi-line statement
-            $numLines = Get-Random -Minimum 2 -Maximum 5
-            for ($j = 0; $j -lt $numLines - 1; $j++) {
-                $lines += "$(New-RandomStataCode) ///"
-            }
-            $lines += New-RandomStataCode
-        } else {
-            $lines += New-RandomStataCode
+Describe "Statement Detection Properties" {
+    It "Property 3: Multi-line statement detection" -Tag "Property3" {
+        foreach ($_ in 1..100) {
+            $file = New-RandomStataFile -WithContinuations
+            $statement = Get-RandomMultiLineStatement -File $file
+            $randomLine = Get-Random -Minimum $statement.StartLine -Maximum $statement.EndLine
+            
+            $result = Get-StatementAtRow -FilePath $file.Path -Row $randomLine
+            $result | Should -Be $statement.Content
         }
     }
-    
-    # Write to temp file and return info
-    $path = [System.IO.Path]::GetTempFileName()
-    $lines | Set-Content -Path $path
-    return @{ Path = $path; Lines = $lines }
-}
-
-# Generate random compound string
-function New-RandomCompoundString {
-    $inner = -join ((65..90) + (97..122) | Get-Random -Count (Get-Random -Minimum 5 -Maximum 20) | ForEach-Object { [char]$_ })
-    return '`"' + $inner + '"' + "'"
 }
 ```
 
-### Minimum Test Iterations
+## Changelog from Original Design
 
-Each property test MUST run at least 100 iterations to ensure adequate coverage of the input space.
+### Added
 
-### Test Tagging
+1. **STA Threading Requirement**: PowerShell must be launched with `-sta` flag for clipboard operations
+2. **Focus Acquisition Module**: ALT key workaround, retry logic, and focus verification
+3. **Minimized Window Handling**: ShowWindow with SW_RESTORE before activation
+4. **UIPI Documentation**: Clear explanation of elevation requirements
+5. **Property 11**: Focus acquisition reliability property
+6. **Property 12**: STA mode enforcement property
 
-Each property test MUST include a tag referencing the design property:
+### Changed
 
-```powershell
--Tag "Feature: send-to-stata-windows, Property N: {property_text}"
-```
+1. **Execution keystroke**: Changed from Ctrl+D to Enter (Command window uses Enter, not Ctrl+D)
+2. **Window title pattern**: Made more precise to avoid matching Stata Viewer
+3. **Error messages**: Added diagnostic information for elevation issues
+4. **Exit code 5**: Now covers both SendKeys failure and focus acquisition failure
+
+### Removed
+
+1. **COM Automation discussion**: Moved to "Why Not COM Automation?" section to explain the design decision

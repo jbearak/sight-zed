@@ -13,9 +13,11 @@ This document specifies the requirements for implementing send-to-stata function
 - **Include_Mode**: A modifier that uses Stata's `include` command instead of `do` to preserve local macro scope
 - **Continuation_Marker**: The `///` sequence that indicates a Stata statement continues on the next line
 - **Compound_String**: Stata string syntax using backticks and quotes (e.g., `` `"text"' ``)
-- **SendKeys**: Windows API for simulating keyboard input to applications (via System.Windows.Forms or Microsoft.VisualBasic)
+- **SendKeys**: Windows API for simulating keyboard input to applications (via System.Windows.Forms)
 - **Clipboard**: Windows system clipboard used to transfer code to Stata
 - **Stdin_Mode**: Mode where selected text is read from standard input instead of command-line arguments
+- **STA_Mode**: Single-Threaded Apartment mode required for clipboard operations in PowerShell
+- **UIPI**: User Interface Privilege Isolation - Windows security feature that blocks input from lower to higher integrity processes
 
 ## Requirements
 
@@ -79,12 +81,16 @@ This document specifies the requirements for implementing send-to-stata function
 
 1. WHEN sending code to Stata, THE Send_Script SHALL first write the code to a temp .do file
 2. WHEN sending code to Stata, THE Send_Script SHALL copy the Stata command (`do "{temp_file}"` or `include "{temp_file}"`) to the Windows clipboard
-3. WHEN sending code to Stata, THE Send_Script SHALL find the Stata window by searching for processes with window titles matching "Stata/*"
+3. WHEN sending code to Stata, THE Send_Script SHALL find the Stata window by searching for processes matching "Stata*" or "StataNow*" with window titles matching the pattern `Stata/(MP|SE|BE|IC)` or `StataNow/(MP|SE|BE|IC)`
 4. WHEN a Stata window is found, THE Send_Script SHALL activate (bring to foreground) that window
 5. WHEN the Stata window is activated, THE Send_Script SHALL simulate Ctrl+V to paste the command into Stata's command window
-6. WHEN the command is pasted, THE Send_Script SHALL simulate Ctrl+D to execute the command in Stata
+6. WHEN the command is pasted, THE Send_Script SHALL simulate Enter to execute the command in Stata
 7. IF no running Stata instance is found, THEN THE Send_Script SHALL exit with error code 4 and display an error message
 8. WHEN simulating keystrokes, THE Send_Script SHALL include appropriate delays to ensure reliable execution
+9. **WHEN activating the Stata window, THE Send_Script SHALL first restore the window if minimized using ShowWindow with SW_RESTORE**
+10. **WHEN activating the Stata window, THE Send_Script SHALL simulate an ALT keypress before calling SetForegroundWindow to satisfy Windows focus-stealing prevention requirements**
+11. **AFTER calling SetForegroundWindow, THE Send_Script SHALL verify the foreground window matches the target Stata window before sending keystrokes**
+12. **IF focus verification fails after 3 retry attempts, THE Send_Script SHALL exit with error code 5 and display an error message**
 
 ### Requirement 6: Temp File Management
 
@@ -125,6 +131,8 @@ This document specifies the requirements for implementing send-to-stata function
 3. THE Installer SHALL create a task named "Stata: Include Statement" for include statement mode
 4. THE Installer SHALL create a task named "Stata: Include File" for include file mode
 5. WHEN tasks are created, THE Installer SHALL configure them to hide on success and not use a new terminal
+6. **WHEN tasks are created, THE Installer SHALL configure them to launch PowerShell with the `-sta` flag to enable STA threading mode required for clipboard operations**
+7. **WHEN tasks are created, THE Installer SHALL configure them with `-ExecutionPolicy Bypass` to allow script execution without requiring system-wide policy changes**
 
 ### Requirement 9: Keybindings Configuration
 
@@ -167,8 +175,9 @@ This document specifies the requirements for implementing send-to-stata function
 3. THE Send_Script SHALL exit with code 2 when the source file is not found or unreadable
 4. THE Send_Script SHALL exit with code 3 when temp file creation fails
 5. THE Send_Script SHALL exit with code 4 when Stata is not found (installation or running instance)
-6. THE Send_Script SHALL exit with code 5 when SendKeys execution fails
+6. THE Send_Script SHALL exit with code 5 when SendKeys execution fails or window activation fails after retries
 7. WHEN an error occurs, THE Send_Script SHALL display a descriptive error message to stderr
+8. **WHEN window activation fails, THE Send_Script SHALL include diagnostic information about whether Stata may be running with elevated privileges**
 
 ### Requirement 12: Compound String Safety
 
@@ -190,6 +199,7 @@ This document specifies the requirements for implementing send-to-stata function
 2. THE Installer SHALL be compatible with PowerShell 5.0 and later
 3. THE Send_Script SHALL NOT require any compiled executables or external dependencies beyond PowerShell
 4. THE Send_Script SHALL use only built-in .NET assemblies (System.Windows.Forms, Microsoft.VisualBasic)
+5. **THE Send_Script SHALL require STA (Single-Threaded Apartment) mode for clipboard operations, which SHALL be enforced by launching PowerShell with the `-sta` flag**
 
 ### Requirement 14: Cross-Platform Testability
 
@@ -210,6 +220,19 @@ This document specifies the requirements for implementing send-to-stata function
 6. THE test suite SHALL be runnable via `pwsh -Command "Invoke-Pester"` on macOS
 7. THE CI pipeline SHALL run unit tests on macOS and full integration tests on Windows
 
+### Requirement 15: Windows Security Model Compatibility
+
+**User Story:** As a Windows user, I want the script to work reliably within Windows security constraints, so that code is sent to Stata without manual intervention.
+
+#### Acceptance Criteria
+
+1. **THE Send_Script SHALL handle Windows focus-stealing prevention by simulating an ALT keypress via keybd_event before calling SetForegroundWindow**
+2. **THE Send_Script SHALL restore minimized Stata windows using ShowWindow with SW_RESTORE (9) before attempting to activate**
+3. **THE Send_Script SHALL verify focus acquisition by checking GetForegroundWindow after SetForegroundWindow and retry up to 3 times with increasing delays**
+4. **THE documentation SHALL clearly state that Stata must NOT be running with elevated privileges ("Run as Administrator") for the script to work, due to UIPI restrictions**
+5. **THE Send_Script SHALL detect if the target Stata window appears to be elevated and display a helpful error message suggesting the user restart Stata without elevation**
+6. **THE Send_Script SHALL NOT require elevation itself and SHALL work when run as a standard user**
+
 ## Out of Scope
 
 The following items are explicitly out of scope for this implementation:
@@ -219,3 +242,19 @@ The following items are explicitly out of scope for this implementation:
 3. Remote Stata execution (only local Stata instances)
 4. Integration with other editors besides Zed
 5. Automatic Stata installation or configuration
+6. **Sending code to an elevated Stata instance from a non-elevated script (Windows UIPI limitation)**
+7. **COM Automation approach (requires persistent process to maintain connection)**
+
+## Appendix: Design Rationale
+
+### Why Clipboard + SendKeys Instead of COM Automation?
+
+Stata provides COM Automation on Windows (stata.StataOLEApp), which would seem ideal for programmatic control. However, Stata's COM server is documented as "single-use out-of-process," meaning each CreateObject() call launches a new Stata instance rather than connecting to an existing one. The COM reference is tied to the calling process's lifetime—when the PowerShell script exits, the reference is released and Stata closes. Sublime Text plugins work around this by keeping Python running persistently, but Zed tasks spawn independent processes for each invocation with no shared state. A daemon-based architecture could maintain a persistent COM connection, but this adds significant complexity (startup management, crash recovery, IPC) that outweighs the benefits for this use case.
+
+### Why Clipboard Transfer Instead of Typing via SendKeys?
+
+SendKeys can simulate typing character-by-character, but this approach is fragile and slow. SendKeys uses special escape sequences (^ for Ctrl, + for Shift, % for Alt, {} for special keys), which conflict with characters common in Stata code. Compound strings containing backticks and braces would require complex escaping that is error-prone. Clipboard transfer is atomic—the entire command arrives intact regardless of special characters—and is significantly faster. The tradeoff is requiring STA (Single-Threaded Apartment) mode for clipboard access, which is trivially addressed by launching PowerShell with the -sta flag.
+
+### Why Not Shell Execute (Opening .do Files Directly)?
+
+Double-clicking a .do file or using Start-Process on it causes Windows to launch a new Stata instance rather than sending the file to an existing session. This would discard the user's loaded data, working directory, and defined macros. The clipboard + SendKeys approach targets the user's existing Stata session where their work is already in progress.
