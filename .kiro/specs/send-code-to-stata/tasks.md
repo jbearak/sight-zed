@@ -42,7 +42,7 @@ This plan implements the send-to-stata feature using shell scripts integrated wi
     - Exit with code 5 if AppleScript fails
     - _Requirements: 1.6, 1.7, 2.3_
 
-  - [ ] 1.6 Write unit tests for send-to-stata.sh
+  - [x] 1.6 Write unit tests for send-to-stata.sh
     - Test argument parsing (valid and invalid)
     - Test statement detection edge cases
     - Test Stata detection with mocked filesystem

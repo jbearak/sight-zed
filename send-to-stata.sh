@@ -454,4 +454,7 @@ main() {
     send_to_stata "$STATA_APP_NAME" "$temp_file"
 }
 
-main "$@"
+# Only run main if script is executed directly (not sourced)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
