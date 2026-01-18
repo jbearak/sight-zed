@@ -33,23 +33,23 @@ print_info() { echo "$1"; }
 
 # Verifies the script is running on macOS.
 check_macos() {
-    if [[ "$(uname)" != "Darwin" ]]; then
-        print_error "This script requires macOS (for AppleScript support)"
-        exit 1
-    fi
+  if [[ "$(uname)" != "Darwin" ]]; then
+    print_error "This script requires macOS (for AppleScript support)"
+    exit 1
+  fi
 }
 
 # Verifies jq is installed.
 check_jq() {
-    if ! command -v jq &> /dev/null; then
-        print_error "jq is required but not installed"
-        echo ""
-        echo "Install with Homebrew:"
-        echo "  brew install jq"
-        echo ""
-        echo "Or visit: https://stedolan.github.io/jq/download/"
-        exit 1
-    fi
+  if ! command -v jq &>/dev/null; then
+    print_error "jq is required but not installed"
+    echo ""
+    echo "Install with Homebrew:"
+    echo "  brew install jq"
+    echo ""
+    echo "Or visit: https://jqlang.org/download/"
+    exit 1
+  fi
 }
 
 # Verifies python3 is installed.
@@ -58,25 +58,25 @@ check_jq() {
 # would cause the shell to interpret quotes and special characters in the
 # selection, breaking compound strings like `"text"'.
 check_python3() {
-    if ! command -v python3 &> /dev/null; then
-        print_error "python3 is required but not installed"
-        echo ""
-        echo "Install with Homebrew:"
-        echo "  brew install python3"
-        echo ""
-        echo "Or download from: https://www.python.org/downloads/"
-        echo ""
-        echo "Note: python3 is used to read ZED_SELECTED_TEXT without shell"
-        echo "interpretation. Shell expansion would break Stata compound strings."
-        exit 1
-    fi
+  if ! command -v python3 &>/dev/null; then
+    print_error "python3 is required but not installed"
+    echo ""
+    echo "Install with Homebrew:"
+    echo "  brew install python3"
+    echo ""
+    echo "Or download from: https://www.python.org/downloads/"
+    echo ""
+    echo "Note: python3 is used to read ZED_SELECTED_TEXT without shell"
+    echo "interpretation. Shell expansion would break Stata compound strings."
+    exit 1
+  fi
 }
 
 # Runs all prerequisite checks.
 check_prerequisites() {
-    check_macos
-    check_jq
-    check_python3
+  check_macos
+  check_jq
+  check_python3
 }
 
 # ============================================================================
@@ -85,23 +85,23 @@ check_prerequisites() {
 
 # Installs send-to-stata.sh to ~/.local/bin.
 install_script() {
-    # Create install directory if needed
-    if [[ ! -d "$INSTALL_DIR" ]]; then
-        mkdir -p "$INSTALL_DIR"
-        print_success "Created $INSTALL_DIR"
-    fi
-    
-    # Copy script
-    cp "$SCRIPT_DIR/send-to-stata.sh" "$INSTALL_DIR/"
-    chmod +x "$INSTALL_DIR/send-to-stata.sh"
-    print_success "Installed send-to-stata.sh to $INSTALL_DIR"
-    
-    # Check PATH
-    if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
-        print_warning "$INSTALL_DIR is not in your PATH"
-        echo "  Add to your shell config (~/.zshrc or ~/.bashrc):"
-        echo "    export PATH=\"\$HOME/.local/bin:\$PATH\""
-    fi
+  # Create install directory if needed
+  if [[ ! -d "$INSTALL_DIR" ]]; then
+    mkdir -p "$INSTALL_DIR"
+    print_success "Created $INSTALL_DIR"
+  fi
+
+  # Copy script
+  cp "$SCRIPT_DIR/send-to-stata.sh" "$INSTALL_DIR/"
+  chmod +x "$INSTALL_DIR/send-to-stata.sh"
+  print_success "Installed send-to-stata.sh to $INSTALL_DIR"
+
+  # Check PATH
+  if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
+    print_warning "$INSTALL_DIR is not in your PATH"
+    echo "  Add to your shell config (~/.zshrc or ~/.bashrc):"
+    echo "    export PATH=\"\$HOME/.local/bin:\$PATH\""
+  fi
 }
 
 # ============================================================================
@@ -120,7 +120,8 @@ install_script() {
 # DO NOT use shell expansion like printf '%s' "$ZED_SELECTED_TEXT" - the shell will
 # interpret quotes, backticks, and special characters, breaking compound strings.
 # Python reads raw bytes from the environment without parsing.
-STATA_TASKS=$(cat <<'EOF'
+STATA_TASKS=$(
+  cat <<'EOF'
 [
   {
     "label": "Stata: Send Statement",
@@ -144,21 +145,21 @@ EOF
 
 # Installs Stata tasks to Zed's tasks.json.
 install_tasks() {
-    local tasks_file="$ZED_CONFIG_DIR/tasks.json"
-    
-    # Create config dir if needed
-    mkdir -p "$ZED_CONFIG_DIR"
-    
-    # Create or update tasks.json
-    if [[ ! -f "$tasks_file" ]]; then
-        echo "$STATA_TASKS" > "$tasks_file"
-    else
-        # Remove existing Stata tasks, then add new ones
-        jq --argjson new "$STATA_TASKS" '
+  local tasks_file="$ZED_CONFIG_DIR/tasks.json"
+
+  # Create config dir if needed
+  mkdir -p "$ZED_CONFIG_DIR"
+
+  # Create or update tasks.json
+  if [[ ! -f "$tasks_file" ]]; then
+    echo "$STATA_TASKS" >"$tasks_file"
+  else
+    # Remove existing Stata tasks, then add new ones
+    jq --argjson new "$STATA_TASKS" '
             [.[] | select(.label | startswith("Stata:") | not)] + $new
-        ' "$tasks_file" > "${tasks_file}.tmp" && mv "${tasks_file}.tmp" "$tasks_file"
-    fi
-    print_success "Installed Zed tasks to $tasks_file"
+        ' "$tasks_file" >"${tasks_file}.tmp" && mv "${tasks_file}.tmp" "$tasks_file"
+  fi
+  print_success "Installed Zed tasks to $tasks_file"
 }
 
 # ============================================================================
@@ -171,11 +172,12 @@ install_tasks() {
 
 # Installs Stata keybindings to Zed's keymap.json.
 install_keybindings() {
-    local keymap_file="$ZED_CONFIG_DIR/keymap.json"
-    
-    # Define keybindings JSON inline to avoid shell escaping issues
-    local stata_keybindings
-    stata_keybindings=$(cat << 'EOF'
+  local keymap_file="$ZED_CONFIG_DIR/keymap.json"
+
+  # Define keybindings JSON inline to avoid shell escaping issues
+  local stata_keybindings
+  stata_keybindings=$(
+    cat <<'EOF'
 [
   {
     "context": "Editor && extension == do",
@@ -186,29 +188,29 @@ install_keybindings() {
   }
 ]
 EOF
-)
-    
-    # Create config dir if needed
-    mkdir -p "$ZED_CONFIG_DIR"
-    
-    # Create or update keymap.json
-    if [[ ! -f "$keymap_file" ]] || [[ ! -s "$keymap_file" ]]; then
-        # File doesn't exist or is empty
-        echo "$stata_keybindings" > "$keymap_file"
+  )
+
+  # Create config dir if needed
+  mkdir -p "$ZED_CONFIG_DIR"
+
+  # Create or update keymap.json
+  if [[ ! -f "$keymap_file" ]] || [[ ! -s "$keymap_file" ]]; then
+    # File doesn't exist or is empty
+    echo "$stata_keybindings" >"$keymap_file"
+  else
+    # Try to parse existing file; if it fails (e.g., JSON5 with trailing commas),
+    # filter out Stata entries manually or just merge
+    local filtered
+    if filtered=$(jq '[.[] | select((.context | test("extension == do$")) | not)]' "$keymap_file" 2>/dev/null); then
+      # Successfully parsed, merge with new keybindings
+      echo "$stata_keybindings" | jq -s '.[0] + .[1]' <(echo "$filtered") - >"${keymap_file}.tmp" && mv "${keymap_file}.tmp" "$keymap_file"
     else
-        # Try to parse existing file; if it fails (e.g., JSON5 with trailing commas),
-        # filter out Stata entries manually or just merge
-        local filtered
-        if filtered=$(jq '[.[] | select((.context | test("extension == do$")) | not)]' "$keymap_file" 2>/dev/null); then
-            # Successfully parsed, merge with new keybindings
-            echo "$stata_keybindings" | jq -s '.[0] + .[1]' <(echo "$filtered") - > "${keymap_file}.tmp" && mv "${keymap_file}.tmp" "$keymap_file"
-        else
-            # Parse failed (likely JSON5), just overwrite with our keybindings
-            # User will need to re-add any custom keybindings
-            echo "$stata_keybindings" > "$keymap_file"
-        fi
+      # Parse failed (likely JSON5), just overwrite with our keybindings
+      # User will need to re-add any custom keybindings
+      echo "$stata_keybindings" >"$keymap_file"
     fi
-    print_success "Installed keybindings to $keymap_file"
+  fi
+  print_success "Installed keybindings to $keymap_file"
 }
 
 # ============================================================================
@@ -217,20 +219,20 @@ EOF
 
 # Detects installed Stata variant in /Applications/Stata/.
 detect_stata() {
-    local found=""
-    for app in StataMP StataSE StataIC Stata; do
-        if [[ -d "/Applications/Stata/${app}.app" ]]; then
-            found="$app"
-            break
-        fi
-    done
-    
-    if [[ -n "$found" ]]; then
-        print_success "Detected Stata: $found"
-    else
-        print_warning "No Stata installation found in /Applications/Stata/"
-        echo "  Set STATA_APP environment variable if Stata is installed elsewhere"
+  local found=""
+  for app in StataMP StataSE StataIC Stata; do
+    if [[ -d "/Applications/Stata/${app}.app" ]]; then
+      found="$app"
+      break
     fi
+  done
+
+  if [[ -n "$found" ]]; then
+    print_success "Detected Stata: $found"
+  else
+    print_warning "No Stata installation found in /Applications/Stata/"
+    echo "  Set STATA_APP environment variable if Stata is installed elsewhere"
+  fi
 }
 
 # ============================================================================
@@ -239,16 +241,16 @@ detect_stata() {
 
 # Prints post-installation usage summary.
 print_summary() {
-    echo ""
-    echo "Installation complete!"
-    echo ""
-    echo "Keybindings (in .do files):"
-    echo "  cmd-enter        Send current statement (or selection) to Stata"
-    echo "  shift-cmd-enter  Send entire file to Stata"
-    echo ""
-    echo "Configuration:"
-    echo "  Set STATA_APP environment variable to override Stata variant detection"
-    echo ""
+  echo ""
+  echo "Installation complete!"
+  echo ""
+  echo "Keybindings (in .do files):"
+  echo "  cmd-enter        Send current statement (or selection) to Stata"
+  echo "  shift-cmd-enter  Send entire file to Stata"
+  echo ""
+  echo "Configuration:"
+  echo "  Set STATA_APP environment variable to override Stata variant detection"
+  echo ""
 }
 
 # ============================================================================
@@ -257,58 +259,58 @@ print_summary() {
 
 # Removes installed script, tasks, and keybindings.
 uninstall() {
-    local removed=false
-    check_jq
-    
-    # Remove script
-    if [[ -f "$INSTALL_DIR/send-to-stata.sh" ]]; then
-        rm "$INSTALL_DIR/send-to-stata.sh"
-        print_success "Removed $INSTALL_DIR/send-to-stata.sh"
+  local removed=false
+  check_jq
+
+  # Remove script
+  if [[ -f "$INSTALL_DIR/send-to-stata.sh" ]]; then
+    rm "$INSTALL_DIR/send-to-stata.sh"
+    print_success "Removed $INSTALL_DIR/send-to-stata.sh"
+    removed=true
+  fi
+
+  # Remove tasks from tasks.json
+  local tasks_file="$ZED_CONFIG_DIR/tasks.json"
+  if [[ -f "$tasks_file" ]]; then
+    local filtered
+    if filtered=$(jq '[.[] | select(.label | startswith("Stata:") | not)]' "$tasks_file" 2>/dev/null); then
+      local before_count after_count
+      before_count=$(jq 'length' "$tasks_file" 2>/dev/null || echo 0)
+      after_count=$(echo "$filtered" | jq 'length')
+      echo "$filtered" >"$tasks_file"
+      if [[ "$before_count" != "$after_count" ]]; then
+        print_success "Removed Stata tasks from $tasks_file"
         removed=true
-    fi
-    
-    # Remove tasks from tasks.json
-    local tasks_file="$ZED_CONFIG_DIR/tasks.json"
-    if [[ -f "$tasks_file" ]]; then
-        local filtered
-        if filtered=$(jq '[.[] | select(.label | startswith("Stata:") | not)]' "$tasks_file" 2>/dev/null); then
-            local before_count after_count
-            before_count=$(jq 'length' "$tasks_file" 2>/dev/null || echo 0)
-            after_count=$(echo "$filtered" | jq 'length')
-            echo "$filtered" > "$tasks_file"
-            if [[ "$before_count" != "$after_count" ]]; then
-                print_success "Removed Stata tasks from $tasks_file"
-                removed=true
-            fi
-        else
-            print_warning "Could not parse $tasks_file (invalid JSON?), skipping task removal"
-        fi
-    fi
-    
-    # Remove keybindings from keymap.json
-    local keymap_file="$ZED_CONFIG_DIR/keymap.json"
-    if [[ -f "$keymap_file" ]]; then
-        local filtered
-        if filtered=$(jq '[.[] | select((.context | test("extension == do$")) | not)]' "$keymap_file" 2>/dev/null); then
-            local before_count after_count
-            before_count=$(jq 'length' "$keymap_file" 2>/dev/null || echo 0)
-            after_count=$(echo "$filtered" | jq 'length')
-            echo "$filtered" > "$keymap_file"
-            if [[ "$before_count" != "$after_count" ]]; then
-                print_success "Removed Stata keybindings from $keymap_file"
-                removed=true
-            fi
-        else
-            print_warning "Could not parse $keymap_file (invalid JSON?), skipping keybinding removal"
-        fi
-    fi
-    
-    if [[ "$removed" == true ]]; then
-        echo ""
-        echo "Uninstall complete!"
+      fi
     else
-        print_info "Nothing to uninstall"
+      print_warning "Could not parse $tasks_file (invalid JSON?), skipping task removal"
     fi
+  fi
+
+  # Remove keybindings from keymap.json
+  local keymap_file="$ZED_CONFIG_DIR/keymap.json"
+  if [[ -f "$keymap_file" ]]; then
+    local filtered
+    if filtered=$(jq '[.[] | select((.context | test("extension == do$")) | not)]' "$keymap_file" 2>/dev/null); then
+      local before_count after_count
+      before_count=$(jq 'length' "$keymap_file" 2>/dev/null || echo 0)
+      after_count=$(echo "$filtered" | jq 'length')
+      echo "$filtered" >"$keymap_file"
+      if [[ "$before_count" != "$after_count" ]]; then
+        print_success "Removed Stata keybindings from $keymap_file"
+        removed=true
+      fi
+    else
+      print_warning "Could not parse $keymap_file (invalid JSON?), skipping keybinding removal"
+    fi
+  fi
+
+  if [[ "$removed" == true ]]; then
+    echo ""
+    echo "Uninstall complete!"
+  else
+    print_info "Nothing to uninstall"
+  fi
 }
 
 # ============================================================================
@@ -317,23 +319,23 @@ uninstall() {
 
 # Main entry point. Handles --uninstall flag or runs installation.
 main() {
-    if [[ "${1:-}" == "--uninstall" ]]; then
-        uninstall
-        exit 0
-    fi
-    
-    echo "Installing send-to-stata for Zed..."
-    echo ""
-    
-    check_prerequisites
-    install_script
-    install_tasks
-    install_keybindings
-    detect_stata
-    print_summary
+  if [[ "${1:-}" == "--uninstall" ]]; then
+    uninstall
+    exit 0
+  fi
+
+  echo "Installing send-to-stata for Zed..."
+  echo ""
+
+  check_prerequisites
+  install_script
+  install_tasks
+  install_keybindings
+  detect_stata
+  print_summary
 }
 
 # Only run main if script is executed directly (not sourced)
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    main "$@"
+  main "$@"
 fi
