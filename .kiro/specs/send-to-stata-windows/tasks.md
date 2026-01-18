@@ -7,7 +7,7 @@
   - Add parameter validation (mutually exclusive modes, required `-File`)
   - Implement exit code constants matching design (0-5)
   - Add timing configuration variables at top of script (`$clipPause`, `$winPause`, `$keyPause`)
-  - **Validates: Requirements 11.1, 11.2, 16.1, 16.2**
+  - **Validates: Requirements 11.1, 11.2, 16.1**
 
 - [ ] 1.2 Implement `Find-StataInstallation` function
   - Check `$env:STATA_PATH` first and return if valid
@@ -17,14 +17,14 @@
   - Search variants: StataMP-64 → StataSE-64 → StataBE-64 → StataIC-64 → StataMP → StataSE → StataBE → StataIC
   - Add fallback to `C:\Stata\` without version number
   - Return `$null` if not found
-  - **Validates: Requirements 1.1, 1.2, 1.3, 1.5**
+  - **Validates: Requirements 1.1, 1.2, 1.3, 1.4, 1.5**
 
 - [ ] 1.3 Implement `Find-StataWindow` function
   - Get processes matching `Stata*` pattern
   - Filter by window title matching `^Stata/(MP|SE|BE|IC)` or `^StataNow/(MP|SE|BE|IC)`
   - Exclude Stata Viewer and auxiliary windows
   - Return process object with `MainWindowHandle`, or `$null`
-  - **Validates: Requirements 5.3, 5.7**
+  - **Validates: Requirements 5.3, 5.8**
 
 ## Task 2: Implement Statement Detection
 
@@ -63,7 +63,7 @@
   - Read selected text from `$input` (PowerShell stdin)
   - Preserve compound strings with backticks and quotes exactly
   - Fall back to row-based detection if stdin is empty
-  - **Validates: Requirements 2.1, 2.6, 2.7, 12.1, 12.2**
+  - **Validates: Requirements 2.1, 2.6, 2.7, 12.1, 12.2, 12.3**
 
 - [ ] 3.4 Write property test for stdin content round-trip (Property 4)
   - Generate random text including compound strings
@@ -92,17 +92,18 @@
   - Restore window if minimized using `ShowWindow` with `SW_RESTORE`
   - Simulate ALT keypress via `keybd_event` before `SetForegroundWindow`
   - Verify focus with `GetForegroundWindow` check
-  - Retry with increasing delays (10ms, 20ms, 30ms)
+  - Retry with increasing delays using `$winPause` (10ms, 20ms, 30ms)
   - Return `$true` on success, `$false` after max retries
-  - **Validates: Requirements 5.10, 5.11, 5.12, 5.13, 15.1, 15.2, 15.3**
+  - **Validates: Requirements 5.10, 5.11, 5.12, 5.13, 15.1, 15.2, 15.3, 16.5**
 
 - [ ] 4.3 Implement `Send-ToStata` function
   - Build command string: `do "{path}"` or `include "{path}"`
   - Copy command to clipboard via `[System.Windows.Forms.Clipboard]::SetText()`
   - Find Stata window using `Find-StataWindow`
   - Call `Invoke-FocusAcquisition` to activate window
-  - Send `Ctrl+1` via `SendKeys::SendWait("^1")` to focus Command window
   - Wait `$clipPause` delay after clipboard copy
+  - Send `Ctrl+1` via `SendKeys::SendWait("^1")` to focus Command window
+  - Wait `$winPause` delay after Ctrl+1
   - Send `Ctrl+V` via `SendKeys::SendWait("^v")` to paste
   - Wait `$keyPause` delay between keystrokes
   - Send `Enter` via `SendKeys::SendWait("{ENTER}")` to execute
@@ -115,6 +116,25 @@
   - Run 100+ iterations
   - **Validates: Design Property 6**
 
+- [ ] 4.5 Write property test for focus acquisition reliability (Property 11)
+  - Mock window at medium integrity level
+  - Verify ALT workaround + SetForegroundWindow succeeds
+  - Verify minimized windows are restored first
+  - Run 100+ iterations
+  - **Validates: Design Property 11**
+
+- [ ] 4.6 Write property test for STA mode enforcement (Property 12)
+  - Verify clipboard operations throw when not in STA mode
+  - Verify clipboard operations succeed in STA mode
+  - Run 100+ iterations
+  - **Validates: Design Property 12**
+
+- [ ] 4.7 Write property test for Command window focus (Property 13)
+  - Verify Ctrl+1 is sent after window activation
+  - Verify keystroke sequence is: focus → Ctrl+1 → Ctrl+V → Enter
+  - Run 100+ iterations
+  - **Validates: Design Property 13**
+
 ## Task 5: Implement Main Script Logic
 
 - [ ] 5.1 Implement main execution flow
@@ -124,7 +144,8 @@
   - Create temp file
   - Send to Stata
   - Exit with appropriate code
-  - **Validates: Requirements 2.1, 2.2, 3.1, 4.1, 4.2, 4.3**
+  - Script SHALL NOT require elevation (run as standard user)
+  - **Validates: Requirements 2.1, 2.2, 3.1, 4.1, 4.2, 4.3, 15.6**
 
 - [ ] 5.2 Implement error handling with descriptive messages
   - Exit 1: Invalid arguments with specific message
@@ -134,6 +155,7 @@
   - Exit 5: SendKeys execution failed or focus acquisition failed with diagnostic info
   - All errors to stderr
   - Include UIPI diagnostic message when focus fails (suggest restarting Stata without elevation)
+  - Detect if Stata appears elevated and display helpful error
   - **Validates: Requirements 11.1-11.8, 15.4, 15.5**
 
 - [ ] 5.3 Write property test for STATA_PATH override (Property 1)
@@ -180,7 +202,7 @@
     - `shift-ctrl-enter` → Stata: Send File
     - `alt-ctrl-enter` → Stata: Include Statement
     - `alt-shift-ctrl-enter` → Stata: Include File
-  - Add terminal keybindings using `SendKeystrokes`:
+  - Add terminal keybindings using `SendKeystrokes` with Windows key sequences (ctrl-c, ctrl-`, ctrl-v, enter):
     - `shift-enter` → copy selection, switch terminal, paste, execute
     - `alt-enter` → select line, copy, switch terminal, paste, execute
   - Write back preserving non-Stata keybindings
@@ -248,6 +270,19 @@
   - Pass `-Skip` when `-SkipAutomationCheck` is specified
   - **Validates: Requirements 17.2, 17.4, 17.5**
 
+- [ ] 6.14 Write property test for automation registration idempotency (Property 14)
+  - Call `Register-StataAutomation` when already registered
+  - Verify no adverse effects, operation succeeds silently
+  - Run 100+ iterations
+  - **Validates: Design Property 14**
+
+- [ ] 6.15 Write property test for version mismatch detection (Property 15)
+  - Mock registry with different registered path than detected installation
+  - Verify `Test-StataAutomationRegistered` returns registered path
+  - Verify version mismatch is detected
+  - Run 100+ iterations
+  - **Validates: Design Property 15**
+
 ## Task 7: Implement Cross-Platform Test Infrastructure
 
 - [ ] 7.1 Create mockable wrapper functions in `send-to-stata.ps1`
@@ -274,9 +309,11 @@
 
 - [ ] 7.4 Create `tests/CrossPlatform.ps1` with platform detection
   - Detect Windows vs macOS/Linux
-  - Export `$IsWindowsPlatform` variable
-  - Provide `Skip-WindowsOnly` helper for integration tests
-  - **Validates: Requirements 14.5, 14.6**
+  - Export `$IsWindowsPlatform` and `$IsMacOSPlatform` variables
+  - Provide `Skip-WindowsOnly` helper to skip tests requiring Windows APIs
+  - Provide `Skip-MacOSOnly` helper to skip tests requiring macOS APIs (AppleScript, etc.)
+  - Tests tagged `WindowsOnly` skip on non-Windows; tests tagged `MacOSOnly` skip on non-macOS
+  - **Validates: Requirements 14.5, 14.6, 14.7**
 
 - [ ] 7.5 Write property test for platform-independent logic isolation (Property 10)
   - Run all platform-independent functions on current platform
@@ -315,8 +352,11 @@
   - Installation instructions using `irm | iex` pattern
   - Keybinding reference table (ctrl-enter, shift-ctrl-enter, etc.)
   - Terminal shortcuts documentation with limitations
+  - Note that `alt-enter` sends only current line, not multi-line statements
+  - Note that `///` continuation syntax cannot be pasted directly to Stata console
   - Troubleshooting guide
-  - **Validates: Requirements 10.6, 10.7, 10.8**
+  - Note that Stata must NOT run as Administrator (UIPI restriction)
+  - **Validates: Requirements 10.6, 10.7, 10.8, 15.4**
 
 - [ ] 9.2 Add Windows-specific notes to README.md
   - Link to SEND-TO-STATA.md Windows section
