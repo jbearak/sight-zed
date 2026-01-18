@@ -173,6 +173,28 @@ extract_grammar_revision() {
 
 
 #######################################
+# Version Normalization
+#######################################
+
+# Normalize a version tag to ensure it has a leading 'v'.
+# Examples:
+#   1.2.3 -> v1.2.3
+#   v1.2.3 -> v1.2.3
+#   "" -> (empty, returns 1)
+normalize_version() {
+    local version="$1"
+    if [[ -z "$version" ]]; then
+        echo ""
+        return 1
+    fi
+    if [[ "$version" =~ ^v ]]; then
+        echo "$version"
+    else
+        echo "v${version}"
+    fi
+}
+
+#######################################
 # LSP Release Validator
 #######################################
 
