@@ -7,6 +7,7 @@ Send Stata code from Zed editor to the Stata GUI application for execution.
 - **macOS** (required for AppleScript)
 - **Stata** installed in `/Applications/Stata/` (StataMP, StataSE, StataIC, or Stata)
 - **jq** for JSON manipulation (`brew install jq`)
+- **python3** (used to safely handle shell metacharacters in selections)
 - **Zed** editor
 
 ## Quick Start
