@@ -68,6 +68,22 @@ call_func() {
     [ -x "$INSTALL_DIR/send-to-stata.sh" ]
 }
 
+@test "install: uses local file when present (context detection)" {
+    # The test runs from project dir where send-to-stata.sh exists
+    run call_func install_script
+    [ "$status" -eq 0 ]
+    # Output should indicate local source
+    [[ "$output" == *"from local"* ]]
+}
+
+@test "install: success message indicates source" {
+    run call_func install_script
+    [ "$status" -eq 0 ]
+    # Should have a success message with source indication
+    [[ "$output" == *"Installed send-to-stata.sh"* ]]
+    [[ "$output" == *"from local"* ]] || [[ "$output" == *"from GitHub"* ]]
+}
+
 # ============================================================================
 # Tasks Installation Tests
 # ============================================================================

@@ -19,6 +19,12 @@ Syntax highlighting, completions, and diagnostics will work immediately once you
 
 Execute Stata code directly from Zed with keyboard shortcuts. Works with both the Stata application (via AppleScript) and terminal sessions (via paste).
 
+**Install (macOS only):**
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.sh)"
+```
+
 | Shortcut | Action |
 |----------|--------|
 | `cmd-enter` | Send statement to Stata app |
@@ -28,27 +34,28 @@ Execute Stata code directly from Zed with keyboard shortcuts. Works with both th
 | `shift-enter` | Paste selection to terminal |
 | `opt-enter` | Paste current line to terminal |
 
-### Why Separate Installation?
-
-Zed extensions can't register custom keybindings or tasks—those must live in user config files (`~/.config/zed/`). The send-to-stata functionality requires both, so it can't be bundled into the extension itself.
-
-### Quick Install (macOS only)
-
-```bash
-git clone https://github.com/jbearak/sight-zed
-cd sight-zed
-./install-send-to-stata.sh
-```
+> **Why a separate install?** Zed extensions can't register custom keybindings or tasks—those must live in user config files (`~/.config/zed/`). The send-to-stata functionality requires both, so it can't be bundled into the extension itself.
 
 See [SEND-TO-STATA.md](SEND-TO-STATA.md) for full documentation, configuration options, and troubleshooting.
 
 ## Building from Source
 
+### Zed Extension
+
 ```bash
-# Build the extension
 cargo build --release --target wasm32-wasip1
 
 # The extension.wasm will be in target/wasm32-wasip1/release/
+```
+
+### Send-to-Stata
+
+If you prefer to install from a local clone instead of curl-pipe:
+
+```bash
+git clone https://github.com/jbearak/sight-zed
+cd sight-zed
+./install-send-to-stata.sh
 ```
 
 ## Related Projects

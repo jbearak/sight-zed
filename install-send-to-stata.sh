@@ -8,9 +8,22 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Handle curl-pipe context where BASH_SOURCE is empty
+if [[ -n "${BASH_SOURCE[0]:-}" ]]; then
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+  # Curl-pipe context: no local directory
+  SCRIPT_DIR=""
+fi
 INSTALL_DIR="$HOME/.local/bin"
 ZED_CONFIG_DIR="$HOME/.config/zed"
+
+# GitHub raw URL for curl-pipe installation
+GITHUB_RAW_BASE="https://raw.githubusercontent.com/jbearak/sight-zed"
+GITHUB_REF="${SIGHT_GITHUB_REF:-main}"
+
+# Expected SHA-256 checksum of send-to-stata.sh (updated by update-checksum.sh)
+SEND_TO_STATA_SHA256="139a7687e49d80ac87ccaf5faa358296678419aa40f61e8ce99dc756fc8ac998"
 
 # Colors for output
 RED='\033[0;31m'
@@ -83,6 +96,51 @@ check_prerequisites() {
 # Script Installation
 # ============================================================================
 
+# Fetches send-to-stata.sh from GitHub when running via curl-pipe.
+# Used when no local send-to-stata.sh exists (curl-pipe installation context).
+fetch_script_from_github() {
+  local url="$GITHUB_RAW_BASE/$GITHUB_REF/send-to-stata.sh"
+  local temp_file
+  temp_file=$(mktemp)
+  
+  print_info "Fetching send-to-stata.sh from GitHub ($GITHUB_REF)..."
+  
+  if ! curl -fsSL "$url" -o "$temp_file"; then
+    rm -f "$temp_file"
+    print_error "Failed to download send-to-stata.sh from GitHub"
+    echo ""
+    echo "URL: $url"
+    echo ""
+    echo "Check your internet connection and try again, or install from a local clone:"
+    echo "  git clone https://github.com/jbearak/sight-zed.git"
+    echo "  cd sight-zed && ./install-send-to-stata.sh"
+    exit 1
+  fi
+  
+  # Verify checksum (skip if using non-main ref or checksum not set)
+  if [[ "$GITHUB_REF" == "main" && "$SEND_TO_STATA_SHA256" != "CHECKSUM_NOT_SET" ]]; then
+    local actual_hash
+    actual_hash=$(shasum -a 256 "$temp_file" | cut -d' ' -f1)
+    if [[ "$actual_hash" != "$SEND_TO_STATA_SHA256" ]]; then
+      rm -f "$temp_file"
+      print_error "Checksum verification failed!"
+      echo ""
+      echo "Expected: $SEND_TO_STATA_SHA256"
+      echo "Got:      $actual_hash"
+      echo ""
+      echo "This could indicate tampering or a version mismatch."
+      echo "Install from a local clone to bypass:"
+      echo "  git clone https://github.com/jbearak/sight-zed.git"
+      echo "  cd sight-zed && ./install-send-to-stata.sh"
+      exit 1
+    fi
+    print_success "Checksum verified"
+  fi
+  
+  mv "$temp_file" "$INSTALL_DIR/send-to-stata.sh"
+  print_success "Installed send-to-stata.sh to $INSTALL_DIR (from GitHub)"
+}
+
 # Installs send-to-stata.sh to ~/.local/bin.
 install_script() {
   # Create install directory if needed
@@ -91,10 +149,20 @@ install_script() {
     print_success "Created $INSTALL_DIR"
   fi
 
-  # Copy script
-  cp "$SCRIPT_DIR/send-to-stata.sh" "$INSTALL_DIR/"
-  chmod +x "$INSTALL_DIR/send-to-stata.sh"
-  print_success "Installed send-to-stata.sh to $INSTALL_DIR"
+  # Determine source: local file or GitHub
+  # In curl-pipe context, SCRIPT_DIR is empty so we fetch from GitHub
+  local source_script="${SCRIPT_DIR:+$SCRIPT_DIR/}send-to-stata.sh"
+  
+  if [[ -n "$SCRIPT_DIR" && -f "$source_script" ]]; then
+    # Local clone: copy from directory
+    cp "$source_script" "$INSTALL_DIR/"
+    chmod +x "$INSTALL_DIR/send-to-stata.sh"
+    print_success "Installed send-to-stata.sh to $INSTALL_DIR (from local)"
+  else
+    # Curl-pipe: fetch from GitHub
+    fetch_script_from_github
+    chmod +x "$INSTALL_DIR/send-to-stata.sh"
+  fi
 
   # Check if binary is findable; if not, configure PATH
   if ! command -v send-to-stata.sh &>/dev/null; then
@@ -380,6 +448,7 @@ main() {
 }
 
 # Only run main if script is executed directly (not sourced)
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+# In curl-pipe context, BASH_SOURCE is empty, so always run main
+if [[ -z "${BASH_SOURCE[0]:-}" ]] || [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   main "$@"
 fi
