@@ -13,6 +13,7 @@
 #   --file <path>     Source file path (required)
 #   --row <number>    Cursor row, 1-indexed (required for --statement without --text)
 #   --text <string>   Selected text (if provided, used instead of file/row)
+#   --stdin           Read text from stdin (mutually exclusive with --text)
 #
 # Exit Codes:
 #   0 - Success
@@ -32,6 +33,7 @@ MODE=""
 FILE_PATH=""
 ROW=""
 TEXT=""
+STDIN_MODE=false
 
 print_usage() {
     cat <<EOF
@@ -45,6 +47,7 @@ Options:
   --file <path>     Source file path (required)
   --row <number>    Cursor row, 1-indexed (required for --statement without --text)
   --text <string>   Selected text (if provided, used instead of file/row)
+  --stdin           Read text from stdin (mutually exclusive with --text)
 
 Environment Variables:
   STATA_APP         Stata application name (StataMP, StataSE, StataIC, Stata)
@@ -56,6 +59,7 @@ Exit Codes:
   3 - Temp file creation failed
   4 - Stata not found
   5 - AppleScript execution failed
+  6 - Stdin read failed
 EOF
 }
 
@@ -116,6 +120,10 @@ parse_arguments() {
                 TEXT="$1"
                 shift
                 ;;
+            --stdin)
+                STDIN_MODE=true
+                shift
+                ;;
             --help|-h)
                 print_usage
                 exit 0
@@ -130,6 +138,12 @@ parse_arguments() {
 }
 
 validate_arguments() {
+    # Check mutual exclusivity of --stdin and --text
+    if [[ "$STDIN_MODE" == true && -n "$TEXT" ]]; then
+        echo "Error: --stdin and --text are mutually exclusive" >&2
+        exit 1
+    fi
+
     # Mode is required
     if [[ -z "$MODE" ]]; then
         echo "Error: Mode is required (--statement or --file)" >&2
@@ -145,10 +159,9 @@ validate_arguments() {
     # Mode-specific validation
     case "$MODE" in
         statement)
-            # For statement mode, either non-empty --text or --row is required
-            # Note: When Zed passes empty $ZED_SELECTED_TEXT, we fall back to --row
-            if [[ -z "$TEXT" && -z "$ROW" ]]; then
-                echo "Error: --statement mode requires either --text or --row" >&2
+            # For statement mode, need one of: --stdin, --text, or --row
+            if [[ "$STDIN_MODE" != true && -z "$TEXT" && -z "$ROW" ]]; then
+                echo "Error: --statement mode requires --stdin, --text, or --row" >&2
                 exit 1
             fi
             ;;
@@ -160,6 +173,22 @@ validate_arguments() {
             exit 1
             ;;
     esac
+}
+
+# ============================================================================
+# Stdin Reading
+# ============================================================================
+
+# Reads all content from stdin.
+# Output: Prints content to stdout
+# Exit Codes: 6 - Stdin read failed
+read_stdin_content() {
+    local content
+    if ! content=$(cat); then
+        echo "Error: Failed to read from stdin" >&2
+        exit 6
+    fi
+    printf '%s' "$content"
 }
 
 # ============================================================================
@@ -432,7 +461,19 @@ main() {
     
     case "$MODE" in
         statement)
-            if [[ -n "$TEXT" ]]; then
+            if [[ "$STDIN_MODE" == true ]]; then
+                local stdin_content
+                stdin_content=$(read_stdin_content)
+                if [[ -n "$stdin_content" ]]; then
+                    code_to_send="$stdin_content"
+                elif [[ -n "$ROW" ]]; then
+                    # Fall back to row detection if stdin is empty
+                    code_to_send=$(detect_statement "$FILE_PATH" "$ROW")
+                else
+                    echo "Error: stdin is empty and no --row provided" >&2
+                    exit 1
+                fi
+            elif [[ -n "$TEXT" ]]; then
                 # Use selected text directly
                 code_to_send="$TEXT"
             else
