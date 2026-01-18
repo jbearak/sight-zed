@@ -4,6 +4,20 @@
 
 load test_helpers
 
+# Setup - source validation functions without running main
+setup() {
+    TEST_DIR="$(cd "$(dirname "$BATS_TEST_FILENAME")" && pwd)"
+    PROJECT_DIR="$(dirname "$TEST_DIR")"
+    SCRIPT_DIR="$PROJECT_DIR"
+    
+    # Source the validation script functions (without running main)
+    local tmp_source
+    tmp_source=$(mktemp)
+    sed '/^main "\$@"$/d' "$PROJECT_DIR/validate.sh" > "$tmp_source"
+    source "$tmp_source"
+    rm -f "$tmp_source"
+}
+
 # Property 6: Grammar build output verification - verify .wasm file is produced
 @test "Property 6: Grammar build produces .wasm file on success" {
     # Skip if tree-sitter CLI not available
@@ -61,9 +75,6 @@ load test_helpers
     # Use a known good revision
     local test_revision="HEAD"
     
-    # Run validate_grammar_build function (source the script to access the function)
-    source "$SCRIPT_DIR/validate.sh"
-    
     # Capture any temp directories created during execution
     if validate_grammar_build "$test_revision" >/dev/null 2>&1; then
         # Check temp directory count after successful execution
@@ -94,9 +105,6 @@ load test_helpers
     
     # Use an invalid revision to force failure
     local invalid_revision="invalid_sha_that_does_not_exist_12345"
-    
-    # Source the script to access the function
-    source "$SCRIPT_DIR/validate.sh"
     
     # Run validate_grammar_build with invalid revision (should fail)
     run validate_grammar_build "$invalid_revision"
