@@ -21,6 +21,8 @@ NC='\033[0m'
 # Get script directory
 TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$TEST_DIR")"
+SCRIPT_DIR="$PROJECT_DIR"
+VALIDATE_SCRIPT="$PROJECT_DIR/validate.sh"
 
 # Source the validation script functions (without running main)
 source_validate_functions() {
@@ -90,6 +92,26 @@ assert_exit_code() {
         echo -e "${RED}ASSERTION FAILED${NC}: $message"
         echo "  Expected exit code: $expected"
         echo "  Actual exit code:   $actual"
+        return 1
+    fi
+}
+
+# Assert success (exit code 0) - for bats compatibility
+assert_success() {
+    if [[ "$status" -eq 0 ]]; then
+        return 0
+    else
+        echo "Expected success (exit code 0), got exit code $status"
+        return 1
+    fi
+}
+
+# Assert failure (non-zero exit code) - for bats compatibility
+assert_failure() {
+    if [[ "$status" -ne 0 ]]; then
+        return 0
+    else
+        echo "Expected failure (non-zero exit code), got exit code 0"
         return 1
     fi
 }
