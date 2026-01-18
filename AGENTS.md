@@ -42,3 +42,20 @@ Or symlink to Zed's extensions directory:
 ```bash
 ln -s $(pwd) ~/.local/share/zed/extensions/installed/sight
 ```
+
+## Depth Colorization (Not Currently Functional)
+
+The `highlights.scm` file contains depth-based captures for nested strings and macros:
+- `@string.depth.1` through `@string.depth.6` for compound strings
+- `@variable.macro.local.depth.1` through `@variable.macro.local.depth.6` for local macros
+
+**These captures currently do nothing in Zed.** Zed themes only support a fixed set of highlight captures (`@string`, `@variable`, `@keyword`, etc.). Custom captures like `@string.depth.1` fall back to the base capture or are ignored entirely.
+
+The depth-aware node types in the grammar (`compound_string_depth_1-6`, `local_macro_depth_1-6`) are **shared with the VS Code extension**, which does support depth colorization via TextMate scope injection. Don't remove these from the grammar.
+
+The depth captures in `highlights.scm` are kept as:
+1. Documentation of intended behavior
+2. Future-proofing if Zed adds custom capture support
+3. They're harmless - just fall back to base styling
+
+If Zed adds support for custom theme captures in the future, these would enable depth-based colorization without grammar changes.
