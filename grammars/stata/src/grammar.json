@@ -1,4 +1,5 @@
 {
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/grammar.schema.json",
   "name": "stata",
   "word": "identifier",
   "rules": {
@@ -221,10 +222,6 @@
         },
         {
           "type": "SYMBOL",
-          "name": "double_string"
-        },
-        {
-          "type": "SYMBOL",
           "name": "_compound_text"
         }
       ]
@@ -263,10 +260,6 @@
         {
           "type": "SYMBOL",
           "name": "global_macro"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "double_string"
         },
         {
           "type": "SYMBOL",
@@ -311,10 +304,6 @@
         },
         {
           "type": "SYMBOL",
-          "name": "double_string"
-        },
-        {
-          "type": "SYMBOL",
           "name": "_compound_text"
         }
       ]
@@ -353,10 +342,6 @@
         {
           "type": "SYMBOL",
           "name": "global_macro"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "double_string"
         },
         {
           "type": "SYMBOL",
@@ -401,10 +386,6 @@
         },
         {
           "type": "SYMBOL",
-          "name": "double_string"
-        },
-        {
-          "type": "SYMBOL",
           "name": "_compound_text"
         }
       ]
@@ -446,10 +427,6 @@
         },
         {
           "type": "SYMBOL",
-          "name": "double_string"
-        },
-        {
-          "type": "SYMBOL",
           "name": "_compound_text"
         }
       ]
@@ -461,7 +438,7 @@
         "value": -1,
         "content": {
           "type": "PATTERN",
-          "value": "[^`\"$\\r\\n]+"
+          "value": "([^`\"$\\r\\n]|\"[^']|`')+"
         }
       }
     },
@@ -1455,5 +1432,6 @@
     }
   ],
   "inline": [],
-  "supertypes": []
+  "supertypes": [],
+  "reserved": {}
 }
