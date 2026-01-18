@@ -7,11 +7,17 @@ A Zed editor extension providing Stata language support using the [Sight LSP](ht
 - Syntax highlighting via tree-sitter grammar
 - Language server integration with Sight LSP
 - Code completion, hover information, and diagnostics
-- Send code to Stata with keyboard shortcuts—works with both the Stata application (via AppleScript) and terminal sessions (via paste)
+- Send code to Stata with keyboard shortcuts (requires additional setup—see below)
 
-## Send to Stata
+## Installation
 
-Execute Stata code directly from Zed with keyboard shortcuts. Requires **separate installation** (see below).
+Install from the Zed extension marketplace by searching for "Sight" or "Stata".
+
+That's it—you'll have syntax highlighting, completions, and diagnostics working immediately.
+
+## Send to Stata (Optional)
+
+Execute Stata code directly from Zed with keyboard shortcuts. Works with both the Stata application (via AppleScript) and terminal sessions (via paste).
 
 | Shortcut | Action |
 |----------|--------|
@@ -35,10 +41,6 @@ cd sight-zed
 ```
 
 See [SEND-TO-STATA.md](SEND-TO-STATA.md) for full documentation, configuration options, and troubleshooting.
-
-## Installation
-
-Install from the Zed extension marketplace by searching for "Sight" or "Stata".
 
 ## Building from Source
 
