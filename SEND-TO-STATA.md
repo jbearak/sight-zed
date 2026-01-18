@@ -106,12 +106,14 @@ If you prefer not to use the installer:
      {
        "context": "Editor && extension == do",
        "bindings": {
-         "cmd-enter": ["task::Spawn", { "task_name": "Stata: Send Statement" }],
-         "shift-cmd-enter": ["task::Spawn", { "task_name": "Stata: Send File" }]
+         "cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send Statement"}]]],
+         "shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send File"}]]]
        }
      }
    ]
    ```
+
+   > **Note**: The keybindings use `action::Sequence` to save the file before sending to Stata, ensuring the latest changes are executed.
 
 ## Troubleshooting
 
