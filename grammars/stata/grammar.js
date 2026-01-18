@@ -97,7 +97,6 @@ module.exports = grammar({
             $.compound_string_depth_2,
             $.local_macro_depth_1,
             $.global_macro,
-            $.double_string,
             $._compound_text,
         ),
 
@@ -111,7 +110,6 @@ module.exports = grammar({
             $.compound_string_depth_3,
             $.local_macro_depth_1,
             $.global_macro,
-            $.double_string,
             $._compound_text,
         ),
 
@@ -125,7 +123,6 @@ module.exports = grammar({
             $.compound_string_depth_4,
             $.local_macro_depth_1,
             $.global_macro,
-            $.double_string,
             $._compound_text,
         ),
 
@@ -139,7 +136,6 @@ module.exports = grammar({
             $.compound_string_depth_5,
             $.local_macro_depth_1,
             $.global_macro,
-            $.double_string,
             $._compound_text,
         ),
 
@@ -153,7 +149,6 @@ module.exports = grammar({
             $.compound_string_depth_6,
             $.local_macro_depth_1,
             $.global_macro,
-            $.double_string,
             $._compound_text,
         ),
 
@@ -168,11 +163,10 @@ module.exports = grammar({
             $.compound_string_depth_1,
             $.local_macro_depth_1,
             $.global_macro,
-            $.double_string,
             $._compound_text,
         ),
 
-        _compound_text: _ => token(prec(-1, /[^`"$\r\n]+/)),
+        _compound_text: _ => token(prec(-1, /([^`"$\r\n]|"[^']|`')+/)),
 
         string: $ => choice(
             $.double_string,

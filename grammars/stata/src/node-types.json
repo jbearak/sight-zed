@@ -102,10 +102,6 @@
           "named": true
         },
         {
-          "type": "double_string",
-          "named": true
-        },
-        {
           "type": "global_macro",
           "named": true
         },
@@ -126,10 +122,6 @@
       "types": [
         {
           "type": "compound_string_depth_3",
-          "named": true
-        },
-        {
-          "type": "double_string",
           "named": true
         },
         {
@@ -156,10 +148,6 @@
           "named": true
         },
         {
-          "type": "double_string",
-          "named": true
-        },
-        {
           "type": "global_macro",
           "named": true
         },
@@ -180,10 +168,6 @@
       "types": [
         {
           "type": "compound_string_depth_5",
-          "named": true
-        },
-        {
-          "type": "double_string",
           "named": true
         },
         {
@@ -210,10 +194,6 @@
           "named": true
         },
         {
-          "type": "double_string",
-          "named": true
-        },
-        {
           "type": "global_macro",
           "named": true
         },
@@ -234,10 +214,6 @@
       "types": [
         {
           "type": "compound_string_depth_1",
-          "named": true
-        },
-        {
-          "type": "double_string",
           "named": true
         },
         {
@@ -573,6 +549,7 @@
   {
     "type": "source_file",
     "named": true,
+    "root": true,
     "fields": {},
     "children": {
       "multiple": true,
