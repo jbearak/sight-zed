@@ -50,6 +50,9 @@ check_macos() {
 }
 
 # Verifies python3 is installed with venv module.
+# Sets PYTHON_CMD to the best available python.
+PYTHON_CMD=""
+
 check_python3() {
   if ! command -v python3 &>/dev/null; then
     print_error "python3 is required but not installed"
@@ -68,6 +71,21 @@ check_python3() {
     echo "  # or"
     echo "  apt install python3-venv"
     exit 1
+  fi
+  
+  # Determine best Python to use
+  PYTHON_CMD="python3"
+  local py_version
+  py_version=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+  local py_major py_minor
+  py_major=$(echo "$py_version" | cut -d. -f1)
+  py_minor=$(echo "$py_version" | cut -d. -f2)
+  
+  # stata_kernel works best with Python 3.9-3.11
+  # Python 3.12+ removed the 'imp' module that old ipykernel versions need
+  if [[ "$py_major" -eq 3 ]] && [[ "$py_minor" -ge 12 ]]; then
+    print_warning "Python $py_version detected. stata_kernel may need package upgrades for compatibility."
+    print_info "The installer will handle this automatically."
   fi
 }
 
@@ -152,7 +170,7 @@ create_venv() {
   
   print_info "Creating virtual environment..."
   mkdir -p "$(dirname "$VENV_DIR")"
-  if ! python3 -m venv "$VENV_DIR"; then
+  if ! "$PYTHON_CMD" -m venv "$VENV_DIR"; then
     print_error "Failed to create virtual environment"
     exit 2
   fi
@@ -171,6 +189,22 @@ install_packages() {
     exit 2
   fi
   print_success "Installed stata_kernel and jupyter"
+  
+  # stata_kernel pins old ipykernel (<5.0.0) which uses the deprecated 'imp' module
+  # removed in Python 3.12. Upgrade ipykernel to fix compatibility.
+  local py_version
+  py_version=$("$VENV_DIR/bin/python" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+  local py_minor
+  py_minor=$(echo "$py_version" | cut -d. -f2)
+  
+  if [[ "$py_minor" -ge 12 ]]; then
+    print_info "Upgrading ipykernel for Python $py_version compatibility..."
+    if ! "$VENV_DIR/bin/pip" install --upgrade ipykernel &>/dev/null; then
+      print_warning "Failed to upgrade ipykernel - kernel may not start correctly"
+    else
+      print_success "Upgraded ipykernel for Python $py_version"
+    fi
+  fi
 }
 
 # ============================================================================
