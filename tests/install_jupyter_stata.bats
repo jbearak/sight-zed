@@ -64,11 +64,9 @@ extract_workspace_kernel_script() {
 
 # Helper to run find_workspace_root with a custom home directory
 run_find_workspace_root() {
-  local start_dir="$1"
-  local fake_home="$2"
-  
   python3 -c "
 from pathlib import Path
+import sys
 
 def find_workspace_root(start_path, home):
     markers = ['.git', '.stata-project', '.project']
@@ -87,9 +85,9 @@ def find_workspace_root(start_path, home):
         current = current.parent
     return start_path.resolve()
 
-result = find_workspace_root(Path('$start_dir'), Path('$fake_home'))
+result = find_workspace_root(Path(sys.argv[1]), Path(sys.argv[2]))
 print(result)
-"
+" "$1" "$2"
 }
 
 @test "workspace detection: finds .git marker" {

@@ -248,25 +248,32 @@ execution_mode = EXECUTION_MODE_PLACEHOLDER
 EOF
 }
 
+# Escapes a string for use in sed replacement.
+# Handles: & \ | (delimiter) and newlines
+escape_sed_replacement() {
+  printf '%s' "$1" | sed -e 's/[&\|]/\\&/g'
+}
+
 # Updates a single setting in the config file, adding it if missing.
 # Args: $1=key, $2=value
 update_config_setting() {
   local key="$1" value="$2"
-  local tmp_file
+  local escaped_value tmp_file
+  escaped_value=$(escape_sed_replacement "$value")
   tmp_file=$(mktemp)
   # shellcheck disable=SC2064  # Intentional: expand now, not at signal time (local var)
   trap "rm -f '$tmp_file'" RETURN
   
   if grep -q "^${key}[[:space:]]*=" "$CONFIG_FILE"; then
-    sed "s|^${key}[[:space:]]*=.*|${key} = ${value}|" "$CONFIG_FILE" > "$tmp_file"
+    sed "s|^${key}[[:space:]]*=.*|${key} = ${escaped_value}|" "$CONFIG_FILE" > "$tmp_file"
     mv "$tmp_file" "$CONFIG_FILE"
   elif grep -q "^#[[:space:]]*${key}[[:space:]]*=" "$CONFIG_FILE"; then
-    sed "s|^#[[:space:]]*${key}[[:space:]]*=.*|${key} = ${value}|" "$CONFIG_FILE" > "$tmp_file"
+    sed "s|^#[[:space:]]*${key}[[:space:]]*=.*|${key} = ${escaped_value}|" "$CONFIG_FILE" > "$tmp_file"
     mv "$tmp_file" "$CONFIG_FILE"
   else
     # Setting doesn't exist - add after [stata_kernel] section header
     sed "/^\[stata_kernel\]/a\\
-${key} = ${value}" "$CONFIG_FILE" > "$tmp_file"
+${key} = ${escaped_value}" "$CONFIG_FILE" > "$tmp_file"
     mv "$tmp_file" "$CONFIG_FILE"
   fi
 }
@@ -275,9 +282,12 @@ ${key} = ${value}" "$CONFIG_FILE" > "$tmp_file"
 write_config() {
   if [[ ! -f "$CONFIG_FILE" ]]; then
     # Create new config from template
+    local escaped_stata_path escaped_execution_mode
+    escaped_stata_path=$(escape_sed_replacement "$STATA_PATH")
+    escaped_execution_mode=$(escape_sed_replacement "$EXECUTION_MODE")
     get_config_template | \
-      sed "s|STATA_PATH_PLACEHOLDER|$STATA_PATH|" | \
-      sed "s|EXECUTION_MODE_PLACEHOLDER|$EXECUTION_MODE|" > "$CONFIG_FILE"
+      sed "s|STATA_PATH_PLACEHOLDER|$escaped_stata_path|" | \
+      sed "s|EXECUTION_MODE_PLACEHOLDER|$escaped_execution_mode|" > "$CONFIG_FILE"
     chmod 600 "$CONFIG_FILE"
     print_success "Created configuration at $CONFIG_FILE"
   else
