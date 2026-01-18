@@ -64,3 +64,16 @@ This feature adds support for installing send-to-stata via curl-pipe-to-bash, en
 2. WHEN installation completes via either method, THE Installer SHALL configure the same Zed tasks
 3. WHEN installation completes via either method, THE Installer SHALL configure the same keybindings
 4. THE Installer SHALL display the same success messages and summary for both methods
+
+### Requirement 6: Documentation Updates
+
+**User Story:** As a user, I want the documentation to show the curl-pipe installation method prominently, so that I can quickly install without cloning the repository.
+
+#### Acceptance Criteria
+
+1. THE README.md SHALL present the curl-pipe installation command in the "Send to Stata (Optional)" section, immediately after the introductory paragraph and before the keybindings table
+2. THE README.md SHALL remove the "Quick Install" subsection (moving git clone instructions elsewhere)
+3. THE README.md SHALL refactor "Building from Source" into two subsections: "Zed Extension" and "Send-to-Stata"
+4. THE README.md SHALL place the git clone installation method in the new "Send-to-Stata" subsection under "Building from Source"
+5. THE SEND-TO-STATA.md SHALL present the curl-pipe installation command as the primary installation method in Quick Start
+6. THE SEND-TO-STATA.md SHALL also document the git clone method as an alternative
