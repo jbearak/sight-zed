@@ -316,3 +316,138 @@ generate_stata_file() {
         fi
     done
 }
+
+# ============================================================================
+# Property 5: Stdin Content Round-Trip Preservation
+# For any input string (including shell metacharacters), piping to stdin with
+# --stdin flag SHALL result in a temp file containing the exact same bytes.
+# **Feature: robust-compound-strings**
+# **Validates: Requirements 1.1, 1.2, 1.3, 4.1, 4.2, 4.3**
+# ============================================================================
+
+# Generate random string with shell metacharacters
+generate_metachar_string() {
+    local length=$((RANDOM % 50 + 10))
+    local chars='abcdefghijklmnopqrstuvwxyz0123456789 `"'"'"'$\!@#%^&*()[]{}|;:<>,.?/~'
+    local result=""
+    for ((i = 0; i < length; i++)); do
+        local idx=$((RANDOM % ${#chars}))
+        result+="${chars:$idx:1}"
+    done
+    printf '%s' "$result"
+}
+
+# Feature: robust-compound-strings, Property 5: Stdin round-trip preservation
+@test "Property 5: stdin content preserved exactly in temp file" {
+    for ((i = 0; i < ITERATIONS; i++)); do
+        local content
+        content=$(generate_metachar_string)
+        
+        local temp_file
+        temp_file=$(printf '%s' "$content" | bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; stdin_content=\$(read_stdin_content); create_temp_file \"\$stdin_content\"")
+        
+        if [[ ! -f "$temp_file" ]]; then
+            echo "FAIL: iteration=$i, temp file not created"
+            return 1
+        fi
+        
+        local file_content
+        file_content=$(cat "$temp_file")
+        
+        if [[ "$file_content" != "$content" ]]; then
+            echo "FAIL: iteration=$i, content mismatch"
+            echo "Expected: $content"
+            echo "Got: $file_content"
+            return 1
+        fi
+        
+        rm -f "$temp_file"
+    done
+}
+
+# Feature: robust-compound-strings, Property 5: Compound strings preserved
+@test "Property 5: compound strings preserved via stdin" {
+    local compound_patterns=(
+        '`"simple"'"'"
+        '`"with spaces"'"'"
+        '`"nested `"inner"'"'"'"'"'"
+        'display `"test"'"'"
+        'local x = `"value"'"'"
+    )
+    
+    for ((i = 0; i < ITERATIONS; i++)); do
+        local idx=$((RANDOM % ${#compound_patterns[@]}))
+        local content="${compound_patterns[$idx]}"
+        
+        local temp_file
+        temp_file=$(printf '%s' "$content" | bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; stdin_content=\$(read_stdin_content); create_temp_file \"\$stdin_content\"")
+        
+        local file_content
+        file_content=$(cat "$temp_file")
+        
+        if [[ "$file_content" != "$content" ]]; then
+            echo "FAIL: iteration=$i, compound string mismatch"
+            echo "Expected: $content"
+            echo "Got: $file_content"
+            return 1
+        fi
+        
+        rm -f "$temp_file"
+    done
+}
+
+# Feature: robust-compound-strings, Property 5: Newlines preserved
+@test "Property 5: multiline content preserved via stdin" {
+    for ((i = 0; i < ITERATIONS; i++)); do
+        local num_lines=$((RANDOM % 5 + 1))
+        local content=""
+        for ((l = 0; l < num_lines; l++)); do
+            [[ $l -gt 0 ]] && content+=$'\n'
+            content+="line_$l content_$RANDOM"
+        done
+        
+        local temp_file
+        temp_file=$(printf '%s' "$content" | bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; stdin_content=\$(read_stdin_content); create_temp_file \"\$stdin_content\"")
+        
+        local file_content
+        file_content=$(cat "$temp_file")
+        
+        if [[ "$file_content" != "$content" ]]; then
+            echo "FAIL: iteration=$i, multiline content mismatch"
+            return 1
+        fi
+        
+        rm -f "$temp_file"
+    done
+}
+
+# ============================================================================
+# Property 6: Backward Compatibility with --text
+# For any input string passed via --text (without --stdin), the script SHALL
+# produce the same temp file content as before.
+# **Feature: robust-compound-strings**
+# **Validates: Requirements 2.1, 2.2**
+# ============================================================================
+
+# Feature: robust-compound-strings, Property 6: --text behavior unchanged
+@test "Property 6: --text produces same content as before" {
+    for ((i = 0; i < ITERATIONS; i++)); do
+        # Generate simple content (no metacharacters that would break --text)
+        local content="simple_content_$RANDOM"
+        
+        local temp_file
+        temp_file=$(bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; create_temp_file '$content'")
+        
+        local file_content
+        file_content=$(cat "$temp_file")
+        
+        if [[ "$file_content" != "$content" ]]; then
+            echo "FAIL: iteration=$i, --text content mismatch"
+            echo "Expected: $content"
+            echo "Got: $file_content"
+            return 1
+        fi
+        
+        rm -f "$temp_file"
+    done
+}
