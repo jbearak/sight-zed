@@ -270,30 +270,36 @@ uninstall() {
     # Remove tasks from tasks.json
     local tasks_file="$ZED_CONFIG_DIR/tasks.json"
     if [[ -f "$tasks_file" ]]; then
-        local before_count
-        before_count=$(jq 'length' "$tasks_file")
-        jq '[.[] | select(.label | startswith("Stata:") | not)]' "$tasks_file" > "${tasks_file}.tmp"
-        local after_count
-        after_count=$(jq 'length' "${tasks_file}.tmp")
-        mv "${tasks_file}.tmp" "$tasks_file"
-        if [[ "$before_count" != "$after_count" ]]; then
-            print_success "Removed Stata tasks from $tasks_file"
-            removed=true
+        local filtered
+        if filtered=$(jq '[.[] | select(.label | startswith("Stata:") | not)]' "$tasks_file" 2>/dev/null); then
+            local before_count after_count
+            before_count=$(jq 'length' "$tasks_file" 2>/dev/null || echo 0)
+            after_count=$(echo "$filtered" | jq 'length')
+            echo "$filtered" > "$tasks_file"
+            if [[ "$before_count" != "$after_count" ]]; then
+                print_success "Removed Stata tasks from $tasks_file"
+                removed=true
+            fi
+        else
+            print_warning "Could not parse $tasks_file (invalid JSON?), skipping task removal"
         fi
     fi
     
     # Remove keybindings from keymap.json
     local keymap_file="$ZED_CONFIG_DIR/keymap.json"
     if [[ -f "$keymap_file" ]]; then
-        local before_count
-        before_count=$(jq 'length' "$keymap_file")
-        jq '[.[] | select((.context | test("extension == do$")) | not)]' "$keymap_file" > "${keymap_file}.tmp"
-        local after_count
-        after_count=$(jq 'length' "${keymap_file}.tmp")
-        mv "${keymap_file}.tmp" "$keymap_file"
-        if [[ "$before_count" != "$after_count" ]]; then
-            print_success "Removed Stata keybindings from $keymap_file"
-            removed=true
+        local filtered
+        if filtered=$(jq '[.[] | select((.context | test("extension == do$")) | not)]' "$keymap_file" 2>/dev/null); then
+            local before_count after_count
+            before_count=$(jq 'length' "$keymap_file" 2>/dev/null || echo 0)
+            after_count=$(echo "$filtered" | jq 'length')
+            echo "$filtered" > "$keymap_file"
+            if [[ "$before_count" != "$after_count" ]]; then
+                print_success "Removed Stata keybindings from $keymap_file"
+                removed=true
+            fi
+        else
+            print_warning "Could not parse $keymap_file (invalid JSON?), skipping keybinding removal"
         fi
     fi
     
