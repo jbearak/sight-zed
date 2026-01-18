@@ -32,10 +32,10 @@
 
 ## Task 5: Implement extension build validator
 **Validates: Requirements 3.1, 3.2, 3.3, 3.4**
-- [ ] 5.1 Implement `validate_extension_build()` function
-- [ ] 5.2 Execute `cargo build --release --target wasm32-wasip1`
-- [ ] 5.3 Verify WASM output file exists and report size
-- [ ] 5.4 Add error handling for missing toolchain/target
+- [x] 5.1 Implement `validate_extension_build()` function
+- [x] 5.2 Execute `cargo build --release --target wasm32-wasip1`
+- [x] 5.3 Verify WASM output file exists and report size
+- [x] 5.4 Add error handling for missing toolchain/target
 
 ## Task 6: Implement grammar build validator
 **Validates: Requirements 4.1, 4.2, 4.3, 4.4, 4.5**
