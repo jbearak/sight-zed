@@ -14,7 +14,7 @@ flowchart TD
     B --> C[Validate LSP Release]
     B --> D[Validate Grammar Revision]
     B --> E[Build Extension WASM]
-    B --> F[Build Grammar - Optional]
+    B --> F[Build Grammar - Required]
     C --> G[Report Results]
     D --> G
     E --> G
@@ -199,6 +199,14 @@ Based on the acceptance criteria analysis, the following properties are testable
 *For any* version string extracted from source, the validator SHALL handle both "vX.Y.Z" and "X.Y.Z" formats consistently when querying GitHub releases.
 **Validates: Requirements 6.4**
 
+**Property 6: Grammar build output verification**
+*For any* successful grammar build, the validator SHALL verify that a `.wasm` file is produced in the build output directory.
+**Validates: Requirements 4.2, 4.4**
+
+**Property 7: Temporary directory cleanup**
+*For any* grammar build validation (success or failure), the validator SHALL remove the temporary clone directory after validation completes.
+**Validates: Requirements 4.5**
+
 ## Error Handling
 
 | Error Condition | Handling Strategy |
@@ -216,6 +224,43 @@ Based on the acceptance criteria analysis, the following properties are testable
 | tree-sitter CLI not found | Exit with error, report missing dependency |
 | Grammar WASM build failure | Report full build output, this prevents Zed install |
 | Git clone failure | Report network/auth error |
+
+## Component 6: Documentation Generator
+
+Updates AGENTS.md with validation suite usage instructions.
+
+```bash
+# Documentation content to add to AGENTS.md
+# Describes:
+# - How to run full validation suite
+# - How to run individual checks
+# - Prerequisites and dependencies
+```
+
+The documentation section in AGENTS.md will include:
+
+```markdown
+## Extension Build Validation
+
+### Prerequisites
+- Rust toolchain with `wasm32-wasip1` target (`rustup target add wasm32-wasip1`)
+- `tree-sitter` CLI installed
+- `curl` for GitHub API requests
+- `git` for cloning grammar repository
+
+### Running Validations
+
+# Run all validations (recommended before publishing)
+./validate.sh
+
+# Run individual checks
+./validate.sh --lsp          # Check LSP release exists with all assets
+./validate.sh --grammar-rev  # Check grammar revision exists
+./validate.sh --build        # Build extension WASM
+./validate.sh --grammar-build # Build grammar from revision
+```
+
+**Design Decision:** Documentation is added to the existing AGENTS.md file rather than creating a separate README to keep all developer/agent instructions in one place, consistent with the project's existing documentation structure.
 
 ## Testing Strategy
 
@@ -239,6 +284,7 @@ The validation script will be tested through:
 | Build extension | Run cargo build | PASS (if toolchain installed) |
 | All validations pass | Run full suite | Exit code 0 |
 | One validation fails | Run with bad version | Exit code non-zero |
+| Documentation present | Check AGENTS.md updated | Contains validation instructions |
 
 ### Property-Based Testing
 
@@ -248,3 +294,15 @@ Property tests will verify:
 - Asset checking correctly identifies all missing assets
 
 Test framework: Shell-based tests using `bats` (Bash Automated Testing System) or simple shell assertions.
+
+## Requirements Traceability
+
+| Requirement | Design Component | Properties |
+|-------------|------------------|------------|
+| 1. LSP Release Validation | Component 2: LSP Release Validator | Property 1, 3, 5 |
+| 2. Grammar Revision Validation | Component 3: Grammar Revision Validator | Property 2 |
+| 3. Extension WASM Build | Component 4: Extension Build Validator | Property 4 |
+| 4. Grammar Build Validation | Component 5: Grammar Build Validator | Property 6, 7 |
+| 5. Test Suite Execution | Main Entry Point | Property 4 |
+| 6. Configuration Parsing | Component 1: Configuration Parser | Property 1, 2, 5 |
+| 7. Documentation | Component 6: Documentation Generator | N/A (manual verification) |
