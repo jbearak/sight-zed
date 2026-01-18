@@ -143,6 +143,7 @@ This document specifies the requirements for implementing send-to-stata function
 13. THE popup dialog SHALL ask the user if they want to update the registration, with Yes/No buttons
 14. IF the user clicks Yes, THEN THE Installer SHALL proceed with re-registration
 15. IF the user clicks No, THEN THE Installer SHALL skip registration and continue with installation
+16. THE documentation SHALL advise users to re-run the installer after upgrading Stata to update the type library registration
 
 ### Requirement 8: Zed Tasks Configuration
 

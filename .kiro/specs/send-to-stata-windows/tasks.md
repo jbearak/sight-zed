@@ -315,4 +315,5 @@
     - Navigate to Stata installation directory
     - Run `StataSE.exe /Register` (or appropriate variant)
   - Note that registration requires elevation (UAC prompt)
-  - **Validates: Requirements 17.8, 17.9**
+  - Advise users to re-run the installer after upgrading Stata to update registration
+  - **Validates: Requirements 17.8, 17.9, 17.16**
