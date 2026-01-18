@@ -13,6 +13,12 @@ Send Stata code from Zed editor to the Stata GUI application for execution.
 ## Quick Start
 
 ```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.sh)"
+```
+
+Or install from a local clone:
+
+```bash
 git clone https://github.com/jbearak/sight-zed
 cd sight-zed
 ./install-send-to-stata.sh

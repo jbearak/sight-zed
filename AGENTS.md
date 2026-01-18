@@ -180,3 +180,15 @@ In `.do` files:
 | `alt-shift-cmd-enter` | Include file (preserves local macros) |
 
 See [SEND-TO-STATA.md](SEND-TO-STATA.md) for full documentation.
+
+## Updating send-to-stata.sh
+
+The installer (`install-send-to-stata.sh`) embeds a SHA-256 checksum of `send-to-stata.sh` for integrity verification during curl-pipe installation. When modifying `send-to-stata.sh`:
+
+1. Make your changes to `send-to-stata.sh`
+2. Run `./update-checksum.sh` — this updates the checksum in the installer and commits the change
+3. Commit `send-to-stata.sh` separately (or amend the checksum commit)
+
+The checksum ensures the two scripts stay in sync and detects accidental mismatches or CDN caching issues. It doesn't protect against a compromised GitHub account (an attacker could modify both files). Verification is skipped when users specify a custom `SIGHT_GITHUB_REF` for testing branches.
+
+If you forget to update the checksum, curl-pipe installations will fail with a checksum mismatch error.

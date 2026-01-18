@@ -156,9 +156,16 @@ teardown() {
     temp_file=$(bash -c "export TMPDIR='$TEMP_DIR'; source '$SCRIPT'; create_temp_file 'display 1'")
     [ -f "$temp_file" ]
 
-    run bash -c "export STATA_CLEANUP_ON_ERROR=1; source '$SCRIPT'; send_to_stata DefinitelyNotAStataApp '$temp_file'"
-    [ "$status" -eq 5 ]
-    [ ! -f "$temp_file" ]
+    # Use StataBE which passes validation but likely isn't installed, causing AppleScript to fail
+    # If StataBE happens to be installed and succeeds, skip the assertions
+    run bash -c "export STATA_CLEANUP_ON_ERROR=1; source '$SCRIPT'; send_to_stata StataBE '$temp_file'"
+    if [ "$status" -eq 5 ]; then
+        # AppleScript failed as expected - verify cleanup occurred
+        [ ! -f "$temp_file" ]
+    else
+        # StataBE is installed and succeeded - can't test cleanup behavior
+        [ "$status" -eq 0 ]
+    fi
 }
 
 @test "stdin: empty stdin with --row fallback" {
@@ -177,7 +184,7 @@ teardown() {
 # ============================================================================
 
 @test "file validation: non-existent file shows error" {
-    run env STATA_APP=StataMP "$SCRIPT" --file --file "/nonexistent/path.do"
+    run env STATA_APP=StataMP "$SCRIPT" --file-mode --file "/nonexistent/path.do"
     [ "$status" -eq 2 ]
     [[ "$output" == *"Error: Cannot read file"* ]]
 }
@@ -374,7 +381,7 @@ call_func() {
 @test "integration: --file mode with STATA_APP set" {
     # AppleScript DoCommandAsync succeeds even if Stata isn't running
     # (it queues the command or launches Stata)
-    run env STATA_APP=StataMP "$SCRIPT" --file --file "$FIXTURES/simple.do"
+    run env STATA_APP=StataMP "$SCRIPT" --file-mode --file "$FIXTURES/simple.do"
     # Should succeed (exit 0) or fail with AppleScript error (exit 5)
     [[ "$status" -eq 0 || "$status" -eq 5 ]]
 }
