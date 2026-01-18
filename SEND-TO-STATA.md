@@ -108,7 +108,7 @@ If you prefer not to use the installer:
      },
      {
        "label": "Stata: Send File",
-      "command": "send-to-stata.sh --file --file \"$ZED_FILE\"",
+      "command": "send-to-stata.sh --file \"$ZED_FILE\"",
        "use_new_terminal": false,
        "allow_concurrent_runs": true,
        "reveal": "never",
