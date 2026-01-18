@@ -36,6 +36,7 @@ FILE_PATH=""
 ROW=""
 TEXT=""
 STDIN_MODE=false
+INCLUDE_MODE=false
 
 print_usage() {
     cat <<EOF
@@ -50,6 +51,7 @@ Options:
   --row <number>    Cursor row, 1-indexed (required for --statement without --text)
   --text <string>   Selected text (if provided, used instead of file/row)
   --stdin           Read text from stdin (mutually exclusive with --text)
+  --include         Use 'include' instead of 'do' (preserves local macro scope)
 
 Environment Variables:
   STATA_APP              Stata application name (StataMP, StataSE, StataIC, Stata)
@@ -127,6 +129,10 @@ parse_arguments() {
                 ;;
             --stdin)
                 STDIN_MODE=true
+                shift
+                ;;
+            --include)
+                INCLUDE_MODE=true
                 shift
                 ;;
             --help|-h)
@@ -453,8 +459,14 @@ send_to_stata() {
     local escaped_path
     escaped_path=$(escape_for_applescript "$temp_file")
 
+    # Determine Stata command based on INCLUDE_MODE
+    local stata_cmd="do"
+    if [[ "$INCLUDE_MODE" == true ]]; then
+        stata_cmd="include"
+    fi
+
     # Build the AppleScript command
-    local applescript_cmd="tell application \"${stata_app}\" to DoCommandAsync \"do \\\"${escaped_path}\\\"\""
+    local applescript_cmd="tell application \"${stata_app}\" to DoCommandAsync \"${stata_cmd} \\\"${escaped_path}\\\"\""
 
     # Execute via osascript
     local error_output
