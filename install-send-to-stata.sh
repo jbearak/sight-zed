@@ -80,19 +80,19 @@ install_script() {
 # ============================================================================
 
 # Task definitions to install
+# Note: Args must be in command string, not args array (Zed doesn't pass args array correctly)
+# Note: Zed uses ${VAR:default} syntax (no dash), not shell's ${VAR:-default}
 STATA_TASKS='[
   {
     "label": "Stata: Send Statement",
-    "command": "send-to-stata.sh",
-    "args": ["--statement", "--file", "$ZED_FILE", "--row", "${ZED_ROW:-1}", "--text", "${ZED_SELECTED_TEXT:-}"],
+    "command": "send-to-stata.sh --statement --file \"$ZED_FILE\" --row \"$ZED_ROW\" --text \"${ZED_SELECTED_TEXT:}\"",
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
     "reveal": "never"
   },
   {
     "label": "Stata: Send File",
-    "command": "send-to-stata.sh",
-    "args": ["--file", "--file", "$ZED_FILE"],
+    "command": "send-to-stata.sh --file --file \"$ZED_FILE\"",
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
     "reveal": "never"
