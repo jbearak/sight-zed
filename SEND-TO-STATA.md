@@ -114,7 +114,7 @@ If you prefer not to use the installer:
      },
      {
        "label": "Stata: Send File",
-       "command": "send-to-stata.sh --file --file \"$ZED_FILE\"",
+       "command": "send-to-stata.sh --file-mode --file \"$ZED_FILE\"",
        "use_new_terminal": false,
        "allow_concurrent_runs": true,
        "reveal": "never",
@@ -130,7 +130,7 @@ If you prefer not to use the installer:
      },
      {
        "label": "Stata: Include File",
-       "command": "send-to-stata.sh --file --include --file \"$ZED_FILE\"",
+       "command": "send-to-stata.sh --file-mode --include --file \"$ZED_FILE\"",
        "use_new_terminal": false,
        "allow_concurrent_runs": true,
        "reveal": "never",

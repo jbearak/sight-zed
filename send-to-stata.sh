@@ -7,7 +7,7 @@
 #
 # Modes:
 #   --statement   Send current statement to Stata GUI
-#   --file        Send entire file to Stata GUI
+#   --file-mode   Send entire file to Stata GUI
 #
 # Options:
 #   --file <path>     Source file path (required)
@@ -38,13 +38,14 @@ TEXT=""
 STDIN_MODE=false
 INCLUDE_MODE=false
 
+# Prints usage information to stdout.
 print_usage() {
     cat <<EOF
 Usage: send-to-stata.sh <mode> [options]
 
 Modes:
   --statement   Send current statement to Stata GUI
-  --file        Send entire file to Stata GUI
+  --file-mode   Send entire file to Stata GUI
 
 Options:
   --file <path>     Source file path (required)
@@ -70,6 +71,9 @@ Exit Codes:
 EOF
 }
 
+# Parses command-line arguments and sets global variables.
+# Sets: MODE, FILE_PATH, ROW, TEXT, STDIN_MODE
+# Exits with code 1 on invalid arguments.
 parse_arguments() {
     if [[ $# -eq 0 ]]; then
         echo "Error: No arguments provided" >&2
@@ -87,22 +91,22 @@ parse_arguments() {
                 MODE="statement"
                 shift
                 ;;
-            --file)
-                # Check if this is the mode or the option
-                if [[ -z "$MODE" ]]; then
-                    # This is the mode
-                    MODE="file"
-                    shift
-                else
-                    # This is the --file option (file path)
-                    if [[ $# -lt 2 ]]; then
-                        echo "Error: --file option requires a path argument" >&2
-                        exit 1
-                    fi
-                    shift
-                    FILE_PATH="$1"
-                    shift
+            --file-mode)
+                if [[ -n "$MODE" ]]; then
+                    echo "Error: Cannot specify multiple modes" >&2
+                    exit 1
                 fi
+                MODE="file"
+                shift
+                ;;
+            --file)
+                if [[ $# -lt 2 ]]; then
+                    echo "Error: --file option requires a path argument" >&2
+                    exit 1
+                fi
+                shift
+                FILE_PATH="$1"
+                shift
                 ;;
             --row)
                 if [[ $# -lt 2 ]]; then
@@ -148,6 +152,8 @@ parse_arguments() {
     done
 }
 
+# Validates parsed arguments for consistency and completeness.
+# Exits with code 1 if validation fails.
 validate_arguments() {
     # Check mutual exclusivity of --stdin and --text
     if [[ "$STDIN_MODE" == true && -n "$TEXT" ]]; then
@@ -157,7 +163,7 @@ validate_arguments() {
 
     # Mode is required
     if [[ -z "$MODE" ]]; then
-        echo "Error: Mode is required (--statement or --file)" >&2
+        echo "Error: Mode is required (--statement or --file-mode)" >&2
         exit 1
     fi
 
@@ -455,6 +461,12 @@ send_to_stata() {
     local stata_app="$1"
     local temp_file="$2"
 
+    # Validate stata_app to prevent command injection
+    case "$stata_app" in
+        StataMP|StataSE|StataIC|StataBE|Stata) ;;
+        *) echo "Error: Invalid Stata application: $stata_app" >&2; exit 1 ;;
+    esac
+
     # Escape the temp file path for AppleScript
     local escaped_path
     escaped_path=$(escape_for_applescript "$temp_file")
@@ -483,6 +495,7 @@ send_to_stata() {
 # Main Entry Point
 # ============================================================================
 
+# Main entry point. Parses arguments, detects Stata, and sends code.
 main() {
     parse_arguments "$@"
     validate_arguments

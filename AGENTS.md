@@ -163,8 +163,10 @@ When tasks run through `/bin/zsh -i -c`, there are two easy ways to break quotin
 
 2. Do not inline the selected text into the command using Zed interpolation (`${ZED_SELECTED_TEXT:}`) when you need to support backticks.
    - Zed interpolation happens before the shell parses the command; if the selection contains backticks (Stata compound strings like `` `\"1234\"' ``), zsh will attempt command substitution and you can get parse errors like `parse error near else`.
-   - In addition, Zed may expand `$ZED_SELECTED_TEXT` into the command string before zsh parses it. To avoid this entirely, read the environment variable at runtime via a helper that Zed does not pre-expand, e.g.:
+   - **CRITICAL**: You MUST use python3 to read `$ZED_SELECTED_TEXT` without shell interpretation:
      - `python3 -c 'import os,sys; sys.stdout.write(os.environ.get("ZED_SELECTED_TEXT",""))'`
+   - **DO NOT** use shell variable expansion like `printf '%s' "$ZED_SELECTED_TEXT"` or `[ -n "$ZED_SELECTED_TEXT" ]`. The shell will interpret quotes, backticks, and special characters in the variable, breaking compound strings.
+   - Python3 reads the raw bytes from the environment without any parsing. This is the only safe approach.
 
 ## Send-to-Stata Keybindings
 
