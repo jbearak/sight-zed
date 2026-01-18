@@ -79,3 +79,31 @@ The `not_in = ["string"]` constraint on double quotes prevents auto-closing insi
 **Do not remove this constraint.** Without it, typing `"` inside a compound string produces broken behavior where the first quote does nothing, then typing a second quote produces `"""`, requiring backspace to fix.
 
 This is a Zed API limitation - extensions cannot distinguish between regular strings and compound strings, or programmatically control auto-closing behavior. The current configuration is the least-bad option.
+
+## Extension Build Validation
+
+### Prerequisites
+
+- Rust toolchain with wasm32-wasip1 target (`rustup target add wasm32-wasip1`)
+- tree-sitter CLI (`npm install -g tree-sitter-cli`)
+- curl
+- git
+
+### Running Validation
+
+Full validation suite:
+```bash
+./validate.sh
+```
+
+Individual checks:
+```bash
+./validate.sh --lsp          # Check LSP version
+./validate.sh --grammar-rev  # Check grammar revision
+./validate.sh --build        # Test extension build
+./validate.sh --grammar-build # Test grammar build
+```
+
+### Environment Variables
+
+- `GITHUB_TOKEN`: Optional, prevents API rate limiting when checking versions
