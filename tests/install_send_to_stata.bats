@@ -95,8 +95,8 @@ call_func() {
     [ "$status" -eq 0 ]
 
     # Must not wrap/escape the selection by printing extra quotes.
-    [[ "$output" == *"printf '%s'"* ]]
-    [[ "$output" == *"\$ZED_SELECTED_TEXT"* ]]
+    [[ "$output" == *"python3 -c"* ]]
+    [[ "$output" == *"ZED_SELECTED_TEXT"* ]]
     [[ "$output" != *"printf '"'"'%s'"'"'"* ]]
 }
 
