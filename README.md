@@ -23,7 +23,7 @@ cargo build --release --target wasm32-wasip1
 
 ## Related Projects
 
-- [Sight LSP](https://github.com/jbearak/sight) - The Stata language server
+- [Sight LSP](https://github.com/jbearak/sight) - A language server protocol implementation for the Stata statistical programming language
 - [tree-sitter-stata](https://github.com/jbearak/tree-sitter-stata) - Tree-sitter grammar for Stata
 
 ## License
