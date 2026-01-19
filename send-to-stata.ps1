@@ -20,6 +20,36 @@ $clipPause = 10
 $winPause = 10
 $keyPause = 1
 
+# Add required assemblies
+Add-Type -AssemblyName System.Windows.Forms
+
+# Win32 API declarations
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+
+public class User32 {
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr hWnd);
+    
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+    
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+    
+    [DllImport("user32.dll")]
+    public static extern bool IsIconic(IntPtr hWnd);
+    
+    [DllImport("user32.dll")]
+    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+    
+    public const int SW_RESTORE = 9;
+    public const byte VK_MENU = 0x12;
+    public const uint KEYEVENTF_KEYUP = 0x0002;
+}
+"@
+
 # Parameter validation
 if ($Statement -and $FileMode) {
     Write-Error "Statement and FileMode are mutually exclusive"
@@ -90,6 +120,32 @@ function Find-StataWindow {
     return $null
 }
 
+function Invoke-FocusAcquisition {
+    param(
+        [IntPtr]$WindowHandle,
+        [int]$MaxRetries = 3
+    )
+    
+    if ([User32]::IsIconic($WindowHandle)) {
+        [User32]::ShowWindow($WindowHandle, [User32]::SW_RESTORE)
+    }
+    
+    for ($attempt = 1; $attempt -le $MaxRetries; $attempt++) {
+        [User32]::keybd_event([User32]::VK_MENU, 0, 0, [UIntPtr]::Zero)
+        [User32]::keybd_event([User32]::VK_MENU, 0, [User32]::KEYEVENTF_KEYUP, [UIntPtr]::Zero)
+        
+        [User32]::SetForegroundWindow($WindowHandle)
+        
+        Start-Sleep -Milliseconds ($winPause * $attempt)
+        
+        if ([User32]::GetForegroundWindow() -eq $WindowHandle) {
+            return $true
+        }
+    }
+    
+    return $false
+}
+
 # Placeholder functions to be implemented later
 function Get-StatementAtRow {
     param([string]$FilePath, [int]$Row)
@@ -140,5 +196,30 @@ function Read-StdinContent {
 }
 
 function Send-ToStata {
-    # TODO: Implement sending to Stata
+    param(
+        [string]$TempFilePath,
+        [switch]$UseInclude
+    )
+    
+    $command = if ($UseInclude) { "include `"$TempFilePath`"" } else { "do `"$TempFilePath`"" }
+    
+    $stataWindow = Find-StataWindow
+    if (-not $stataWindow) {
+        exit $EXIT_STATA_NOT_FOUND
+    }
+    
+    if (-not (Invoke-FocusAcquisition -WindowHandle $stataWindow.MainWindowHandle)) {
+        exit $EXIT_SENDKEYS_FAIL
+    }
+    
+    [System.Windows.Forms.Clipboard]::SetText($command)
+    Start-Sleep -Milliseconds $clipPause
+    
+    [System.Windows.Forms.SendKeys]::SendWait("^1")
+    Start-Sleep -Milliseconds $winPause
+    
+    [System.Windows.Forms.SendKeys]::SendWait("^v")
+    Start-Sleep -Milliseconds $keyPause
+    
+    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
 }

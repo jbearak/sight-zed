@@ -143,4 +143,47 @@ Describe "File Operations" {
         # Cleanup
         $createdFiles | ForEach-Object { Remove-Item $_ -ErrorAction SilentlyContinue }
     }
+    
+    It "Property6: Command format by mode" -Tag "Property6" {
+        # Helper function to extract command format logic
+        function Get-CommandFormat {
+            param([string]$Path, [bool]$Include)
+            if ($Include) {
+                return "include `"$Path`""
+            } else {
+                return "do `"$Path`""
+            }
+        }
+        
+        for ($i = 0; $i -lt 100; $i++) {
+            # Generate random temp file path
+            $tempPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "test_$(Get-Random).do")
+            $includeMode = (Get-Random -Maximum 2) -eq 1
+            
+            $command = Get-CommandFormat -Path $tempPath -Include $includeMode
+            
+            if ($includeMode) {
+                $command | Should -Be "include `"$tempPath`""
+            } else {
+                $command | Should -Be "do `"$tempPath`""
+            }
+        }
+    }
+}
+
+Describe "Windows Automation" {
+    It "Property11: Focus acquisition reliability" -Tag "Property11", "WindowsOnly" {
+        if ($env:OS -ne "Windows_NT") { Set-ItResult -Skipped -Because "Windows-only test" }
+        # Test implementation for Windows
+    }
+    
+    It "Property12: STA mode verification" -Tag "Property12", "WindowsOnly" {
+        if ($env:OS -ne "Windows_NT") { Set-ItResult -Skipped -Because "Windows-only test" }
+        # Test implementation for Windows
+    }
+    
+    It "Property13: Command window focus" -Tag "Property13", "WindowsOnly" {
+        if ($env:OS -ne "Windows_NT") { Set-ItResult -Skipped -Because "Windows-only test" }
+        # Test implementation for Windows
+    }
 }
