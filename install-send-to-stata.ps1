@@ -123,7 +123,7 @@ function Install-Keybindings {
     if ($keybindings) { $result += $keybindings }
     $result += $newBlock
 
-    $json = ConvertTo-Json -InputObject $result -Depth 10
+    $json = ConvertTo-Json -InputObject $result -Depth 10 -Compress
     # Decode HTML-safe escapes that PowerShell adds so Zed sees human-readable context
     $json = $json -replace '\\u0026','&'
     $json = $json -replace '\\u003c','<'
