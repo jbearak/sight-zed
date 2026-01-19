@@ -109,10 +109,10 @@ function Install-Keybindings {
     $newBlock = @{
         context = "Editor && extension == do"
         bindings = @{
-            "ctrl-enter" = @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Send Statement" }))
-            "shift-ctrl-enter" = @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Send File" }))
-            "alt-ctrl-enter" = @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Include Statement" }))
-            "alt-shift-ctrl-enter" = @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Include File" }))
+            "ctrl-enter" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Send Statement" })))
+            "shift-ctrl-enter" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Send File" })))
+            "alt-ctrl-enter" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Include Statement" })))
+            "alt-shift-ctrl-enter" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Include File" })))
             # Use literal backtick (``) so it survives PowerShell parsing
             "shift-enter" = @("workspace::SendKeystrokes", "ctrl-c ctrl-`` ctrl-v enter")
             "alt-enter" = @("workspace::SendKeystrokes", "home shift-end ctrl-c ctrl-`` ctrl-v enter")
