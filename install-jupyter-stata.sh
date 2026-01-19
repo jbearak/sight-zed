@@ -83,8 +83,7 @@ check_python3() {
   # stata_kernel works best with Python 3.9-3.11
   # Python 3.12+ removed the 'imp' module that old ipykernel versions need
   if [[ "$py_major" -eq 3 ]] && [[ "$py_minor" -ge 12 ]]; then
-    print_warning "Python $py_version detected. stata_kernel may need package upgrades for compatibility."
-    print_info "The installer will handle this automatically."
+    print_info "Python $py_version detected. Installer will upgrade ipykernel for compatibility."
   fi
 }
 
@@ -161,19 +160,38 @@ detect_stata_app() {
 # ============================================================================
 
 # Creates virtual environment if it doesn't exist.
+# Recreates if Python version mismatch detected.
 create_venv() {
+  local needs_recreate=false
+  
   if [[ -x "$VENV_DIR/bin/python" ]]; then
-    print_info "Virtual environment already exists at $VENV_DIR"
-    return 0
+    # Check if venv Python version matches system Python
+    local venv_version system_version
+    venv_version=$("$VENV_DIR/bin/python" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo "unknown")
+    system_version=$("$PYTHON_CMD" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    
+    if [[ "$venv_version" != "$system_version" ]]; then
+      print_warning "Python version mismatch: venv=$venv_version, system=$system_version"
+      print_info "Recreating virtual environment..."
+      rm -rf "$VENV_DIR"
+      needs_recreate=true
+    else
+      print_info "Virtual environment already exists at $VENV_DIR"
+      return 0
+    fi
+  else
+    needs_recreate=true
   fi
   
-  print_info "Creating virtual environment..."
-  mkdir -p "$(dirname "$VENV_DIR")"
-  if ! "$PYTHON_CMD" -m venv "$VENV_DIR"; then
-    print_error "Failed to create virtual environment"
-    exit 2
+  if [[ "$needs_recreate" == true ]]; then
+    print_info "Creating virtual environment..."
+    mkdir -p "$(dirname "$VENV_DIR")"
+    if ! "$PYTHON_CMD" -m venv "$VENV_DIR"; then
+      print_error "Failed to create virtual environment"
+      exit 2
+    fi
+    print_success "Created virtual environment at $VENV_DIR"
   fi
-  print_success "Created virtual environment at $VENV_DIR"
 }
 
 # Installs stata_kernel and jupyter into the virtual environment.
@@ -528,18 +546,21 @@ print_summary() {
 main() {
   local do_uninstall=false
   local remove_config=false
+  local quiet=false
   
   # Parse arguments
   for arg in "$@"; do
     case "$arg" in
       --uninstall) do_uninstall=true ;;
       --remove-config) remove_config=true ;;
+      --quiet) quiet=true ;;
       --help|-h)
-        echo "Usage: $0 [--uninstall] [--remove-config]"
+        echo "Usage: $0 [--uninstall] [--remove-config] [--quiet]"
         echo ""
         echo "Options:"
         echo "  --uninstall       Remove stata_kernel installation"
         echo "  --remove-config   Also remove config file (with --uninstall)"
+        echo "  --quiet           Suppress summary output"
         exit 0
         ;;
     esac
@@ -550,13 +571,17 @@ main() {
     exit 0
   fi
   
-  echo "Installing stata_kernel for Zed Jupyter integration..."
-  echo ""
+  if [[ "$quiet" == "false" ]]; then
+    echo "Installing stata_kernel for Zed Jupyter integration..."
+    echo ""
+  fi
   
   check_prerequisites
   detect_stata_app
   
-  print_info "Detected Stata $STATA_EDITION at $STATA_PATH"
+  if [[ "$quiet" == "false" ]]; then
+    print_info "Detected Stata $STATA_EDITION at $STATA_PATH"
+  fi
   
   create_venv
   install_packages
@@ -565,7 +590,9 @@ main() {
   verify_kernel_spec
   install_workspace_kernel
   
-  print_summary
+  if [[ "$quiet" == "false" ]]; then
+    print_summary
+  fi
 }
 
 # Entry point guard - run main if executed directly

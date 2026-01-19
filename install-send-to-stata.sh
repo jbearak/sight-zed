@@ -431,20 +431,34 @@ uninstall() {
 
 # Main entry point. Handles --uninstall flag or runs installation.
 main() {
-  if [[ "${1:-}" == "--uninstall" ]]; then
-    uninstall
-    exit 0
-  fi
+  local quiet=false
+  
+  for arg in "$@"; do
+    case "$arg" in
+      --uninstall)
+        uninstall
+        exit 0
+        ;;
+      --quiet)
+        quiet=true
+        ;;
+    esac
+  done
 
-  echo "Installing send-to-stata for Zed..."
-  echo ""
+  if [[ "$quiet" == "false" ]]; then
+    echo "Installing send-to-stata for Zed..."
+    echo ""
+  fi
 
   check_prerequisites
   install_script
   install_tasks
   install_keybindings
   detect_stata
-  print_summary
+  
+  if [[ "$quiet" == "false" ]]; then
+    print_summary
+  fi
 }
 
 # Only run main if script is executed directly (not sourced)
