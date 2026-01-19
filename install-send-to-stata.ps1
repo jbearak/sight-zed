@@ -4,33 +4,42 @@
     [switch]$SkipAutomationCheck
 )
 
-function Install-Script {
+function Get-HostArch {
+    # Detect host architecture for selecting the correct binary
+    try {
+        $arch = [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture
+        if ($arch) { return $arch.ToString() }
+    } catch { }
+    $pa = $env:PROCESSOR_ARCHITECTURE
+    if ($pa -match 'ARM64') { return 'Arm64' }
+    if ([Environment]::Is64BitProcess) { return 'X64' }
+    return 'X86'
+}
+
+function Install-Executable {
     $stataDir = "$env:APPDATA\Zed\stata"
     if (!(Test-Path $stataDir)) {
         New-Item -ItemType Directory -Path $stataDir -Force | Out-Null
     }
 
-    $localScript = "send-to-stata.ps1"
-    if (Test-Path $localScript) {
-        Copy-Item $localScript "$stataDir\send-to-stata.ps1" -Force
-        Write-Host "Installed send-to-stata.ps1 from local file"
+    # Select the correct binary based on architecture
+    $arch = Get-HostArch
+    $exeName = if ($arch -eq 'Arm64') { "send-to-stata-arm64.exe" } else { "send-to-stata-x64.exe" }
+    $destExe = "$stataDir\send-to-stata.exe"
+
+    # Try local file first (for development)
+    if (Test-Path $exeName) {
+        Copy-Item $exeName $destExe -Force
+        Write-Host "Installed send-to-stata.exe from local file ($exeName)"
     } else {
+        # Download from GitHub
         $githubRef = $env:SIGHT_GITHUB_REF
         if (!$githubRef) { $githubRef = "main" }
 
-        $url = "https://raw.githubusercontent.com/jbearak/sight-zed/$githubRef/send-to-stata.ps1"
-        $content = Invoke-RestMethod -Uri $url
-
-        if ($githubRef -eq "main" -and !$env:SIGHT_GITHUB_REF) {
-            $expectedChecksum = "3D05E3A88E257DA72A114E69217752EABCE2D0B039C77EAEB5AEE0B627091A03"
-            $actualChecksum = (Get-FileHash -InputStream ([System.IO.MemoryStream]::new([System.Text.Encoding]::UTF8.GetBytes($content))) -Algorithm SHA256).Hash
-            if ($actualChecksum -ne $expectedChecksum) {
-                throw "Checksum mismatch. Expected: $expectedChecksum, Got: $actualChecksum"
-            }
-        }
-
-        $content | Out-File "$stataDir\send-to-stata.ps1" -Encoding UTF8
-        Write-Host "Downloaded send-to-stata.ps1 from GitHub"
+        $url = "https://github.com/jbearak/sight-zed/raw/$githubRef/$exeName"
+        Write-Host "Downloading $exeName from GitHub..."
+        Invoke-WebRequest -Uri $url -OutFile $destExe
+        Write-Host "Downloaded send-to-stata.exe from GitHub"
     }
 }
 
@@ -47,19 +56,14 @@ function Install-Tasks {
 
     $tasks = $tasks | Where-Object { -not ($_.label) -or -not $_.label.StartsWith("Stata:") }
 
-    # Task commands use PowerShell to check ZED_SELECTED_TEXT and pipe it if present
-    # IMPORTANT: Zed expands $VAR syntax before passing to shell, but only in double-quoted contexts
-    # We use -File mode instead of -Command to avoid complex escaping issues
-    $scriptPath = "$env:APPDATA\Zed\stata\send-to-stata.ps1"
-
-    # Use pwsh.exe (PowerShell 7) if available for faster startup, fall back to powershell.exe
-    $pwshPath = Get-Command pwsh.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
-    $psExe = if ($pwshPath) { "pwsh.exe" } else { "powershell.exe" }
+    # Native executable - Zed wraps commands in PowerShell, so we use & (call operator)
+    # Zed expands $ZED_FILE and $ZED_ROW before passing to shell
+    $exePath = "$env:APPDATA\Zed\stata\send-to-stata.exe"
 
     $newTasks = @(
         @{
             label = "Stata: Send Statement"
-            command = "$psExe -sta -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -Statement -File `"`$ZED_FILE`" -Row `$ZED_ROW"
+            command = "& `"$exePath`" -Statement -File `"`$ZED_FILE`" -Row `$ZED_ROW"
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
@@ -67,7 +71,7 @@ function Install-Tasks {
         },
         @{
             label = "Stata: Send File"
-            command = "$psExe -sta -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -FileMode -File `"`$ZED_FILE`""
+            command = "& `"$exePath`" -FileMode -File `"`$ZED_FILE`""
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
@@ -75,7 +79,7 @@ function Install-Tasks {
         },
         @{
             label = "Stata: Include Statement"
-            command = "$psExe -sta -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -Statement -Include -File `"`$ZED_FILE`" -Row `$ZED_ROW"
+            command = "& `"$exePath`" -Statement -Include -File `"`$ZED_FILE`" -Row `$ZED_ROW"
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
@@ -83,7 +87,7 @@ function Install-Tasks {
         },
         @{
             label = "Stata: Include File"
-            command = "$psExe -sta -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -FileMode -Include -File `"`$ZED_FILE`""
+            command = "& `"$exePath`" -FileMode -Include -File `"`$ZED_FILE`""
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
@@ -142,7 +146,7 @@ function Install-Keybindings {
     $json = $json -replace '\\u003c','<'
     $json = $json -replace '\\u003e','>'
     $json = $json -replace '\\u0027',"'"
-    # Write UTF-8 without BOM so Zed doesn’t choke on BOM
+    # Write UTF-8 without BOM so Zed doesn't choke on BOM
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllText($keymapPath, $json, $utf8NoBom)
 }
@@ -228,13 +232,6 @@ function Register-StataAutomation {
     }
 }
 
-function Show-RegistrationPrompt {
-    param([string]$Message)
-    Add-Type -AssemblyName System.Windows.Forms
-    $result = [System.Windows.Forms.MessageBox]::Show($Message, "Stata Automation Registration", [System.Windows.Forms.MessageBoxButtons]::YesNo)
-    return $result -eq [System.Windows.Forms.DialogResult]::Yes
-}
-
 function Invoke-AutomationRegistrationCheck {
     param(
         [string]$StataPath,
@@ -265,7 +262,7 @@ function Invoke-AutomationRegistrationCheck {
         return
     }
 
-        Write-Host "Stata Automation type library is already registered."
+    Write-Host "Stata Automation type library is already registered."
 }
 
 function Uninstall-SendToStata {
@@ -301,7 +298,7 @@ if ($Uninstall) {
     exit 0
 }
 
-Install-Script
+Install-Executable
 
 $stataPath = Find-StataInstallation
 if ($stataPath) {
