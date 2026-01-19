@@ -23,6 +23,31 @@ $keyPause = 1
 # Add required assemblies
 Add-Type -AssemblyName System.Windows.Forms
 
+# Mockable wrappers for testing
+$script:MockClipboard = $false
+$script:MockWindow = $false
+$script:MockSendKeys = $false
+$script:ClipboardContent = $null
+$script:SentKeystrokes = @()
+
+function Set-ClipboardContent {
+    param([string]$Text)
+    if ($script:MockClipboard) {
+        $script:ClipboardContent = $Text
+        return
+    }
+    [System.Windows.Forms.Clipboard]::SetText($Text)
+}
+
+function Invoke-SendKeys {
+    param([string]$Keys)
+    if ($script:MockSendKeys) {
+        $script:SentKeystrokes += $Keys
+        return
+    }
+    [System.Windows.Forms.SendKeys]::SendWait($Keys)
+}
+
 # Win32 API declarations
 Add-Type @"
 using System;
@@ -214,16 +239,16 @@ function Send-ToStata {
         exit $EXIT_SENDKEYS_FAIL
     }
     
-    [System.Windows.Forms.Clipboard]::SetText($command)
+    Set-ClipboardContent -Text $command
     Start-Sleep -Milliseconds $clipPause
     
-    [System.Windows.Forms.SendKeys]::SendWait("^1")
+    Invoke-SendKeys -Keys "^1"
     Start-Sleep -Milliseconds $winPause
     
-    [System.Windows.Forms.SendKeys]::SendWait("^v")
+    Invoke-SendKeys -Keys "^v"
     Start-Sleep -Milliseconds $keyPause
     
-    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+    Invoke-SendKeys -Keys "{ENTER}"
 }
 
 # Main execution

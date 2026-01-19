@@ -189,6 +189,11 @@ Describe "Windows Automation" {
 }
 
 Describe "Main Script Logic" {
+    BeforeAll {
+        . "$PSScriptRoot/Mocks.ps1"
+        . "$PSScriptRoot/CrossPlatform.ps1"
+    }
+    
     It "Property1: STATA_PATH override" -Tag "Property1" {
         for ($i = 0; $i -lt 100; $i++) {
             $testPaths = @(
@@ -237,6 +242,35 @@ Describe "Main Script Logic" {
             $pf64Index = $searchPaths.IndexOf($pf64[0])
             $pf32Index = $searchPaths.IndexOf($pf32[0])
             $pf64Index | Should -BeLessThan $pf32Index
+        }
+    }
+    
+    It "Property10: Platform-independent logic isolation" -Tag "Property10" {
+        Enable-Mocks
+        try {
+            for ($i = 0; $i -lt 100; $i++) {
+                # Test platform-independent functions work without Windows APIs
+                $tempFile = New-TemporaryFile
+                $content = "gen x = 1 ///`n    + 2"
+                Set-Content -Path $tempFile.FullName -Value $content
+                
+                # Get-StatementAtRow should work
+                $result = Get-StatementAtRow -FilePath $tempFile.FullName -Row 1
+                $result | Should -Not -BeNullOrEmpty
+                
+                # New-TempDoFile should work
+                $doFile = New-TempDoFile -Content "test"
+                $doFile | Should -Not -BeNullOrEmpty
+                Test-Path $doFile | Should -Be $true
+                
+                # Read-SourceFile should work
+                $readContent = Read-SourceFile -FilePath $tempFile.FullName
+                $readContent | Should -Not -BeNullOrEmpty
+                
+                Remove-Item $tempFile.FullName, $doFile -ErrorAction SilentlyContinue
+            }
+        } finally {
+            Disable-Mocks
         }
     }
 }
