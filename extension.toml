@@ -14,6 +14,9 @@ capabilities = []
 kind = "Rust"
 version = "0.7.0"
 
+[grammars.stata]
+path = "grammars/stata.wasm"
+
 [language_servers.sight]
 name = "Sight"
 language = "Stata"
