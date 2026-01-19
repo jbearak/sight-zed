@@ -188,6 +188,117 @@ Describe "Windows Automation" {
     }
 }
 
+Describe "Unit Tests" {
+    BeforeAll {
+        . "$PSScriptRoot/../send-to-stata.ps1" -EnableMocks
+    }
+    
+    Context "Argument parsing" {
+        It "Statement and FileMode are mutually exclusive" {
+            { & "$PSScriptRoot/../send-to-stata.ps1" -Statement "test" -FileMode } | Should -Throw
+        }
+        
+        It "File parameter is required" {
+            { & "$PSScriptRoot/../send-to-stata.ps1" -FileMode } | Should -Throw
+        }
+    }
+    
+    Context "Exit codes" {
+        It "Returns 1 for Stata not found" {
+            Mock Find-StataInstallation { return $null }
+            $result = & "$PSScriptRoot/../send-to-stata.ps1" -Statement "test" 2>$null
+            $LASTEXITCODE | Should -Be 1
+        }
+        
+        It "Returns 2 for Stata window not found" {
+            Mock Find-StataInstallation { return "C:\Stata\Stata.exe" }
+            Mock Find-StataWindow { return $null }
+            $result = & "$PSScriptRoot/../send-to-stata.ps1" -Statement "test" 2>$null
+            $LASTEXITCODE | Should -Be 2
+        }
+    }
+    
+    Context "Find-StataInstallation" {
+        It "Returns STATA_PATH when set" {
+            $env:STATA_PATH = "C:\Custom\Stata.exe"
+            try {
+                $result = Find-StataInstallation
+                $result | Should -Be "C:\Custom\Stata.exe"
+            } finally {
+                Remove-Item env:STATA_PATH -ErrorAction SilentlyContinue
+            }
+        }
+        
+        It "Returns null when no installation found" {
+            Mock Test-Path { return $false }
+            $result = Find-StataInstallation
+            $result | Should -BeNullOrEmpty
+        }
+    }
+    
+    Context "Find-StataWindow" {
+        It "Returns null when no Stata process" {
+            Mock Get-Process { return @() }
+            $result = Find-StataWindow
+            $result | Should -BeNullOrEmpty
+        }
+        
+        It "Filters by window title pattern" {
+            Mock Get-Process { return @([PSCustomObject]@{MainWindowTitle="Stata/MP 19.0"}) }
+            $result = Find-StataWindow
+            $result | Should -Not -BeNullOrEmpty
+        }
+    }
+    
+    Context "Get-StatementAtRow" {
+        It "Returns single-line statement" {
+            $tempFile = New-TemporaryFile
+            Set-Content -Path $tempFile.FullName -Value "gen x = 1"
+            $result = Get-StatementAtRow -FilePath $tempFile.FullName -Row 1
+            $result | Should -Be "gen x = 1"
+            Remove-Item $tempFile.FullName
+        }
+        
+        It "Returns multi-line statement with ///" {
+            $tempFile = New-TemporaryFile
+            Set-Content -Path $tempFile.FullName -Value "gen x = 1 ///`n    + 2"
+            $result = Get-StatementAtRow -FilePath $tempFile.FullName -Row 1
+            $result | Should -Be "gen x = 1 ///`n    + 2"
+            Remove-Item $tempFile.FullName
+        }
+        
+        It "Returns statement when cursor on middle line" {
+            $tempFile = New-TemporaryFile
+            Set-Content -Path $tempFile.FullName -Value "gen x = 1 ///`n    + 2 ///`n    + 3"
+            $result = Get-StatementAtRow -FilePath $tempFile.FullName -Row 2
+            $result | Should -Be "gen x = 1 ///`n    + 2 ///`n    + 3"
+            Remove-Item $tempFile.FullName
+        }
+    }
+    
+    Context "New-TempDoFile" {
+        It "Creates file in temp directory" {
+            $tempFile = New-TempDoFile -Content "test"
+            $tempFile | Should -Match [regex]::Escape([System.IO.Path]::GetTempPath())
+            Remove-Item $tempFile
+        }
+        
+        It "Has .do extension" {
+            $tempFile = New-TempDoFile -Content "test"
+            $tempFile | Should -Match '\.do$'
+            Remove-Item $tempFile
+        }
+        
+        It "Writes content correctly" {
+            $content = "gen x = 1"
+            $tempFile = New-TempDoFile -Content $content
+            $readContent = Get-Content -Path $tempFile -Raw
+            $readContent | Should -Be $content
+            Remove-Item $tempFile
+        }
+    }
+}
+
 Describe "Main Script Logic" {
     BeforeAll {
         . "$PSScriptRoot/Mocks.ps1"
