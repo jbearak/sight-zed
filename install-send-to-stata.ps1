@@ -103,8 +103,8 @@ function Install-Keybindings {
                 "shift-ctrl-enter" = @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Send File" }))
                 "alt-ctrl-enter" = @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Include Statement" }))
                 "alt-shift-ctrl-enter" = @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Include File" }))
-                "shift-enter" = @("editor::Copy", "terminal_panel::ToggleFocus", "terminal::Paste", "SendKeystrokes", "enter")
-                "alt-enter" = @("editor::SelectLine", "editor::Copy", "terminal_panel::ToggleFocus", "terminal::Paste", "SendKeystrokes", "enter")
+                "shift-enter" = @("workspace::SendKeystrokes", "ctrl-c ctrl-`` ctrl-v enter")
+                "alt-enter" = @("workspace::SendKeystrokes", "home shift-end ctrl-c ctrl-`` ctrl-v enter")
             }
         }
     )

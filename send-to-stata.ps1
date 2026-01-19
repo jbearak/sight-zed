@@ -131,7 +131,9 @@ function Find-StataInstallation {
 }
 
 function Find-StataWindow {
-    $stataProcesses = Get-Process -Name "Stata*" -ErrorAction SilentlyContinue
+    $stataProcesses = @()
+    $stataProcesses += Get-Process -Name "Stata*" -ErrorAction SilentlyContinue
+    $stataProcesses += Get-Process -Name "StataNow*" -ErrorAction SilentlyContinue
     
     foreach ($process in $stataProcesses) {
         if ($process.MainWindowTitle -match "^Stata/(MP|SE|BE|IC)" -or 
@@ -153,6 +155,7 @@ function Invoke-FocusAcquisition {
     
     if ([User32]::IsIconic($WindowHandle)) {
         [User32]::ShowWindow($WindowHandle, [User32]::SW_RESTORE)
+        Start-Sleep -Milliseconds $winPause
     }
     
     for ($attempt = 1; $attempt -le $MaxRetries; $attempt++) {
