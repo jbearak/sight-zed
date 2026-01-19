@@ -535,7 +535,6 @@ function Install-ZedExtension {
     $itemsToCopy = @(
         'extension.toml',
         'extension.wasm',
-        'grammars',
         'languages',
         'LICENSE',
         'README.md'
@@ -546,6 +545,15 @@ function Install-ZedExtension {
         if (Test-Path $src) {
             Copy-Item -Path $src -Destination $dest -Recurse -Force
         }
+    }
+
+    # Copy only the pre-built grammar WASM, not the source directory.
+    # If we copy grammars/stata/ (the source), Zed will try to compile it and fail on Windows.
+    $grammarWasm = Join-Path $PSScriptRoot 'grammars\stata.wasm'
+    if (Test-Path $grammarWasm) {
+        $destGrammars = Join-Path $dest 'grammars'
+        New-Item -ItemType Directory -Path $destGrammars -Force | Out-Null
+        Copy-Item -Path $grammarWasm -Destination $destGrammars -Force
     }
 
     Write-Host "Installed extension files to: $dest"
