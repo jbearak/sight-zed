@@ -444,23 +444,23 @@ function Test-WasiSdkPresent {
 }
 
 function Ensure-WasmTarget {
-    # wasm32-wasip1 is required to build Zed extensions.
+    # wasm32-wasip2 is required to build Zed extensions.
     $rustup = Get-Command rustup -ErrorAction SilentlyContinue
     if (-not $rustup) {
-        Write-Warning "rustup not found; cannot auto-install wasm32-wasip1 target. Assuming it is already installed."
+        Write-Warning "rustup not found; cannot auto-install wasm32-wasip2 target. Assuming it is already installed."
         return
     }
 
     $targets = & rustup target list --installed
     if ($LASTEXITCODE -ne 0) { throw "Failed to list installed Rust targets (rustup target list --installed)." }
 
-    if ($targets -notcontains 'wasm32-wasip1') {
-        if (Confirm-Install -Prompt "Rust target wasm32-wasip1 is required; install now?") {
-            Write-Host "Adding Rust target wasm32-wasip1..."
-            & rustup target add wasm32-wasip1
-            if ($LASTEXITCODE -ne 0) { throw "Failed to add Rust target wasm32-wasip1 (rustup target add wasm32-wasip1)." }
+    if ($targets -notcontains 'wasm32-wasip2') {
+        if (Confirm-Install -Prompt "Rust target wasm32-wasip2 is required; install now?") {
+            Write-Host "Adding Rust target wasm32-wasip2..."
+            & rustup target add wasm32-wasip2
+            if ($LASTEXITCODE -ne 0) { throw "Failed to add Rust target wasm32-wasip2 (rustup target add wasm32-wasip2)." }
         } else {
-            throw "wasm32-wasip1 target is required to build. Re-run with -Yes or install it manually via 'rustup target add wasm32-wasip1'."
+            throw "wasm32-wasip2 target is required to build. Re-run with -Yes or install it manually via 'rustup target add wasm32-wasip2'."
         }
     }
 }
@@ -501,13 +501,13 @@ function Build-Extension {
     Assert-Command -Name cargo -Hint "Install Rust (https://rustup.rs/) and ensure 'cargo' is on your PATH."
     Ensure-WasmTarget
 
-    Write-Host "Building Zed extension (wasm32-wasip1, release)..."
+    Write-Host "Building Zed extension (wasm32-wasip2, release)..."
     Invoke-WithMsvc -Script {
-        & cargo build --release --target wasm32-wasip1
+        & cargo build --release --target wasm32-wasip2
     }
     if ($LASTEXITCODE -ne 0) { throw "cargo build failed." }
 
-    $builtWasm = Join-Path $PSScriptRoot 'target\wasm32-wasip1\release\sight_extension.wasm'
+    $builtWasm = Join-Path $PSScriptRoot 'target\wasm32-wasip2\release\sight_extension.wasm'
     if (-not (Test-Path $builtWasm)) {
         throw "Expected build output not found: $builtWasm"
     }
@@ -520,6 +520,50 @@ function Build-Extension {
 
     # Download pre-built tree-sitter grammar WASM (Zed can't compile grammars on Windows)
     Download-TreeSitterGrammar
+
+    # Download language server for dev extension testing on Windows
+    Download-LanguageServerForDev
+}
+
+function Download-LanguageServerForDev {
+    # When running as a dev extension, Zed resolves relative paths against the repo directory,
+    # but downloads go to Zed's work directory. We need to copy/download the server to the repo
+    # so it can be found during dev testing.
+
+    $serverVersion = "v0.1.11"
+    $serverDir = Join-Path $PSScriptRoot "sight-node-$serverVersion"
+    $serverScript = Join-Path $serverDir "sight-server.js"
+
+    if (Test-Path $serverScript) {
+        Write-Host "Language server already present for dev testing: $serverScript" -ForegroundColor Green
+        return
+    }
+
+    # First check if Zed already downloaded it to the work directory
+    $zedWorkDir = Join-Path $env:LOCALAPPDATA "Zed\extensions\work\sight\sight-node-$serverVersion"
+    $zedServerScript = Join-Path $zedWorkDir "sight-server.js"
+
+    if (Test-Path $zedServerScript) {
+        Write-Host "Copying language server from Zed work directory..."
+        New-Item -ItemType Directory -Path $serverDir -Force | Out-Null
+        Copy-Item -Path $zedServerScript -Destination $serverScript -Force
+        Write-Host "Copied language server for dev testing: $serverScript" -ForegroundColor Green
+        return
+    }
+
+    # Download directly from GitHub releases
+    Write-Host "Downloading language server for dev testing..."
+    $downloadUrl = "https://github.com/jbearak/sight/releases/download/$serverVersion/sight-server.js"
+
+    New-Item -ItemType Directory -Path $serverDir -Force | Out-Null
+    Invoke-WebRequest -Uri $downloadUrl -OutFile $serverScript
+
+    if (-not (Test-Path $serverScript)) {
+        throw "Failed to download language server"
+    }
+
+    $size = (Get-Item $serverScript).Length
+    Write-Host "Downloaded language server: $serverScript ($size bytes)" -ForegroundColor Green
 }
 
 function Install-ZedExtension {

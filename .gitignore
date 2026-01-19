@@ -25,3 +25,7 @@ Thumbs.db
 !/grammars/stata.wasm
 /tree-sitter-stata
 scratch.do
+
+# Downloaded language server for dev testing
+/sight-node-*/
+/sight-v*/
