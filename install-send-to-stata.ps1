@@ -22,7 +22,7 @@ function Install-Script {
         $content = Invoke-RestMethod -Uri $url
         
         if ($githubRef -eq "main" -and !$env:SIGHT_GITHUB_REF) {
-            $expectedChecksum = "PUT_CHECKSUM_HERE"
+            $expectedChecksum = "7F3D769C5D0A25633D17E3F22D107A4FC717CF8F0EC4E2300A75BD8F3CA532B0"
             $actualChecksum = (Get-FileHash -InputStream ([System.IO.MemoryStream]::new([System.Text.Encoding]::UTF8.GetBytes($content))) -Algorithm SHA256).Hash
             if ($actualChecksum -ne $expectedChecksum) {
                 throw "Checksum mismatch. Expected: $expectedChecksum, Got: $actualChecksum"
@@ -95,10 +95,10 @@ function Install-Keybindings {
         @{
             context = "Editor && extension == do"
             bindings = @{
-                "ctrl-enter" = @("workspace::Save", @(@{ task_name = "Stata: Send Statement" }))
-                "shift-ctrl-enter" = @("workspace::Save", @(@{ task_name = "Stata: Send File" }))
-                "alt-ctrl-enter" = @("workspace::Save", @(@{ task_name = "Stata: Include Statement" }))
-                "alt-shift-ctrl-enter" = @("workspace::Save", @(@{ task_name = "Stata: Include File" }))
+                "ctrl-enter" = @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Send Statement" }))
+                "shift-ctrl-enter" = @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Send File" }))
+                "alt-ctrl-enter" = @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Include Statement" }))
+                "alt-shift-ctrl-enter" = @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Include File" }))
                 "shift-enter" = @("editor::Copy", "terminal_panel::ToggleFocus", "terminal::Paste", "SendKeystrokes", "enter")
                 "alt-enter" = @("editor::SelectLine", "editor::Copy", "terminal_panel::ToggleFocus", "terminal::Paste", "SendKeystrokes", "enter")
             }
@@ -157,7 +157,33 @@ function Test-StataAutomationRegistered {
 
 function Register-StataAutomation {
     param([string]$StataPath)
-    Start-Process -FilePath $StataPath -ArgumentList "/Register" -Verb RunAs -Wait
+    
+    Write-Host "Registering Stata Automation type library..."
+    Write-Host "This requires administrator privileges. A UAC prompt will appear."
+    
+    try {
+        $process = Start-Process -FilePath $StataPath -ArgumentList "/Register" -Verb RunAs -Wait -PassThru
+        if ($process.ExitCode -eq 0) {
+            Write-Host "Stata Automation type library registered successfully." -ForegroundColor Green
+            return $true
+        } else {
+            Write-Error "Registration failed with exit code: $($process.ExitCode)"
+            Write-Host "Manual registration instructions:" -ForegroundColor Yellow
+            Write-Host "1. Open PowerShell as Administrator"
+            Write-Host "2. Run: & `"$StataPath`" /Register" -ForegroundColor Cyan
+            return $false
+        }
+    } catch {
+        if ($_.Exception.Message -match "canceled by the user") {
+            Write-Warning "Registration canceled by user."
+        } else {
+            Write-Error "Registration failed: $_"
+            Write-Host "Manual registration instructions:" -ForegroundColor Yellow
+            Write-Host "1. Open PowerShell as Administrator"
+            Write-Host "2. Run: & `"$StataPath`" /Register" -ForegroundColor Cyan
+        }
+        return $false
+    }
 }
 
 function Show-RegistrationPrompt {
@@ -168,22 +194,31 @@ function Show-RegistrationPrompt {
 }
 
 function Invoke-AutomationRegistrationCheck {
-    param([string]$StataPath)
+    param(
+        [string]$StataPath,
+        [switch]$Force
+    )
     
-    if ($SkipAutomationCheck) { return }
+    if ($SkipAutomationCheck -and -not $Force) { return }
     
     $regStatus = Test-StataAutomationRegistered
     
-    if (!$regStatus.IsRegistered) {
-        $message = "Stata automation is not registered. Register now to enable send-to-Stata functionality?"
-        if (Show-RegistrationPrompt $message) {
+    if ($Force -or !$regStatus.IsRegistered) {
+        if (!$regStatus.IsRegistered) {
+            $message = "Stata automation is not registered. Register now to enable send-to-Stata functionality?"
+        } else {
+            $message = "Force registration requested. Re-register Stata automation?"
+        }
+        if ($Force -or (Show-RegistrationPrompt $message)) {
             Register-StataAutomation $StataPath
         }
     } elseif ($regStatus.RegisteredPath -and $regStatus.RegisteredPath -ne $StataPath) {
-        $message = "Stata automation is registered to a different path. Re-register with current installation?"
+        $message = "Stata version mismatch detected.`n`nCurrently registered: $($regStatus.RegisteredPath)`nDetected installation: $StataPath`n`nWould you like to update the registration?"
         if (Show-RegistrationPrompt $message) {
             Register-StataAutomation $StataPath
         }
+    } else {
+        Write-Host "Stata Automation type library is already registered." -ForegroundColor Green
     }
 }
 
@@ -225,7 +260,7 @@ Install-Script
 $stataPath = Find-StataInstallation
 if ($stataPath) {
     Write-Host "Found Stata: $stataPath"
-    Invoke-AutomationRegistrationCheck $stataPath
+    Invoke-AutomationRegistrationCheck -StataPath $stataPath -Force:$RegisterAutomation
 } else {
     Write-Host "Stata installation not found in standard locations"
 }
