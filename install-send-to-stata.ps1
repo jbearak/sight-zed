@@ -63,7 +63,7 @@ function Install-Tasks {
     $newTasks = @(
         @{
             label = "Stata: Send Statement"
-            command = "& `"$exePath`" -Statement -File `"`$ZED_FILE`" -Row `$ZED_ROW"
+            command = "& `"$exePath`" -Statement -ReturnFocus -File `"`$ZED_FILE`" -Row `$ZED_ROW"
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
@@ -71,7 +71,7 @@ function Install-Tasks {
         },
         @{
             label = "Stata: Send File"
-            command = "& `"$exePath`" -FileMode -File `"`$ZED_FILE`""
+            command = "& `"$exePath`" -FileMode -ReturnFocus -File `"`$ZED_FILE`""
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
@@ -79,7 +79,7 @@ function Install-Tasks {
         },
         @{
             label = "Stata: Include Statement"
-            command = "& `"$exePath`" -Statement -Include -File `"`$ZED_FILE`" -Row `$ZED_ROW"
+            command = "& `"$exePath`" -Statement -Include -ReturnFocus -File `"`$ZED_FILE`" -Row `$ZED_ROW"
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
@@ -87,7 +87,7 @@ function Install-Tasks {
         },
         @{
             label = "Stata: Include File"
-            command = "& `"$exePath`" -FileMode -Include -File `"`$ZED_FILE`""
+            command = "& `"$exePath`" -FileMode -Include -ReturnFocus -File `"`$ZED_FILE`""
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"

@@ -116,6 +116,7 @@ internal static partial class Program
         bool statement = false;
         bool fileMode = false;
         bool include = false;
+        bool returnFocus = false;
         string? file = null;
         int row = 0;
 
@@ -132,6 +133,9 @@ internal static partial class Program
                     break;
                 case "-include":
                     include = true;
+                    break;
+                case "-returnfocus":
+                    returnFocus = true;
                     break;
                 case "-file":
                     if (i + 1 < args.Length)
@@ -207,7 +211,7 @@ internal static partial class Program
         }
 
         // Send to Stata
-        return SendToStataWindow(tempFile, include);
+        return SendToStataWindow(tempFile, include, returnFocus);
     }
 
     /// <summary>
@@ -337,6 +341,30 @@ internal static partial class Program
     private static partial Regex StataTitleRegex();
 
     /// <summary>
+    /// Finds the Zed editor window.
+    /// </summary>
+    private static IntPtr FindZedWindow()
+    {
+        try
+        {
+            var processes = Process.GetProcessesByName("Zed");
+            foreach (var proc in processes)
+            {
+                if (proc.MainWindowHandle != IntPtr.Zero)
+                {
+                    return proc.MainWindowHandle;
+                }
+            }
+        }
+        catch
+        {
+            // Ignore errors
+        }
+
+        return IntPtr.Zero;
+    }
+
+    /// <summary>
     /// Attempts to bring the specified window to the foreground.
     /// Uses the Alt key trick to bypass focus-stealing prevention.
     /// </summary>
@@ -423,8 +451,11 @@ internal static partial class Program
     /// <summary>
     /// Sends the command to Stata via clipboard and keystrokes.
     /// </summary>
-    private static int SendToStataWindow(string tempFilePath, bool useInclude)
+    private static int SendToStataWindow(string tempFilePath, bool useInclude, bool returnFocus)
     {
+        // Remember the current foreground window so we can return focus if requested
+        IntPtr originalWindow = returnFocus ? GetForegroundWindow() : IntPtr.Zero;
+
         // Find Stata window
         var stataProcess = FindStataWindow();
         if (stataProcess == null)
@@ -471,6 +502,24 @@ internal static partial class Program
         {
             Console.Error.WriteLine($"Error: Failed to send keystrokes: {ex.Message}");
             return EXIT_SENDKEYS_FAIL;
+        }
+
+        // Return focus to original window if requested
+        if (returnFocus)
+        {
+            Thread.Sleep(_winPause * 5); // Give Stata time to process before switching back
+
+            // Try to find Zed window by process name
+            var zedWindow = FindZedWindow();
+            if (zedWindow != IntPtr.Zero)
+            {
+                AcquireFocus(zedWindow);
+            }
+            else if (originalWindow != IntPtr.Zero && originalWindow != windowHandle)
+            {
+                // Fall back to original foreground window
+                AcquireFocus(originalWindow);
+            }
         }
 
         return EXIT_SUCCESS;
