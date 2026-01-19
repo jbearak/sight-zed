@@ -22,7 +22,7 @@ function Install-Script {
         $content = Invoke-RestMethod -Uri $url
         
         if ($githubRef -eq "main" -and !$env:SIGHT_GITHUB_REF) {
-            $expectedChecksum = "2E76FA7A93F6429E0F3946B7231AAFE000BC12DC838F80EECE83AD51C50B9364"
+            $expectedChecksum = "EB7B9818E43B683CF99AC4C831A144C40100B9F69CD39A7D335F633396FD2276"
             $actualChecksum = (Get-FileHash -InputStream ([System.IO.MemoryStream]::new([System.Text.Encoding]::UTF8.GetBytes($content))) -Algorithm SHA256).Hash
             if ($actualChecksum -ne $expectedChecksum) {
                 throw "Checksum mismatch. Expected: $expectedChecksum, Got: $actualChecksum"
