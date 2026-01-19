@@ -17,10 +17,10 @@ function Install-Script {
     } else {
         $githubRef = $env:SIGHT_GITHUB_REF
         if (!$githubRef) { $githubRef = "main" }
-        
+
         $url = "https://raw.githubusercontent.com/jbearak/sight-zed/$githubRef/send-to-stata.ps1"
         $content = Invoke-RestMethod -Uri $url
-        
+
         if ($githubRef -eq "main" -and !$env:SIGHT_GITHUB_REF) {
             $expectedChecksum = "3D05E3A88E257DA72A114E69217752EABCE2D0B039C77EAEB5AEE0B627091A03"
             $actualChecksum = (Get-FileHash -InputStream ([System.IO.MemoryStream]::new([System.Text.Encoding]::UTF8.GetBytes($content))) -Algorithm SHA256).Hash
@@ -28,7 +28,7 @@ function Install-Script {
                 throw "Checksum mismatch. Expected: $expectedChecksum, Got: $actualChecksum"
             }
         }
-        
+
         $content | Out-File "$stataDir\send-to-stata.ps1" -Encoding UTF8
         Write-Host "Downloaded send-to-stata.ps1 from GitHub"
     }
@@ -44,16 +44,18 @@ function Install-Tasks {
             if ($parsed) { $tasks = @($parsed) }
         } catch { $tasks = @() }
     }
-    
+
     $tasks = $tasks | Where-Object { -not ($_.label) -or -not $_.label.StartsWith("Stata:") }
-    
+
     # Task commands use PowerShell to check ZED_SELECTED_TEXT and pipe it if present
+    # IMPORTANT: Zed expands $VAR syntax before passing to shell, but only in double-quoted contexts
+    # We use -File mode instead of -Command to avoid complex escaping issues
     $scriptPath = "$env:APPDATA\Zed\stata\send-to-stata.ps1"
-    
+
     $newTasks = @(
         @{
             label = "Stata: Send Statement"
-            command = "powershell.exe -sta -NoProfile -ExecutionPolicy Bypass -Command `"if (`$env:ZED_SELECTED_TEXT) { `$env:ZED_SELECTED_TEXT | & '$scriptPath' -Statement -Stdin -File '`$ZED_FILE' } else { & '$scriptPath' -Statement -File '`$ZED_FILE' -Row `$ZED_ROW }`""
+            command = "powershell.exe -sta -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -Statement -File `"`$ZED_FILE`" -Row `$ZED_ROW"
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
@@ -69,7 +71,7 @@ function Install-Tasks {
         },
         @{
             label = "Stata: Include Statement"
-            command = "powershell.exe -sta -NoProfile -ExecutionPolicy Bypass -Command `"if (`$env:ZED_SELECTED_TEXT) { `$env:ZED_SELECTED_TEXT | & '$scriptPath' -Statement -Include -Stdin -File '`$ZED_FILE' } else { & '$scriptPath' -Statement -Include -File '`$ZED_FILE' -Row `$ZED_ROW }`""
+            command = "powershell.exe -sta -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -Statement -Include -File `"`$ZED_FILE`" -Row `$ZED_ROW"
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
@@ -84,7 +86,7 @@ function Install-Tasks {
             hide = "on_success"
         }
     )
-    
+
     $tasks += $newTasks
     $json = ConvertTo-Json -InputObject $tasks -Depth 10 -Compress
     # Make it human-readable and avoid BOM
@@ -145,10 +147,10 @@ function Find-StataInstallation {
     if ($env:STATA_PATH -and (Test-Path $env:STATA_PATH)) {
         return $env:STATA_PATH
     }
-    
-    $variants = @("StataMP-64.exe", "StataSE-64.exe", "StataBE-64.exe", "StataIC-64.exe", 
+
+    $variants = @("StataMP-64.exe", "StataSE-64.exe", "StataBE-64.exe", "StataIC-64.exe",
                  "StataMP.exe", "StataSE.exe", "StataBE.exe", "StataIC.exe")
-    
+
     for ($version = 19; $version -ge 13; $version--) {
         $searchPaths = @(
             "C:\Program Files\Stata$version\",
@@ -158,7 +160,7 @@ function Find-StataInstallation {
             "C:\Program Files (x86)\StataNow$version\",
             "C:\StataNow$version\"
         )
-        
+
         foreach ($path in $searchPaths) {
             foreach ($variant in $variants) {
                 $fullPath = Join-Path $path $variant
@@ -166,12 +168,12 @@ function Find-StataInstallation {
             }
         }
     }
-    
+
     foreach ($variant in $variants) {
         $fullPath = Join-Path "C:\Stata\" $variant
         if (Test-Path $fullPath) { return $fullPath }
     }
-    
+
     return $null
 }
 
@@ -193,10 +195,10 @@ function Test-StataAutomationRegistered {
 
 function Register-StataAutomation {
     param([string]$StataPath)
-    
+
     Write-Host "Registering Stata Automation type library..."
     Write-Host "This requires administrator privileges. A UAC prompt will appear."
-    
+
     try {
         $process = Start-Process -FilePath $StataPath -ArgumentList "/Register" -Verb RunAs -Wait -PassThru
         if ($process.ExitCode -eq 0) {
@@ -234,11 +236,11 @@ function Invoke-AutomationRegistrationCheck {
         [string]$StataPath,
         [switch]$Force
     )
-    
+
     if ($SkipAutomationCheck -and -not $Force) { return }
-    
+
     $regStatus = Test-StataAutomationRegistered
-    
+
     if ($Force -or -not $regStatus.IsRegistered) {
         if (-not $regStatus.IsRegistered) {
             Write-Host "We couldn't confirm whether Stata automation is registered. Proceeding to register it so Send-to-Stata works." -ForegroundColor Yellow
@@ -268,7 +270,7 @@ function Uninstall-SendToStata {
         Remove-Item $stataDir -Recurse -Force
         Write-Host "Removed Stata directory"
     }
-    
+
     $tasksPath = "$env:APPDATA\Zed\tasks.json"
     if (Test-Path $tasksPath) {
         $tasks = Get-Content $tasksPath | ConvertFrom-Json
@@ -276,11 +278,11 @@ function Uninstall-SendToStata {
         $tasks | ConvertTo-Json -Depth 10 | Out-File $tasksPath -Encoding UTF8
         Write-Host "Removed Stata tasks"
     }
-    
+
     $keymapPath = "$env:APPDATA\Zed\keymap.json"
     if (Test-Path $keymapPath) {
         $keybindings = Get-Content $keymapPath | ConvertFrom-Json
-        $keybindings = $keybindings | Where-Object { 
+        $keybindings = $keybindings | Where-Object {
             !($_.context -eq "Editor && extension == do")
         }
         $keybindings | ConvertTo-Json -Depth 10 | Out-File $keymapPath -Encoding UTF8
@@ -316,4 +318,3 @@ Write-Host "  Alt+Ctrl+Enter: Include statement"
 Write-Host "  Alt+Shift+Ctrl+Enter: Include file"
 Write-Host "  Shift+Enter: Paste selection to terminal"
 Write-Host "  Alt+Enter: Paste current line to terminal"
-
