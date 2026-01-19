@@ -11,6 +11,7 @@ param(
     # If set alongside -InstallDependencies, setup.ps1 may install the Visual C++ build tools
     # (large download) when a C toolchain is missing.
     [switch]$InstallMSVCBuildTools,
+    [switch]$InstallWasiSdk,
     [switch]$Yes,
 
     [string]$ZedExtensionsDir = "$(Join-Path $env:APPDATA 'Zed\extensions\installed')",
@@ -309,24 +310,24 @@ function Ensure-BuildDependencies {
         } catch {
             Write-Warning "MSVC env import attempt failed: $($_.Exception.Message)"
         }
-        if ($imported -and (Test-MsvcToolchainPresent)) {
-            return
-        }
-        if (Test-CommandExists -Name winget) {
-            if (Confirm-Install -Prompt "Download and install the Visual Studio Build Tools C++ workload now via winget?") {
-                Install-MSVCBuildToolsViaWinget
-                # Attempt to proceed in the same session; Invoke-WithMsvc will import vcvars if needed.
-                try {
-                    Invoke-WithMsvc -Script { Write-Host "MSVC environment imported for current session." }
-                } catch {
-                    Write-Warning "MSVC build tools remain unavailable after installation: $($_.Exception.Message)"
-                    Report-MsvcInstructions
+        # If import made MSVC available, skip winget install; otherwise offer install
+        if (-not (Test-MsvcToolchainPresent)) {
+            if (Test-CommandExists -Name winget) {
+                if (Confirm-Install -Prompt "Download and install the Visual Studio Build Tools C++ workload now via winget?") {
+                    Install-MSVCBuildToolsViaWinget
+                    # Attempt to proceed in the same session; Invoke-WithMsvc will import vcvars if needed.
+                    try {
+                        Invoke-WithMsvc -Script { Write-Host "MSVC environment imported for current session." }
+                    } catch {
+                        Write-Warning "MSVC build tools remain unavailable after installation: $($_.Exception.Message)"
+                        Report-MsvcInstructions
+                    }
+                } else {
+                    throw "MSVC build tools are required; rerun with -SkipBuild if you only want install/uninstall steps."
                 }
             } else {
-                throw "MSVC build tools are required; rerun with -SkipBuild if you only want install/uninstall steps."
+                throw "MSVC build tools are required (cl.exe/link.exe not found) and winget is unavailable. Install the 'Desktop development with C++' workload of Visual Studio or the standalone Build Tools, then re-run."
             }
-        } else {
-            throw "MSVC build tools are required (cl.exe/link.exe not found) and winget is unavailable. Install the 'Desktop development with C++' workload of Visual Studio or the standalone Build Tools, then re-run."
         }
     }
 
@@ -336,13 +337,122 @@ function Ensure-BuildDependencies {
     }
 
     Install-RustupIfMissing
-    
+
     if (-not (Test-MsvcToolchainPresent) -and $InstallMSVCBuildTools) {
         Install-MSVCBuildToolsIfRequested
-        if (-not (Test-MsvcToolchainPresent)) {
-            Report-MsvcInstructions
+    }
+
+    Install-WasiSdkIfRequested
+}
+
+function Get-GitHubLatestAssetUrl {
+    param(
+        [Parameter(Mandatory=$true)][string]$Repo,
+        [Parameter(Mandatory=$true)][string]$Pattern
+    )
+    $headers = @{ 'User-Agent' = 'sight-setup-script'; 'Accept' = 'application/vnd.github+json'; 'X-GitHub-Api-Version' = '2022-11-28' }
+    try {
+        $rel = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/$Repo/releases/latest" -ErrorAction Stop
+        foreach ($asset in $rel.assets) {
+            if ($asset.name -match $Pattern) { return @{ url = $asset.browser_download_url; name = $asset.name; tag = $rel.tag_name } }
+        }
+    } catch {
+        Write-Warning "GitHub API query failed: $($_.Exception.Message)"
+    }
+    # Fallback: parse HTML and redirect of releases/latest
+    $latestUrl = "https://github.com/$Repo/releases/latest"
+    $tag = $null
+    try {
+        $r = Invoke-WebRequest -Uri $latestUrl -MaximumRedirection 0 -UseBasicParsing -ErrorAction Stop
+    } catch {
+        $loc = $null
+        $ex = $_.Exception
+        if ($ex) {
+            if ($ex.PSObject.Properties.Name -contains 'Response' -and $ex.Response) {
+                $loc = $ex.Response.Headers['Location']
+            } elseif ($ex -is [System.Net.WebException]) {
+                $resp = $ex.Response
+                if ($resp) { $loc = $resp.Headers['Location'] }
+            }
+        }
+        if ($loc) {
+            if ($loc -match 'releases/tag/([^/]+)$') { $tag = $matches[1] }
+            elseif ($loc -is [string]) { $tag = ($loc.Split('/') | Select-Object -Last 1) }
         }
     }
+    if (-not $tag) {
+        try {
+            $r2 = Invoke-WebRequest -Uri ("https://github.com/$Repo/releases") -UseBasicParsing
+            $m = [regex]::Match($r2.Content, 'releases/tag/([^"\' + "']+)")
+            if ($m.Success) { $tag = $m.Groups[1].Value }
+        } catch {}
+    }
+    if (-not $tag) { return $null }
+    # Fetch the tag page and locate a Windows asset
+    $tagPage = "https://github.com/$Repo/releases/tag/$tag"
+    try {
+        $p = Invoke-WebRequest -Uri $tagPage -UseBasicParsing
+        $content = $p.Content
+        $prefix = "/$Repo/releases/download/$tag/"
+        $candidates = New-Object System.Collections.Generic.List[string]
+        $start = 0
+        while ($true) {
+            $idx = $content.IndexOf($prefix, $start)
+            if ($idx -lt 0) { break }
+            $after = $idx + $prefix.Length
+            $end = $content.IndexOf('"', $after)
+            if ($end -gt $after) {
+                $name = $content.Substring($after, $end - $after)
+                $candidates.Add($name)
+                $start = $end + 1
+            } else { break }
+        }
+        $assetName = $candidates | Where-Object { $_ -match $Pattern } | Select-Object -First 1
+        if ($assetName) {
+            $dl = "https://github.com/$Repo/releases/download/$tag/$assetName"
+            return @{ url = $dl; name = $assetName; tag = $tag }
+        }
+    } catch {}
+    return $null
+}
+
+function Test-WasiSdkPresent {
+    if ($env:WASI_SDK_PATH -and (Test-Path (Join-Path $env:WASI_SDK_PATH 'bin\clang.exe'))) { return $true }
+    $paths = $env:PATH -split ';'
+    foreach ($p in $paths) {
+        if ([string]::IsNullOrWhiteSpace($p)) { continue }
+        $clang = Join-Path $p 'clang.exe'
+        if (Test-Path $clang) {
+            # Heuristic: check for accompanying sysroot in sibling share directory
+            $root = Split-Path $p -Parent
+            if (Test-Path (Join-Path $root 'share\\wasi-sysroot')) { return $true }
+        }
+    }
+    return $false
+}
+
+function Report-WasiSdkInstructions {
+    $msg = @()
+    $msg += "WASI SDK not detected. To enable Zed's dev extension build on Windows:"
+    $msg += "  1) Download the Windows WASI SDK from: https://github.com/WebAssembly/wasi-sdk/releases"
+    $msg += "     - x86_64: wasi-sdk-<ver>-x86_64-windows.*"
+    $msg += "     - arm64:  wasi-sdk-<ver>-arm64-windows.*"
+    $msg += "  2) Extract it to a permanent directory (e.g. %LOCALAPPDATA%\\wasi-sdk\\wasi-sdk-<ver>)."
+    $msg += "  3) Set environment variables so Zed can find it (then restart Zed/terminal):"
+    $msg += '     setx WASI_SDK_PATH "%LOCALAPPDATA%\wasi-sdk\wasi-sdk-<ver>"'
+    $msg += '     setx PATH "%WASI_SDK_PATH%\bin;%PATH%"'
+    $msg += "If you prefer direct links for wasi-sdk-29:"
+    $msg += "  - x86_64: https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-29/wasi-sdk-29.0-x86_64-windows.tar.gz"
+    $msg += "  - arm64:  https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-29/wasi-sdk-29.0-arm64-windows.tar.gz"
+    $msg | ForEach-Object { Write-Host $_ }
+}
+
+function Install-WasiSdkIfRequested {
+    if (-not $InstallWasiSdk) { return }
+    if (Test-WasiSdkPresent) { return }
+
+    Report-WasiSdkInstructions
+    Write-Warning "Continuing without WASI SDK. Dev extension installation inside Zed may fail until it is installed."
 }
 
 function Ensure-WasmTarget {
