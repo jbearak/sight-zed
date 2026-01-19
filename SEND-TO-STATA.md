@@ -1,18 +1,25 @@
 # Send Code to Stata
 
 Send Stata code from Zed editor to Stata for execution. Supports two modes:
-- **Stata application** (macOS): Uses AppleScript to send code to the Stata app
+- **Stata application** (macOS/Windows): Uses AppleScript (macOS) or clipboard+SendKeys (Windows) to send code to the Stata app
 - **Terminal sessions**: Pastes code into the active terminal (works with SSH, multiple sessions)
 
 ## Prerequisites
 
-- **macOS** (required for AppleScript)
+### macOS
 - **Stata** installed in `/Applications/Stata/` (StataMP, StataSE, StataIC, or Stata)
 - **jq** for JSON manipulation (`brew install jq`)
 - **python3** (used to safely handle shell metacharacters in selections)
 - **Zed** editor
 
+### Windows
+- **PowerShell 5.0+** (included with Windows 10/11)
+- **Stata** installed in standard location (auto-detected)
+- **Zed** editor
+
 ## Quick Start
+
+### macOS
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.sh)"
@@ -26,15 +33,32 @@ cd sight-zed
 ./install-send-to-stata.sh
 ```
 
+### Windows
+
+```powershell
+irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.ps1 | iex
+```
+
+Or install from a local clone:
+
+```powershell
+git clone https://github.com/jbearak/sight-zed
+cd sight-zed
+.\install-send-to-stata.ps1
+```
+
 The installer will:
-1. Copy `send-to-stata.sh` to `~/.local/bin/`
-2. Add Zed tasks to `~/.config/zed/tasks.json`
-3. Add keybindings to `~/.config/zed/keymap.json`
+1. Copy the send-to-stata script to the appropriate location
+2. Add Zed tasks to your tasks.json
+3. Add keybindings to your keymap.json
 4. Detect your installed Stata variant
+5. (Windows) Optionally register Stata's Automation type library
 
 ## Keybindings
 
 In `.do` files:
+
+### macOS
 
 | Shortcut | Action |
 |----------|--------|
@@ -44,6 +68,17 @@ In `.do` files:
 | `opt-shift-cmd-enter` | Include file (preserves local macros) |
 | `shift-enter` | Send selection to Stata terminal (quick paste) |
 | `opt-enter` | Send current line to Stata terminal (quick paste) |
+
+### Windows
+
+| Shortcut | Action |
+|----------|--------|
+| `ctrl-enter` | Send current statement (or selection) to Stata |
+| `shift-ctrl-enter` | Send entire file to Stata |
+| `alt-ctrl-enter` | Include statement (preserves local macros) |
+| `alt-shift-ctrl-enter` | Include file (preserves local macros) |
+| `shift-enter` | Send selection to Stata terminal (quick paste) |
+| `alt-enter` | Send current line to Stata terminal (quick paste) |
 
 ### Quick Terminal Shortcuts
 
@@ -215,6 +250,8 @@ Add `~/.local/bin` to your PATH (see Configuration section above), then restart 
 
 ## Uninstall
 
+### macOS
+
 ```bash
 ./install-send-to-stata.sh --uninstall
 ```
@@ -224,11 +261,22 @@ This removes:
 - Stata tasks from `~/.config/zed/tasks.json`
 - Stata keybindings from `~/.config/zed/keymap.json`
 
+### Windows
+
+```powershell
+.\install-send-to-stata.ps1 -Uninstall
+```
+
+This removes:
+- `%APPDATA%\Zed\stata\` directory
+- Stata tasks from `%APPDATA%\Zed\tasks.json`
+- Stata keybindings from `%APPDATA%\Zed\keymap.json`
+
 ## Temp File Cleanup
 
-The script creates temporary `.do` files in your system temp directory (`$TMPDIR`). These files are not automatically deleted because Stata needs time to read them.
+The script creates temporary `.do` files in your system temp directory. These files are not automatically deleted because Stata needs time to read them.
 
-To clean up old temp files:
+### macOS
 
 ```bash
 # View temp files
@@ -238,4 +286,77 @@ ls -la $TMPDIR/stata_send_*.do
 rm $TMPDIR/stata_send_*.do
 ```
 
-Consider adding periodic cleanup to your shell config or using a cron job.
+### Windows
+
+```powershell
+# View temp files
+Get-ChildItem $env:TEMP\*.do
+
+# Remove all temp files
+Remove-Item $env:TEMP\*.do
+```
+
+Consider adding periodic cleanup to your shell config or using a scheduled task.
+
+---
+
+## Windows-Specific Information
+
+### How It Works
+
+On Windows, the script uses clipboard and SendKeys automation:
+1. Writes your code to a temp `.do` file
+2. Copies the `do` or `include` command to the clipboard
+3. Activates the Stata window
+4. Sends Ctrl+1 (focus Command window), Ctrl+V (paste), Enter (execute)
+
+### Stata Installation Detection
+
+The script searches for Stata in these locations (versions 19 down to 13):
+- `C:\Program Files\Stata{version}\`
+- `C:\Program Files (x86)\Stata{version}\`
+- `C:\Stata{version}\`
+- StataNow variants in the same locations
+- Fallback: `C:\Stata\`
+
+To override, set the `STATA_PATH` environment variable:
+
+```powershell
+$env:STATA_PATH = "D:\Custom\Stata\StataSE-64.exe"
+```
+
+### Stata Automation Registration
+
+The installer may prompt to register Stata's Automation type library. This is a one-time setup that requires administrator privileges.
+
+To manually register:
+1. Open PowerShell as Administrator
+2. Run: `& "C:\Program Files\Stata18\StataSE-64.exe" /Register`
+
+Installer flags:
+- `-RegisterAutomation`: Force registration
+- `-SkipAutomationCheck`: Skip the registration check
+
+If send-to-stata stops working after upgrading Stata, re-run the installer to update the registration.
+
+### Timing Configuration
+
+The script uses hardcoded timing values that work on most systems:
+
+```powershell
+$clipPause = 10   # ms after clipboard copy
+$winPause  = 10   # ms between window operations
+$keyPause  = 1    # ms between keystrokes
+```
+
+If the script fails intermittently on slower machines, increase these values by editing `send-to-stata.ps1` in `%APPDATA%\Zed\stata\`.
+
+### Important: Stata Must Not Run as Administrator
+
+Due to Windows User Interface Privilege Isolation (UIPI), the script cannot send keystrokes to an elevated Stata process. If you see "Failed to activate Stata window", ensure Stata is running as a normal user (not "Run as Administrator").
+
+### Terminal Shortcuts Limitations
+
+The `shift-enter` and `alt-enter` shortcuts paste code directly to the terminal:
+- `alt-enter` sends only the current line—it doesn't detect multi-line statements with `///` continuations
+- `///` continuation syntax cannot be pasted directly to Stata's console; use `ctrl-enter` for multi-line statements
