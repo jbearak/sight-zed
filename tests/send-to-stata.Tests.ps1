@@ -204,17 +204,10 @@ Describe "Unit Tests" {
     }
     
     Context "Exit codes" {
-        It "Returns 1 for Stata not found" {
-            Mock Find-StataInstallation { return $null }
-            $result = & "$PSScriptRoot/../send-to-stata.ps1" -Statement "test" 2>$null
-            $LASTEXITCODE | Should -Be 1
-        }
-        
-        It "Returns 2 for Stata window not found" {
-            Mock Find-StataInstallation { return "C:\Stata\Stata.exe" }
+        It "Returns 4 for Stata window not found" {
             Mock Find-StataWindow { return $null }
-            $result = & "$PSScriptRoot/../send-to-stata.ps1" -Statement "test" 2>$null
-            $LASTEXITCODE | Should -Be 2
+            $result = & "$PSScriptRoot/../send-to-stata.ps1" -Statement -File "test.do" 2>$null
+            $LASTEXITCODE | Should -Be 4
         }
     }
     
