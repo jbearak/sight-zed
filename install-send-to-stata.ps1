@@ -324,8 +324,8 @@ if ($ReturnFocus -eq "true" -or $ReturnFocus -eq "yes" -or $ReturnFocus -eq "1")
     # Interactive prompt (no parameter or empty string)
     Write-Host ""
     Write-Host "Focus behavior after sending code to Stata:"
-    Write-Host "  [Y] Return focus to Zed (for rapid iterative coding)"
-    Write-Host "  [N] Stay in Stata (see output immediately)"
+    Write-Host "  [Y] Return focus to Zed (keep typing without switching windows)"
+    Write-Host "  [N] Stay in Stata (ensures you see output, even if Zed is fullscreen)"
     Write-Host ""
     $response = Read-Host "Return focus to Zed after sending code? [y/N]"
     $useReturnFocus = $response -eq 'y' -or $response -eq 'Y'
