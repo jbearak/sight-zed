@@ -487,6 +487,14 @@ function Download-TreeSitterGrammar {
 
     $size = (Get-Item $destWasm).Length
     Write-Host "Downloaded grammar: grammars\stata.wasm ($size bytes)" -ForegroundColor Green
+
+    # Remove grammar source directory if it exists.
+    # If grammars/stata/ exists, Zed will try to compile it and fail on Windows.
+    $grammarSrcDir = Join-Path $grammarsDir 'stata'
+    if (Test-Path $grammarSrcDir) {
+        Remove-Item -Path $grammarSrcDir -Recurse -Force
+        Write-Host "Removed grammar source directory: grammars\stata\" -ForegroundColor Yellow
+    }
 }
 
 function Build-Extension {
