@@ -290,6 +290,17 @@ function Ensure-BuildDependencies {
 
     if (-not (Test-MsvcToolchainPresent)) {
         Write-Host "MSVC build tools (cl.exe/link.exe) are required to build the extension."
+        # If tools are installed but not on PATH, try importing MSVC env once before prompting.
+        $imported = $false
+        try {
+            Invoke-WithMsvc -Script { Write-Host "MSVC environment imported for current session (pre-install check)." }
+            $imported = $true
+        } catch {
+            Write-Warning "MSVC env import attempt failed: $($_.Exception.Message)"
+        }
+        if ($imported -and (Test-MsvcToolchainPresent)) {
+            return
+        }
         if (Test-CommandExists -Name winget) {
             if (Confirm-Install -Prompt "Download and install the Visual Studio Build Tools C++ workload now via winget?") {
                 Install-MSVCBuildToolsViaWinget
