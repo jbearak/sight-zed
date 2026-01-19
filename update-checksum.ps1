@@ -13,7 +13,7 @@ if (-not (Test-Path $TargetPath)) { throw "Target script not found at $TargetPat
 $hash = (Get-FileHash -Path $TargetPath -Algorithm SHA256).Hash
 
 $content = Get-Content -Path $InstallerPath -Raw
-$pattern = '(?m)^\\s*\\$expectedChecksum\\s*=\\s*\"[A-Fa-f0-9]{64}\"'
+$pattern = '(?m)\$expectedChecksum\s*=\s*"[A-Fa-f0-9]{64}"'
 if ($content -notmatch $pattern) { throw "expectedChecksum assignment not found in installer" }
 $updated = [regex]::Replace($content, $pattern, "`$expectedChecksum = `"$hash`"")
 
