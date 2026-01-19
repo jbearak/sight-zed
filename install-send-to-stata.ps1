@@ -1,7 +1,8 @@
 ﻿param(
     [switch]$Uninstall,
     [switch]$RegisterAutomation,
-    [switch]$SkipAutomationCheck
+    [switch]$SkipAutomationCheck,
+    [string]$ReturnFocus = ""
 )
 
 function Get-HostArch {
@@ -44,6 +45,8 @@ function Install-Executable {
 }
 
 function Install-Tasks {
+    param([bool]$UseReturnFocus)
+
     $tasksPath = "$env:APPDATA\Zed\tasks.json"
     $tasks = @()
     if (Test-Path $tasksPath) {
@@ -59,11 +62,12 @@ function Install-Tasks {
     # Native executable - Zed wraps commands in PowerShell, so we use & (call operator)
     # Zed expands $ZED_FILE and $ZED_ROW before passing to shell
     $exePath = "$env:APPDATA\Zed\stata\send-to-stata.exe"
+    $returnFocusArg = if ($UseReturnFocus) { " -ReturnFocus" } else { "" }
 
     $newTasks = @(
         @{
             label = "Stata: Send Statement"
-            command = "& `"$exePath`" -Statement -ReturnFocus -File `"`$ZED_FILE`" -Row `$ZED_ROW"
+            command = "& `"$exePath`" -Statement$returnFocusArg -File `"`$ZED_FILE`" -Row `$ZED_ROW"
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
@@ -71,7 +75,7 @@ function Install-Tasks {
         },
         @{
             label = "Stata: Send File"
-            command = "& `"$exePath`" -FileMode -ReturnFocus -File `"`$ZED_FILE`""
+            command = "& `"$exePath`" -FileMode$returnFocusArg -File `"`$ZED_FILE`""
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
@@ -79,7 +83,7 @@ function Install-Tasks {
         },
         @{
             label = "Stata: Include Statement"
-            command = "& `"$exePath`" -Statement -Include -ReturnFocus -File `"`$ZED_FILE`" -Row `$ZED_ROW"
+            command = "& `"$exePath`" -Statement -Include$returnFocusArg -File `"`$ZED_FILE`" -Row `$ZED_ROW"
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
@@ -87,7 +91,7 @@ function Install-Tasks {
         },
         @{
             label = "Stata: Include File"
-            command = "& `"$exePath`" -FileMode -Include -ReturnFocus -File `"`$ZED_FILE`""
+            command = "& `"$exePath`" -FileMode -Include$returnFocusArg -File `"`$ZED_FILE`""
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
@@ -308,7 +312,26 @@ if ($stataPath) {
     Write-Host "Stata installation not found in standard locations"
 }
 
-Install-Tasks
+# Determine ReturnFocus setting
+$useReturnFocus = $false
+if ($ReturnFocus -eq "true" -or $ReturnFocus -eq "yes" -or $ReturnFocus -eq "1") {
+    # Explicit true via parameter (for CI/CD)
+    $useReturnFocus = $true
+} elseif ($ReturnFocus -eq "false" -or $ReturnFocus -eq "no" -or $ReturnFocus -eq "0") {
+    # Explicit false via parameter (for CI/CD)
+    $useReturnFocus = $false
+} else {
+    # Interactive prompt (no parameter or empty string)
+    Write-Host ""
+    Write-Host "Focus behavior after sending code to Stata:"
+    Write-Host "  [Y] Return focus to Zed (recommended for iterative coding)"
+    Write-Host "  [N] Stay in Stata (useful if you want to inspect output)"
+    Write-Host ""
+    $response = Read-Host "Return focus to Zed after sending code? [Y/n]"
+    $useReturnFocus = $response -ne 'n' -and $response -ne 'N'
+}
+
+Install-Tasks -UseReturnFocus $useReturnFocus
 Install-Keybindings
 
 Write-Host "Send-to-Stata installed successfully!"
