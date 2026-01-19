@@ -107,7 +107,7 @@ function Install-Keybindings {
     $keybindings = $keybindings | Where-Object { -not ($_.PSObject.Properties.Name -contains 'context' -and ($_.context -eq "Editor && extension == 'do'" -or $_.context -eq "Editor && extension == do")) }
 
     $newBlock = @{
-        context = "Editor && extension == 'do'"
+        context = "Editor && extension == do"
         bindings = @{
             "ctrl-enter" = @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Send Statement" }))
             "shift-ctrl-enter" = @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Send File" }))
@@ -124,6 +124,11 @@ function Install-Keybindings {
     $result += $newBlock
 
     $json = ConvertTo-Json -InputObject $result -Depth 10
+    # Decode HTML-safe escapes that PowerShell adds so Zed sees human-readable context
+    $json = $json -replace '\\u0026','&'
+    $json = $json -replace '\\u003c','<'
+    $json = $json -replace '\\u003e','>'
+    $json = $json -replace '\\u0027',"'"
     # Write UTF-8 without BOM so Zed doesn’t choke on BOM
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllText($keymapPath, $json, $utf8NoBom)
