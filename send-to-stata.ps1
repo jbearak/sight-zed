@@ -183,6 +183,9 @@ if (-not (Test-Path $File)) { Write-Error "Error: Cannot read file: $File"; exit
 $stdinContent = @($input) -join [Environment]::NewLine
 if ($Stdin -and $stdinContent) {
     $content = $stdinContent
+} elseif ($env:ZED_SELECTED_TEXT) {
+    # Zed sets ZED_SELECTED_TEXT when text is selected; use it directly
+    $content = $env:ZED_SELECTED_TEXT
 } elseif ($FileMode) {
     $content = Read-SourceFile -FilePath $File
 } elseif ($Row) {
