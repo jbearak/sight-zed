@@ -48,6 +48,7 @@ if (Test-Path $grammarSrcDir)
 }
 
 # Also install to Zed extensions directory if it exists
+# Note: Zed uses APPDATA (Roaming), not LOCALAPPDATA, for extensions on Windows
 $zedExtDir = Join-Path $env:APPDATA 'Zed\extensions\installed\sight'
 if (Test-Path $zedExtDir)
 {
@@ -66,6 +67,23 @@ if (Test-Path $zedExtDir)
     {
         Remove-Item -Path $zedGrammarSrcDir -Recurse -Force
         Write-Host "Removed grammar source from Zed extension" -ForegroundColor Yellow
+    }
+
+    # Patch extension.toml to remove the [grammars.stata] section.
+    # If this section exists, Zed will try to compile the grammar from source,
+    # which fails on Windows. Removing it makes Zed use the pre-built WASM.
+    $extensionToml = Join-Path $zedExtDir 'extension.toml'
+    if (Test-Path $extensionToml)
+    {
+        $content = Get-Content -Path $extensionToml -Raw
+        # Remove the [grammars.stata] section and its contents
+        $pattern = '(?ms)\[grammars\.stata\]\r?\nrepository = "[^"]*"\r?\nrev = "[^"]*"\r?\n'
+        $newContent = $content -replace $pattern, ''
+        if ($newContent -ne $content)
+        {
+            Set-Content -Path $extensionToml -Value $newContent -NoNewline
+            Write-Host "Patched extension.toml: removed [grammars.stata] section" -ForegroundColor Green
+        }
     }
 }
 

@@ -20,9 +20,3 @@ path = "grammars/stata.wasm"
 [language_servers.sight]
 name = "Sight"
 language = "Stata"
-
-[context_servers]
-
-[agent_servers]
-
-[slash_commands]
