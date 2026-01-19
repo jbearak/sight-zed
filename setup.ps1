@@ -113,26 +113,49 @@ function Ensure-UserCargoOnPath {
     }
 }
 
-function Install-RustupIfMissing {
-    if (Test-CommandExists -Name cargo) {
+function Ensure-Chocolatey {
+    if (Test-CommandExists -Name choco) {
+        Write-Host "Chocolatey already installed" -ForegroundColor Green
         return
     }
 
-    if (-not (Confirm-Install -Prompt "Rustup (cargo) is required to build; install via winget now?")) {
-        throw "Rust toolchain is required to build. Re-run with -Yes or install Rust (https://rustup.rs/) then re-run."
-    }
+    Write-Host "Installing Chocolatey package manager..." -ForegroundColor Yellow
+    Set-ExecutionPolicy Bypass -Scope Process -Force
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+    Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 
-    if (Test-CommandExists -Name winget) {
-        Write-Host "Installing Rustup via winget (Rustlang.Rustup)..."
-        & winget install --id Rustlang.Rustup -e --accept-package-agreements --accept-source-agreements
-        if ($LASTEXITCODE -ne 0) {
-            throw "winget failed to install Rustup (exit code $LASTEXITCODE)."
-        }
-        Ensure-UserCargoOnPath
+    # Refresh PATH to pick up choco
+    $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $env:PATH = "$machinePath;$userPath"
+
+    if (-not (Test-CommandExists -Name choco)) {
+        throw "Chocolatey installation failed - choco command not found after install."
+    }
+    Write-Host "Chocolatey installed successfully" -ForegroundColor Green
+}
+
+function Install-ChocoPackageIfMissing {
+    param(
+        [Parameter(Mandatory=$true)][string]$Command,
+        [Parameter(Mandatory=$true)][string]$Package,
+        [string]$PackageParams
+    )
+
+    if (Test-CommandExists -Name $Command) {
+        Write-Host "$Command already installed" -ForegroundColor Green
         return
     }
 
-    throw "cargo is required to build the extension, but was not found. Install Rust via rustup (https://rustup.rs/) or install winget and re-run."
+    Write-Host "Installing $Package via Chocolatey..." -ForegroundColor Yellow
+    if ($PackageParams) {
+        & choco install $Package --package-parameters $PackageParams -y
+    } else {
+        & choco install $Package -y
+    }
+    if ($LASTEXITCODE -ne 0) {
+        throw "choco install $Package failed (exit code $LASTEXITCODE)."
+    }
 }
 
 function Test-MsvcToolchainPresent {
@@ -254,137 +277,155 @@ function Invoke-WithMsvc {
     Invoke-Command -ScriptBlock $Script
 }
 
-function Install-MSVCBuildToolsViaWinget {
-    if (-not (Test-CommandExists -Name winget)) {
-        throw "MSVC build tools appear to be missing (cl.exe not found), and winget is not available to install them. Install Visual Studio Build Tools (C++ workload) and re-run."
+function Install-MSVCBuildToolsViaChocolatey {
+    Write-Host "Installing Visual Studio 2022 Build Tools (C++ workload) via Chocolatey... (this can take a while, ~3-4 GB)" -ForegroundColor Yellow
+    $params = '"--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --includeOptional --passive"'
+    & choco install visualstudio2022buildtools --package-parameters $params -y
+    if ($LASTEXITCODE -ne 0) {
+        throw "choco install visualstudio2022buildtools failed (exit code $LASTEXITCODE)."
     }
+    Write-Host "Installation successful. If cl.exe is still not on PATH, restart your terminal." -ForegroundColor Green
+}
 
-    Write-Host "Installing Visual Studio 2022 Build Tools (C++ workload) via winget... (this can take a while, ~3-4 GB)"
-    $wingetArgs = 'install --id Microsoft.VisualStudio.2022.BuildTools -e --accept-package-agreements --accept-source-agreements --override "--add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 --includeRecommended --passive --norestart"'
-    if (Test-Administrator) {
-        & winget $wingetArgs
-        $installExit = $LASTEXITCODE
+function Install-WasiSdk {
+    $wasiSdkVersion = "24"
+    $hostArch = Get-HostArch
+    if ($hostArch -eq "Arm64") {
+        $wasiSdkUrl = "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${wasiSdkVersion}/wasi-sdk-${wasiSdkVersion}.0-arm64-windows.tar.gz"
     } else {
-        Write-Host "Elevating to install MSVC Build Tools via winget..."
-        $installExit = Invoke-ElevatedProcess -FilePath "winget" -ArgumentString $wingetArgs -AllowedExitCodes @(0, -1978335189)
+        $wasiSdkUrl = "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${wasiSdkVersion}/wasi-sdk-${wasiSdkVersion}.0-x86_64-windows.tar.gz"
     }
-    if ($installExit -eq -1978335189) {
-        Write-Host "Visual Studio Build Tools already installed and up to date (winget exit $installExit)."
-    } elseif ($installExit -ne 0) {
-        throw "winget failed to install Visual Studio Build Tools (exit code $installExit)."
+    $wasiSdkPath = "C:\wasi-sdk"
+
+    if (Test-Path $wasiSdkPath) {
+        Write-Host "WASI SDK already installed at $wasiSdkPath" -ForegroundColor Green
+        return
     }
 
-    # After installation, we need to ensure the environment is updated or warn the user.
-    Write-Host "Installation successful. If cl.exe is still not on PATH, restart your terminal."
+    Write-Host "Installing WASI SDK..." -ForegroundColor Yellow
+    New-Item -ItemType Directory -Path $wasiSdkPath -Force | Out-Null
+    $downloadPath = "$env:TEMP\wasi-sdk.tar.gz"
+
+    Write-Host "Downloading WASI SDK from GitHub..." -ForegroundColor Yellow
+    Invoke-WebRequest -Uri $wasiSdkUrl -OutFile $downloadPath
+
+    Write-Host "Extracting WASI SDK..." -ForegroundColor Yellow
+    tar -xzf $downloadPath -C $wasiSdkPath --strip-components=1
+    Remove-Item $downloadPath -ErrorAction SilentlyContinue
+
+    # Add to PATH
+    $currentPath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+    if ($currentPath -notlike "*$wasiSdkPath\bin*") {
+        [Environment]::SetEnvironmentVariable("Path", "$currentPath;$wasiSdkPath\bin", "Machine")
+        Write-Host "Added WASI SDK to system PATH" -ForegroundColor Green
+    }
+
+    Write-Host "WASI SDK installed at $wasiSdkPath" -ForegroundColor Green
+}
+
+function Install-TreeSitterBuildTools {
+    # These tools are required by Zed to compile Tree-sitter grammars
+    Install-ChocoPackageIfMissing -Command "git" -Package "git"
+    Install-ChocoPackageIfMissing -Command "cmake" -Package "cmake" -PackageParams "'ADD_CMAKE_TO_PATH=System'"
+    Install-ChocoPackageIfMissing -Command "ninja" -Package "ninja"
+    Install-ChocoPackageIfMissing -Command "python" -Package "python"
+    Install-ChocoPackageIfMissing -Command "clang" -Package "llvm"
 }
 
 function Ensure-BuildDependencies {
-    # Check and prompt for Rust/cargo
-    Install-RustupIfMissing
+    # Check if we need to install anything that requires admin
+    $needsAdmin = $false
+    if (-not (Test-CommandExists -Name choco)) { $needsAdmin = $true }
+    if (-not (Test-CommandExists -Name cargo)) { $needsAdmin = $true }
+    if (-not (Test-CommandExists -Name git)) { $needsAdmin = $true }
+    if (-not (Test-CommandExists -Name cmake)) { $needsAdmin = $true }
+    if (-not (Test-CommandExists -Name ninja)) { $needsAdmin = $true }
+    if (-not (Test-CommandExists -Name python)) { $needsAdmin = $true }
+    if (-not (Test-CommandExists -Name clang)) { $needsAdmin = $true }
+    if (-not (Test-WasiSdkPresent)) { $needsAdmin = $true }
 
-    # Check and prompt for MSVC build tools
-    if (-not (Test-MsvcToolchainPresent)) {
+    # Check MSVC
+    $msvcPresent = $false
+    if (Test-MsvcToolchainPresent) {
+        $msvcPresent = $true
+    } else {
+        # Try importing vcvars
+        try {
+            Invoke-WithMsvc -Script { }
+            $msvcPresent = Test-MsvcToolchainPresent
+        } catch { }
+    }
+    if (-not $msvcPresent) { $needsAdmin = $true }
+
+    if ($needsAdmin -and -not (Test-Administrator)) {
+        if (-not (Confirm-Install -Prompt "Some build dependencies are missing and require administrator privileges to install. Elevate now?")) {
+            throw "Build dependencies are required. Re-run with -Yes or install manually."
+        }
+
+        # Re-launch this script elevated
+        $scriptPath = $PSCommandPath
+        $argList = "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`""
+        if ($SkipBuild) { $argList += " -SkipBuild" }
+        if ($SkipExtensionInstall) { $argList += " -SkipExtensionInstall" }
+        if ($SkipSendToStata) { $argList += " -SkipSendToStata" }
+        if ($Yes) { $argList += " -Yes" }
+        if ($RegisterAutomation) { $argList += " -RegisterAutomation" }
+        if ($SkipAutomationCheck) { $argList += " -SkipAutomationCheck" }
+        $argList += " -ZedExtensionsDir `"$ZedExtensionsDir`""
+
+        Write-Host "Elevating to install dependencies..."
+        $exitCode = Invoke-ElevatedProcess -FilePath "powershell.exe" -ArgumentString $argList
+        exit $exitCode
+    }
+
+    # Install Chocolatey first (needed for other installs)
+    Ensure-Chocolatey
+
+    # Install Rust
+    if (-not (Test-CommandExists -Name cargo)) {
+        Install-ChocoPackageIfMissing -Command "rustc" -Package "rust"
+        Ensure-UserCargoOnPath
+    } else {
+        Write-Host "Rust already installed" -ForegroundColor Green
+    }
+
+    # Install MSVC build tools if needed
+    if (-not $msvcPresent) {
         Write-Host "MSVC build tools (cl.exe/link.exe) are required to build the extension."
-        # If tools are installed but not on PATH, try importing MSVC env once before prompting.
+        # Check again after potential Chocolatey installs
+        $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+        $hasVs = (Test-Path $vswhere) -and (& $vswhere -latest -property installationPath)
+        if (-not $hasVs) {
+            Install-MSVCBuildToolsViaChocolatey
+        }
+        # Try to import MSVC env
         try {
-            Invoke-WithMsvc -Script { Write-Host "MSVC environment imported for current session (pre-install check)." }
+            Invoke-WithMsvc -Script { Write-Host "MSVC environment imported for current session." }
         } catch {
-            Write-Warning "MSVC env import attempt failed: $($_.Exception.Message)"
-        }
-        # If import made MSVC available, skip winget install; otherwise offer install
-        if (-not (Test-MsvcToolchainPresent)) {
-            if (Test-CommandExists -Name winget) {
-                if (Confirm-Install -Prompt "Download and install the Visual Studio Build Tools C++ workload now via winget?") {
-                    Install-MSVCBuildToolsViaWinget
-                    # Attempt to proceed in the same session; Invoke-WithMsvc will import vcvars if needed.
-                    try {
-                        Invoke-WithMsvc -Script { Write-Host "MSVC environment imported for current session." }
-                    } catch {
-                        Write-Warning "MSVC build tools remain unavailable after installation: $($_.Exception.Message)"
-                        Report-MsvcInstructions
-                    }
-                } else {
-                    throw "MSVC build tools are required; rerun with -SkipBuild if you only want install/uninstall steps."
-                }
-            } else {
-                throw "MSVC build tools are required (cl.exe/link.exe not found) and winget is unavailable. Install the 'Desktop development with C++' workload of Visual Studio or the standalone Build Tools, then re-run."
-            }
+            Write-Warning "MSVC build tools installed but environment import failed: $($_.Exception.Message)"
+            Report-MsvcInstructions
         }
     }
 
-    # Check and prompt for WASI SDK
-    Ensure-WasiSdk
-}
+    # Install Tree-sitter build tools (Git, CMake, Ninja, Python, LLVM)
+    Install-TreeSitterBuildTools
 
-function Get-GitHubLatestAssetUrl {
-    param(
-        [Parameter(Mandatory=$true)][string]$Repo,
-        [Parameter(Mandatory=$true)][string]$Pattern
-    )
-    $headers = @{ 'User-Agent' = 'sight-setup-script'; 'Accept' = 'application/vnd.github+json'; 'X-GitHub-Api-Version' = '2022-11-28' }
-    try {
-        $rel = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/$Repo/releases/latest" -ErrorAction Stop
-        foreach ($asset in $rel.assets) {
-            if ($asset.name -match $Pattern) { return @{ url = $asset.browser_download_url; name = $asset.name; tag = $rel.tag_name } }
-        }
-    } catch {
-        Write-Warning "GitHub API query failed: $($_.Exception.Message)"
+    # Install WASI SDK
+    if (-not (Test-WasiSdkPresent)) {
+        Install-WasiSdk
+        # Refresh PATH
+        $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+        $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+        $env:PATH = "$machinePath;$userPath"
+        $env:WASI_SDK_PATH = "C:\wasi-sdk"
+    } else {
+        Write-Host "WASI SDK already installed" -ForegroundColor Green
     }
-    # Fallback: parse HTML and redirect of releases/latest
-    $latestUrl = "https://github.com/$Repo/releases/latest"
-    $tag = $null
-    try {
-        $r = Invoke-WebRequest -Uri $latestUrl -MaximumRedirection 0 -UseBasicParsing -ErrorAction Stop
-    } catch {
-        $loc = $null
-        $ex = $_.Exception
-        if ($ex) {
-            if ($ex.PSObject.Properties.Name -contains 'Response' -and $ex.Response) {
-                $loc = $ex.Response.Headers['Location']
-            } elseif ($ex -is [System.Net.WebException]) {
-                $resp = $ex.Response
-                if ($resp) { $loc = $resp.Headers['Location'] }
-            }
-        }
-        if ($loc) {
-            if ($loc -match 'releases/tag/([^/]+)$') { $tag = $matches[1] }
-            elseif ($loc -is [string]) { $tag = ($loc.Split('/') | Select-Object -Last 1) }
-        }
-    }
-    if (-not $tag) {
-        try {
-            $r2 = Invoke-WebRequest -Uri ("https://github.com/$Repo/releases") -UseBasicParsing
-            $m = [regex]::Match($r2.Content, 'releases/tag/([^"\' + "']+)")
-            if ($m.Success) { $tag = $m.Groups[1].Value }
-        } catch {}
-    }
-    if (-not $tag) { return $null }
-    # Fetch the tag page and locate a Windows asset
-    $tagPage = "https://github.com/$Repo/releases/tag/$tag"
-    try {
-        $p = Invoke-WebRequest -Uri $tagPage -UseBasicParsing
-        $content = $p.Content
-        $prefix = "/$Repo/releases/download/$tag/"
-        $candidates = New-Object System.Collections.Generic.List[string]
-        $start = 0
-        while ($true) {
-            $idx = $content.IndexOf($prefix, $start)
-            if ($idx -lt 0) { break }
-            $after = $idx + $prefix.Length
-            $end = $content.IndexOf('"', $after)
-            if ($end -gt $after) {
-                $name = $content.Substring($after, $end - $after)
-                $candidates.Add($name)
-                $start = $end + 1
-            } else { break }
-        }
-        $assetName = $candidates | Where-Object { $_ -match $Pattern } | Select-Object -First 1
-        if ($assetName) {
-            $dl = "https://github.com/$Repo/releases/download/$tag/$assetName"
-            return @{ url = $dl; name = $assetName; tag = $tag }
-        }
-    } catch {}
-    return $null
+
+    # Refresh environment after all installs
+    $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $env:PATH = "$machinePath;$userPath"
 }
 
 function Test-WasiSdkPresent {
@@ -400,70 +441,6 @@ function Test-WasiSdkPresent {
         }
     }
     return $false
-}
-
-function Report-WasiSdkInstructions {
-    $msg = @()
-    $msg += "WASI SDK not detected. To enable Zed's dev extension build on Windows:"
-    $msg += "  1) Download the Windows WASI SDK from: https://github.com/WebAssembly/wasi-sdk/releases"
-    $msg += "     - x86_64: wasi-sdk-<ver>-x86_64-windows.*"
-    $msg += "     - arm64:  wasi-sdk-<ver>-arm64-windows.*"
-    $msg += "  2) Extract it to a permanent directory (e.g. %LOCALAPPDATA%\\wasi-sdk\\wasi-sdk-<ver>)."
-    $msg += "  3) Set environment variables so Zed can find it (then restart Zed/terminal):"
-    $msg += '     setx WASI_SDK_PATH "%LOCALAPPDATA%\wasi-sdk\wasi-sdk-<ver>"'
-    $msg += '     setx PATH "%WASI_SDK_PATH%\bin;%PATH%"'
-    $msg += "If you prefer direct links for wasi-sdk-29:"
-    $msg += "  - x86_64: https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-29/wasi-sdk-29.0-x86_64-windows.tar.gz"
-    $msg += "  - arm64:  https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-29/wasi-sdk-29.0-arm64-windows.tar.gz"
-    $msg | ForEach-Object { Write-Host $_ }
-}
-
-function Ensure-WasiSdk {
-    if (Test-WasiSdkPresent) { return }
-
-    $installer = Join-Path $PSScriptRoot 'install-wasi-tools.ps1'
-    if (-not (Test-Path $installer)) {
-        Write-Warning "install-wasi-tools.ps1 not found; falling back to manual instructions."
-        Report-WasiSdkInstructions
-        Write-Warning "Continuing without WASI SDK. Dev extension installation inside Zed may fail until it is installed."
-        return
-    }
-
-    if (-not (Confirm-Install -Prompt "WASI SDK is not installed. Install WASI compilation tools now? (requires admin)")) {
-        Report-WasiSdkInstructions
-        Write-Warning "Continuing without WASI SDK. Dev extension installation inside Zed may fail until it is installed."
-        return
-    }
-
-    Write-Host "Launching WASI tools installer (requires administrator privileges)..."
-    if (Test-Administrator) {
-        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $installer
-        $installExit = $LASTEXITCODE
-    } else {
-        $installExit = Invoke-ElevatedProcess -FilePath "powershell.exe" -ArgumentString "-NoProfile -ExecutionPolicy Bypass -File `"$installer`""
-    }
-
-    if ($installExit -ne 0) {
-        Write-Warning "install-wasi-tools.ps1 exited with code $installExit"
-        Report-WasiSdkInstructions
-        Write-Warning "Continuing without WASI SDK. Dev extension installation inside Zed may fail until it is installed."
-        return
-    }
-
-    # Refresh PATH from machine environment
-    $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
-    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-    $env:PATH = "$machinePath;$userPath"
-
-    # Check for WASI SDK path set by installer
-    $wasiSdkPath = "C:\wasi-sdk"
-    if (Test-Path (Join-Path $wasiSdkPath 'bin\clang.exe')) {
-        $env:WASI_SDK_PATH = $wasiSdkPath
-        Write-Host "WASI SDK installed successfully at $wasiSdkPath"
-    } else {
-        Write-Warning "WASI SDK installation completed but clang.exe not found at expected location."
-        Report-WasiSdkInstructions
-    }
 }
 
 function Ensure-WasmTarget {

@@ -22,3 +22,4 @@ Thumbs.db
 # Grammars - fetched from remote repository, never commit locally
 /grammars/
 /tree-sitter-stata
+scratch.do
