@@ -17,9 +17,9 @@ Syntax highlighting, completions, and diagnostics will work immediately once you
 
 ## Send to Stata (Optional)
 
-Execute Stata code directly from Zed with keyboard shortcuts. Works with both the Stata application (via AppleScript) and terminal sessions (via paste).
+Execute Stata code directly from Zed with keyboard shortcuts. Works with both the Stata application and terminal sessions.
 
-**Install (macOS only):**
+### macOS
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.sh)"
@@ -34,7 +34,24 @@ Execute Stata code directly from Zed with keyboard shortcuts. Works with both th
 | `shift-enter` | Paste selection to terminal |
 | `opt-enter` | Paste current line to terminal |
 
-> **Why a separate install?** Zed extensions can't register custom keybindings or tasks—those must live in user config files (`~/.config/zed/`). The send-to-stata functionality requires both, so it can't be bundled into the extension itself.
+### Windows
+
+Requires PowerShell 5.0+ (included with Windows 10/11).
+
+```powershell
+irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.ps1 | iex
+```
+
+| Shortcut | Action |
+|----------|--------|
+| `ctrl-enter` | Send statement to Stata app |
+| `shift-ctrl-enter` | Send file to Stata app |
+| `alt-ctrl-enter` | Include statement (preserves locals) |
+| `alt-shift-ctrl-enter` | Include file (preserves locals) |
+| `shift-enter` | Paste selection to terminal |
+| `alt-enter` | Paste current line to terminal |
+
+> **Why a separate install?** Zed extensions can't register custom keybindings or tasks—those must live in user config files. The send-to-stata functionality requires both, so it can't be bundled into the extension itself.
 
 See [SEND-TO-STATA.md](SEND-TO-STATA.md) for full documentation, configuration options, and troubleshooting.
 
