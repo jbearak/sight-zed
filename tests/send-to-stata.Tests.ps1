@@ -276,14 +276,11 @@ Describe "New-TempDoFile" {
 }
 
 Describe "Find-StataInstallation" {
-    It "Property1: Returns STATA_PATH when set" -Tag "Property1" {
+    It "Property1: Returns STATA_PATH when set and path exists" -Tag "Property1" {
         for ($i = 0; $i -lt 100; $i++) {
-            $testPaths = @(
-                "C:\Program Files\Stata19\StataMP-64.exe",
-                "C:\Stata\StataSE.exe",
-                "D:\Tools\Stata\Stata.exe"
-            )
-            $testPath = $testPaths | Get-Random
+            # Create a temp file to simulate Stata executable
+            $tempFile = New-TemporaryFile
+            $testPath = $tempFile.FullName
             
             $env:STATA_PATH = $testPath
             try {
@@ -291,7 +288,19 @@ Describe "Find-StataInstallation" {
                 $result | Should -Be $testPath
             } finally {
                 Remove-Item env:STATA_PATH -ErrorAction SilentlyContinue
+                Remove-Item $testPath -ErrorAction SilentlyContinue
             }
+        }
+    }
+    
+    It "Property1: Ignores STATA_PATH when path does not exist" -Tag "Property1" {
+        $env:STATA_PATH = "C:\NonExistent\Path\Stata.exe"
+        try {
+            $result = Find-StataInstallation
+            # Should return null or auto-detected path, not the non-existent path
+            $result | Should -Not -Be "C:\NonExistent\Path\Stata.exe"
+        } finally {
+            Remove-Item env:STATA_PATH -ErrorAction SilentlyContinue
         }
     }
 }
