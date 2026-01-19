@@ -112,7 +112,31 @@ function Get-StatementAtRow {
 }
 
 function New-TempDoFile {
-    # TODO: Implement temp file creation
+    param([string]$Content)
+    
+    try {
+        $tempPath = [System.IO.Path]::GetTempPath()
+        $fileName = [System.IO.Path]::GetRandomFileName()
+        $doFile = [System.IO.Path]::ChangeExtension($fileName, ".do")
+        $fullPath = Join-Path $tempPath $doFile
+        
+        [System.IO.File]::WriteAllText($fullPath, $Content, [System.Text.UTF8Encoding]::new($false))
+        return $fullPath
+    }
+    catch {
+        return $null
+    }
+}
+
+function Read-SourceFile {
+    param([string]$FilePath)
+    
+    return [System.IO.File]::ReadAllText($FilePath)
+}
+
+function Read-StdinContent {
+    $lines = @($input)
+    return $lines -join [Environment]::NewLine
 }
 
 function Send-ToStata {
