@@ -1,4 +1,4 @@
-param(
+﻿param(
     [switch]$Uninstall,
     [switch]$RegisterAutomation,
     [switch]$SkipAutomationCheck
@@ -22,7 +22,7 @@ function Install-Script {
         $content = Invoke-RestMethod -Uri $url
         
         if ($githubRef -eq "main" -and !$env:SIGHT_GITHUB_REF) {
-            $expectedChecksum = "EB7B9818E43B683CF99AC4C831A144C40100B9F69CD39A7D335F633396FD2276"
+            $expectedChecksum = "3D05E3A88E257DA72A114E69217752EABCE2D0B039C77EAEB5AEE0B627091A03"
             $actualChecksum = (Get-FileHash -InputStream ([System.IO.MemoryStream]::new([System.Text.Encoding]::UTF8.GetBytes($content))) -Algorithm SHA256).Hash
             if ($actualChecksum -ne $expectedChecksum) {
                 throw "Checksum mismatch. Expected: $expectedChecksum, Got: $actualChecksum"
@@ -284,3 +284,4 @@ Write-Host "  Alt+Ctrl+Enter: Include statement"
 Write-Host "  Alt+Shift+Ctrl+Enter: Include file"
 Write-Host "  Shift+Enter: Paste selection to terminal"
 Write-Host "  Alt+Enter: Paste current line to terminal"
+
