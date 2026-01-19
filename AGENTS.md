@@ -315,6 +315,61 @@ Use `update-checksum.ps1` (PowerShell 5+):
 
 Note: The script commits automatically; no additional git steps are needed unless you want to amend the message.
 
+## Windows Send-to-Stata Architecture
+
+On Windows, Send-to-Stata uses a native C# executable (`send-to-stata.exe`) instead of PowerShell for fast startup (~10x faster than PowerShell).
+
+### Building the Native Executable
+
+The source is in `send-to-stata/`. To rebuild:
+
+```powershell
+cd send-to-stata
+dotnet publish -c Release -r win-x64    # For Intel/AMD
+dotnet publish -c Release -r win-arm64  # For ARM64
+
+# Copy to repo root
+cp bin/Release/net8.0-windows/win-x64/publish/send-to-stata.exe ../send-to-stata-x64.exe
+cp bin/Release/net8.0-windows/win-arm64/publish/send-to-stata.exe ../send-to-stata-arm64.exe
+```
+
+Both binaries are committed to the repo. The installer detects architecture and copies the correct one.
+
+### Executable Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `-Statement` | Send single statement mode |
+| `-FileMode` | Send entire file mode |
+| `-Include` | Use `include` instead of `do` |
+| `-File <path>` | Path to .do file (required) |
+| `-Row <n>` | Line number for statement mode |
+| `-ReturnFocus` | Return focus to Zed after sending |
+| `-ClipPause <ms>` | Delay after clipboard copy (default: 10) |
+| `-WinPause <ms>` | Delay between window operations (default: 10) |
+| `-KeyPause <ms>` | Delay between keystrokes (default: 1) |
+
+### Installer Parameters
+
+The `install-send-to-stata.ps1` script accepts:
+
+| Parameter | Description |
+|-----------|-------------|
+| `-Uninstall` | Remove Send-to-Stata |
+| `-RegisterAutomation` | Force re-register Stata automation |
+| `-SkipAutomationCheck` | Skip Stata automation registration check |
+| `-ReturnFocus <value>` | Focus behavior: `true`, `false`, or omit to prompt |
+
+For CI/CD, pass `-ReturnFocus true` or `-ReturnFocus false` to skip the interactive prompt:
+
+```powershell
+# Non-interactive install with return focus enabled
+.\install-send-to-stata.ps1 -SkipAutomationCheck -ReturnFocus true
+
+# Non-interactive install with return focus disabled
+.\install-send-to-stata.ps1 -SkipAutomationCheck -ReturnFocus false
+```
+
 ## Jupyter Stata Kernel Variants
 
 The `install-jupyter-stata.sh` installer creates two Jupyter kernels:
