@@ -211,23 +211,27 @@ function Invoke-AutomationRegistrationCheck {
     
     $regStatus = Test-StataAutomationRegistered
     
-    if ($Force -or !$regStatus.IsRegistered) {
-        if (!$regStatus.IsRegistered) {
-            $message = "We couldn't confirm whether Stata automation is registered. Register now to enable Send-to-Stata functionality?"
+    if ($Force -or -not $regStatus.IsRegistered) {
+        if (-not $regStatus.IsRegistered) {
+            Write-Host "We couldn't confirm whether Stata automation is registered. Proceeding to register it so Send-to-Stata works." -ForegroundColor Yellow
         } else {
-            $message = "Force registration requested. Re-register Stata automation?"
+            Write-Host "Force re-registration requested. Updating Stata automation registration..." -ForegroundColor Yellow
         }
-        if ($Force -or (Show-RegistrationPrompt $message)) {
-            Register-StataAutomation $StataPath
-        }
-    } elseif ($regStatus.RegisteredPath -and $regStatus.RegisteredPath -ne $StataPath) {
-        $message = "Stata version mismatch detected.`n`nCurrently registered: $($regStatus.RegisteredPath)`nDetected installation: $StataPath`n`nWould you like to update the registration?"
-        if (Show-RegistrationPrompt $message) {
-            Register-StataAutomation $StataPath
-        }
-    } else {
-        Write-Host "Stata Automation type library is already registered." -ForegroundColor Green
+        Write-Host "Windows may show a UAC elevation prompt from Stata during registration." -ForegroundColor Yellow
+        Register-StataAutomation $StataPath | Out-Null
+        return
     }
+
+    if ($regStatus.RegisteredPath -and $regStatus.RegisteredPath -ne $StataPath) {
+        Write-Host "Stata version mismatch detected." -ForegroundColor Yellow
+        Write-Host "  Registered: $($regStatus.RegisteredPath)" -ForegroundColor Yellow
+        Write-Host "  Detected:   $StataPath" -ForegroundColor Yellow
+        Write-Host "Updating the registration to the detected installation..." -ForegroundColor Yellow
+        Register-StataAutomation $StataPath | Out-Null
+        return
+    }
+
+    Write-Host "Stata Automation type library is already registered." -ForegroundColor Green
 }
 
 function Uninstall-SendToStata {
