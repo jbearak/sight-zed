@@ -52,10 +52,14 @@ function Install-Tasks {
     # We use -File mode instead of -Command to avoid complex escaping issues
     $scriptPath = "$env:APPDATA\Zed\stata\send-to-stata.ps1"
 
+    # Use pwsh.exe (PowerShell 7) if available for faster startup, fall back to powershell.exe
+    $pwshPath = Get-Command pwsh.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+    $psExe = if ($pwshPath) { "pwsh.exe" } else { "powershell.exe" }
+
     $newTasks = @(
         @{
             label = "Stata: Send Statement"
-            command = "powershell.exe -sta -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -Statement -File `"`$ZED_FILE`" -Row `$ZED_ROW"
+            command = "$psExe -sta -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -Statement -File `"`$ZED_FILE`" -Row `$ZED_ROW"
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
@@ -63,7 +67,7 @@ function Install-Tasks {
         },
         @{
             label = "Stata: Send File"
-            command = "powershell.exe -sta -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -FileMode -File `"`$ZED_FILE`""
+            command = "$psExe -sta -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -FileMode -File `"`$ZED_FILE`""
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
@@ -71,7 +75,7 @@ function Install-Tasks {
         },
         @{
             label = "Stata: Include Statement"
-            command = "powershell.exe -sta -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -Statement -Include -File `"`$ZED_FILE`" -Row `$ZED_ROW"
+            command = "$psExe -sta -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -Statement -Include -File `"`$ZED_FILE`" -Row `$ZED_ROW"
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
@@ -79,7 +83,7 @@ function Install-Tasks {
         },
         @{
             label = "Stata: Include File"
-            command = "powershell.exe -sta -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -FileMode -Include -File `"`$ZED_FILE`""
+            command = "$psExe -sta -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -FileMode -Include -File `"`$ZED_FILE`""
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
