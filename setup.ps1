@@ -332,6 +332,32 @@ function Install-TreeSitterBuildTools {
     Install-ChocoPackageIfMissing -Command "clang" -Package "llvm"
 }
 
+function Ensure-PowerShell7 {
+    # PowerShell 7 (pwsh.exe) is required for Send-to-Stata tasks to work properly
+    # (faster startup, terminal window closes correctly after task completion)
+    if (Test-CommandExists -Name pwsh) {
+        Write-Host "PowerShell 7 already installed" -ForegroundColor Green
+        return
+    }
+
+    Write-Host "Installing PowerShell 7 via Chocolatey..." -ForegroundColor Yellow
+    & choco install powershell-core -y
+    if ($LASTEXITCODE -ne 0) {
+        throw "choco install powershell-core failed (exit code $LASTEXITCODE)."
+    }
+
+    # Refresh PATH to pick up pwsh
+    $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $env:PATH = "$machinePath;$userPath"
+
+    if (-not (Test-CommandExists -Name pwsh)) {
+        Write-Warning "PowerShell 7 installed but pwsh.exe not found on PATH. You may need to restart your terminal."
+    } else {
+        Write-Host "PowerShell 7 installed successfully" -ForegroundColor Green
+    }
+}
+
 function Ensure-BuildDependencies {
     # Check if we need to install anything that requires admin
     $needsAdmin = $false
@@ -342,6 +368,7 @@ function Ensure-BuildDependencies {
     if (-not (Test-CommandExists -Name ninja)) { $needsAdmin = $true }
     if (-not (Test-CommandExists -Name python)) { $needsAdmin = $true }
     if (-not (Test-CommandExists -Name clang)) { $needsAdmin = $true }
+    if (-not (Test-CommandExists -Name pwsh)) { $needsAdmin = $true }
     if (-not (Test-WasiSdkPresent)) { $needsAdmin = $true }
 
     # Check MSVC
@@ -409,6 +436,9 @@ function Ensure-BuildDependencies {
 
     # Install Tree-sitter build tools (Git, CMake, Ninja, Python, LLVM)
     Install-TreeSitterBuildTools
+
+    # Install PowerShell 7 (required for Send-to-Stata tasks)
+    Ensure-PowerShell7
 
     # Install WASI SDK
     if (-not (Test-WasiSdkPresent)) {
