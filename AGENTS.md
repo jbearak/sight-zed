@@ -18,16 +18,26 @@ When the tree-sitter-stata grammar is updated:
 
 ## Building the Extension
 
+### macOS / Linux
+
 ```bash
 cargo build --release --target wasm32-wasip1
-```
-
-The compiled extension will be at `target/wasm32-wasip1/release/sight_extension.wasm`.
-
-Copy to project root:
-```bash
 cp target/wasm32-wasip1/release/sight_extension.wasm extension.wasm
 ```
+
+### Windows
+
+Use the PowerShell setup script:
+
+```powershell
+.\setup.ps1 -Yes
+```
+
+This handles:
+- Installing build dependencies (Rust, MSVC, WASI SDK)
+- Building the extension WASM
+- Downloading the pre-built grammar WASM
+- Installing to Zed's extensions directory
 
 ## Why extension.wasm is Committed
 
@@ -37,9 +47,98 @@ The `.gitignore` reflects this:
 ```
 *.wasm
 !extension.wasm
+!/grammars/stata.wasm
 ```
 
-This excludes all `.wasm` files except `extension.wasm`. After building, you must commit the updated `extension.wasm` for users to receive the new version.
+This excludes all `.wasm` files except `extension.wasm` and the pre-built grammar. After building, you must commit the updated WASM files for users to receive the new version.
+
+## Windows Architecture
+
+Windows requires special handling due to several platform-specific limitations:
+
+### Problem 1: Sight LSP Binary Crashes on Windows
+
+The pre-built `sight-windows-x64.exe` binary from the Sight releases crashes immediately on startup (exits with no output). This appears to be a bug in how the Sight LSP is compiled for Windows.
+
+**Solution**: On Windows, the extension uses Zed's embedded Node.js to run `sight-server.js` (a bundled JavaScript version of the LSP) instead of the native binary.
+
+```rust
+// In src/lib.rs
+if platform == zed::Os::Windows {
+    let node_path = zed::node_binary_path()?;
+    let server_script = self.get_node_server_path()?;
+    // Run: node sight-server.js --stdio
+}
+```
+
+The `sight-server.js` file is downloaded from the same GitHub release as the native binaries.
+
+### Problem 2: Zed Cannot Compile Tree-Sitter Grammars on Windows
+
+Zed compiles tree-sitter grammars to WASM internally, but this compilation fails on Windows. The grammar compilation requires a working WASM toolchain that Zed doesn't have access to on Windows.
+
+**Solution**: We pre-build the grammar WASM and distribute it with the extension.
+
+The grammar WASM is:
+1. Built on macOS/Linux using the WASI SDK
+2. Published to tree-sitter-stata releases as `tree-sitter-stata.wasm`
+3. Downloaded by `setup.ps1` and placed in `grammars/stata.wasm`
+4. Committed to git (exception in `.gitignore`)
+
+### Problem 3: Extension WASM Compilation on Windows
+
+Building Rust to `wasm32-wasip1` on Windows requires:
+- MSVC build tools (for the linker)
+- WASI SDK (for WASM-specific libc)
+- Rust with the `wasm32-wasip1` target
+
+The `setup.ps1` script handles installing all these dependencies via Chocolatey.
+
+### Windows File Layout
+
+After running `setup.ps1`, the extension includes:
+
+```
+sight-zed/
+├── extension.wasm          # Rust extension compiled to WASM
+├── grammars/
+│   └── stata.wasm          # Pre-built tree-sitter grammar (downloaded)
+├── languages/
+│   └── stata/
+│       └── *.scm           # Syntax highlighting queries
+└── extension.toml          # Extension manifest
+```
+
+When installed to Zed:
+```
+%APPDATA%\Zed\extensions\installed\sight\
+├── extension.wasm
+├── grammars/
+│   └── stata.wasm
+├── languages/
+│   └── stata/
+│       └── *.scm
+└── extension.toml
+```
+
+### LSP Binary Resolution by Platform
+
+| Platform | LSP Approach |
+|----------|--------------|
+| macOS (ARM64) | Native binary: `sight-darwin-arm64` |
+| macOS (x64) | Native binary: `sight-darwin-arm64` (via Rosetta) |
+| Linux (ARM64) | Native binary: `sight-linux-arm64` |
+| Linux (x64) | Native binary: `sight-linux-x64` |
+| Windows | Node.js: `node sight-server.js --stdio` |
+
+### Updating for Windows
+
+When releasing a new version:
+
+1. Update `SERVER_VERSION` in `src/lib.rs`
+2. Ensure the release includes `sight-server.js` (for Windows Node.js fallback)
+3. If the grammar changed, rebuild and publish `tree-sitter-stata.wasm`
+4. Run `setup.ps1` on Windows to verify everything works
 
 ## Installing the Extension Locally
 
