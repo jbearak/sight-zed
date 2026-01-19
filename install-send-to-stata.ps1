@@ -38,13 +38,16 @@ function Install-Tasks {
     $tasksPath = "$env:APPDATA\Zed\tasks.json"
     $tasks = @()
     if (Test-Path $tasksPath) {
-        $tasks = Get-Content $tasksPath | ConvertFrom-Json
+        try {
+            $raw = Get-Content $tasksPath -Raw
+            $parsed = $raw | ConvertFrom-Json -ErrorAction Stop
+            if ($parsed) { $tasks = @($parsed) }
+        } catch { $tasks = @() }
     }
     
-    $tasks = $tasks | Where-Object { !$_.label.StartsWith("Stata:") }
+    $tasks = $tasks | Where-Object { -not ($_.label) -or -not $_.label.StartsWith("Stata:") }
     
     # Task commands use PowerShell to check ZED_SELECTED_TEXT and pipe it if present
-    # This mirrors the macOS approach of using python3 to read the env var safely
     $scriptPath = "$env:APPDATA\Zed\stata\send-to-stata.ps1"
     
     $newTasks = @(
@@ -83,7 +86,11 @@ function Install-Tasks {
     )
     
     $tasks += $newTasks
-    $tasks | ConvertTo-Json -Depth 10 | Out-File $tasksPath -Encoding UTF8
+    $json = ConvertTo-Json -InputObject $tasks -Depth 10 -Compress
+    # Make it human-readable and avoid BOM
+    $json = $json -replace '\\u0026','&' -replace '\\u003c','<' -replace '\\u003e','>' -replace '\\u0027',"'"
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($tasksPath, $json, $utf8NoBom)
 }
 
 function Install-Keybindings {
@@ -252,7 +259,7 @@ function Invoke-AutomationRegistrationCheck {
         return
     }
 
-    Write-Host "Stata Automation type library is already registered." -ForegroundColor Green
+        Write-Host "Stata Automation type library is already registered."
 }
 
 function Uninstall-SendToStata {
