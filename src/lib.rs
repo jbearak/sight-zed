@@ -1,6 +1,7 @@
 use zed_extension_api::{self as zed, DownloadedFileType, Result};
 
 const SERVER_VERSION: &str = "v0.1.11";
+const GITHUB_RELEASE_URL: &str = "https://github.com/jbearak/sight/releases/download";
 
 struct SightExtension {
     cached_binary_path: Option<String>,
@@ -67,21 +68,16 @@ impl SightExtension {
         if std::fs::metadata(&binary_path).is_err() {
             std::fs::create_dir_all(&version_dir)
                 .map_err(|e| format!("Failed to create directory: {}", e))?;
-            let release = zed::github_release_by_tag_name("jbearak/sight", SERVER_VERSION)
-                .map_err(|e| format!("Failed to fetch release: {}", e))?;
 
-            let asset = release
-                .assets
-                .iter()
-                .find(|a| a.name == asset_name)
-                .ok_or_else(|| format!("No asset '{}' in release", asset_name))?;
+            // Download directly from GitHub releases URL (no API call needed)
+            let download_url = format!("{}/{}/{}", GITHUB_RELEASE_URL, SERVER_VERSION, asset_name);
 
             zed::download_file(
-                &asset.download_url,
+                &download_url,
                 &binary_path,
                 DownloadedFileType::Uncompressed,
             )
-            .map_err(|e| format!("Failed to download: {}", e))?;
+            .map_err(|e| format!("Failed to download {}: {}", asset_name, e))?;
 
             zed::make_file_executable(&binary_path)?;
         }
@@ -104,18 +100,11 @@ impl SightExtension {
             std::fs::create_dir_all(&version_dir)
                 .map_err(|e| format!("Failed to create directory: {}", e))?;
 
-            // Download the pre-built sight-server.js from GitHub releases
-            let release = zed::github_release_by_tag_name("jbearak/sight", SERVER_VERSION)
-                .map_err(|e| format!("Failed to fetch release: {}", e))?;
-
-            let asset = release
-                .assets
-                .iter()
-                .find(|a| a.name == "sight-server.js")
-                .ok_or_else(|| "No sight-server.js asset in release".to_string())?;
+            // Download directly from GitHub releases URL (no API call needed)
+            let download_url = format!("{}/{}/sight-server.js", GITHUB_RELEASE_URL, SERVER_VERSION);
 
             zed::download_file(
-                &asset.download_url,
+                &download_url,
                 &server_script,
                 DownloadedFileType::Uncompressed,
             )
