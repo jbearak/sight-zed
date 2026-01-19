@@ -84,6 +84,15 @@ The grammar WASM is:
 2. Published to tree-sitter-stata releases as `tree-sitter-stata.wasm`
 3. Downloaded by `setup.ps1` and placed in `grammars/stata.wasm`
 4. Committed to git (exception in `.gitignore`)
+5. Referenced in `extension.toml` with `[grammars.stata]` and `path = "grammars/stata.wasm"`
+
+**Critical**: The `extension.toml` must include:
+```toml
+[grammars.stata]
+path = "grammars/stata.wasm"
+```
+
+This tells Zed to use the pre-built WASM instead of compiling from source. Without this section, Zed won't load the grammar even if the WASM file is present.
 
 ### Problem 3: Extension WASM Compilation on Windows
 
