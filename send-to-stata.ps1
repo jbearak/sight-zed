@@ -92,7 +92,23 @@ function Find-StataWindow {
 
 # Placeholder functions to be implemented later
 function Get-StatementAtRow {
-    # TODO: Implement statement extraction
+    param([string]$FilePath, [int]$Row)
+    
+    $lines = Get-Content $FilePath
+    $startRow = $Row
+    $endRow = $Row
+    
+    # Find statement start (search backwards)
+    while ($startRow -gt 1 -and $lines[$startRow - 2] -match '///\s*$') {
+        $startRow--
+    }
+    
+    # Find statement end (search forwards)
+    while ($endRow -lt $lines.Count -and $lines[$endRow - 1] -match '///\s*$') {
+        $endRow++
+    }
+    
+    return ($lines[($startRow - 1)..($endRow - 1)] -join [Environment]::NewLine)
 }
 
 function New-TempDoFile {
