@@ -486,10 +486,13 @@ After rebuilding, run `pwsh -File update-checksum.ps1` to update the checksums i
 | `-Include` | Use `include` instead of `do` |
 | `-File <path>` | Path to .do file (required) |
 | `-Row <n>` | Line number for statement mode |
-| `-ReturnFocus` | Return focus to Zed after sending |
+| `-ActivateStata` | Switch focus to Stata (skip return focus to Zed) |
+| `-ReturnFocus` | (Deprecated) No-op, prints deprecation warning |
 | `-ClipPause <ms>` | Delay after clipboard copy (default: 10) |
 | `-WinPause <ms>` | Delay between window operations (default: 10) |
 | `-KeyPause <ms>` | Delay between keystrokes (default: 1) |
+
+By default, focus returns to Zed after sending code. Use `-ActivateStata` to keep focus in Stata instead.
 
 ### Installer Parameters
 
@@ -500,17 +503,40 @@ The `install-send-to-stata.ps1` script accepts:
 | `-Uninstall` | Remove Send-to-Stata |
 | `-RegisterAutomation` | Force re-register Stata automation |
 | `-SkipAutomationCheck` | Skip Stata automation registration check |
-| `-ReturnFocus <value>` | Focus behavior: `true`, `false`, or omit to prompt |
+| `-ActivateStata <value>` | Focus behavior: `true` (switch to Stata), `false` (stay in Zed), or omit to prompt |
 
-For CI/CD, pass `-ReturnFocus true` or `-ReturnFocus false` to skip the interactive prompt:
+For CI/CD, pass `-ActivateStata true` or `-ActivateStata false` to skip the interactive prompt:
 
 ```powershell
-# Non-interactive install with return focus enabled
-.\install-send-to-stata.ps1 -SkipAutomationCheck -ReturnFocus true
+# Non-interactive install, stay in Zed (default behavior)
+.\install-send-to-stata.ps1 -SkipAutomationCheck -ActivateStata false
 
-# Non-interactive install with return focus disabled
-.\install-send-to-stata.ps1 -SkipAutomationCheck -ReturnFocus false
+# Non-interactive install, switch to Stata
+.\install-send-to-stata.ps1 -SkipAutomationCheck -ActivateStata true
 ```
+
+### macOS Installer Parameters
+
+The `install-send-to-stata.sh` script accepts:
+
+| Parameter | Description |
+|-----------|-------------|
+| `--uninstall` | Remove Send-to-Stata |
+| `--quiet` | Suppress output |
+| `--activate-stata` | Configure tasks to switch focus to Stata |
+| `--stay-in-zed` | Configure tasks to keep focus in Zed (default) |
+
+For CI/CD, pass `--activate-stata` or `--stay-in-zed` to skip the interactive prompt:
+
+```bash
+# Non-interactive install, stay in Zed (default behavior)
+./install-send-to-stata.sh --stay-in-zed
+
+# Non-interactive install, switch to Stata
+./install-send-to-stata.sh --activate-stata
+```
+
+Note: `--activate-stata` and `--stay-in-zed` are mutually exclusive.
 
 ## Jupyter Stata Kernel Variants
 
