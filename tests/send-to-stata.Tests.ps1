@@ -44,10 +44,13 @@ Describe "send-to-stata.ps1" {
     Context "Find-StataInstallation" {
     It "Property1: uses STATA_PATH when valid" {
         $tempExe = New-TemporaryFile
-        $env:STATA_PATH = $tempExe.FullName
-        Find-StataInstallation | Should Be $tempExe.FullName
-        Remove-Item env:STATA_PATH -ErrorAction SilentlyContinue
-        Remove-Item $tempExe.FullName
+        try {
+            $env:STATA_PATH = $tempExe.FullName
+            Find-StataInstallation | Should -Be $tempExe.FullName
+        } finally {
+            Remove-Item env:STATA_PATH -ErrorAction SilentlyContinue
+            Remove-Item $tempExe.FullName -ErrorAction SilentlyContinue
+        }
     }
 }
     Context "Send-ToStata with mocks" {
