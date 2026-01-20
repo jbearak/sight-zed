@@ -412,11 +412,11 @@ if ($ActivateStata -eq "true" -or $ActivateStata -eq "yes" -or $ActivateStata -e
     # Interactive prompt (no parameter or empty string)
     Write-Host ""
     Write-Host "Focus behavior after sending code to Stata:"
-    Write-Host "  [Y] Switch to Stata (ensures you see output, even if Zed is fullscreen)"
-    Write-Host "  [N] Stay in Zed (keep typing without switching windows)"
+    Write-Host "  [Y] Return focus to Zed (keep typing without switching windows)"
+    Write-Host "  [N] Stay in Stata (ensures you see output, even if Zed is fullscreen)"
     Write-Host ""
-    $response = Read-Host "Switch to Stata after sending code? [y/N]"
-    $useActivateStata = $response -eq 'y' -or $response -eq 'Y'
+    $response = Read-Host "Return focus to Zed after sending code to Stata? [Y/n]"
+    $useActivateStata = $response -eq 'n' -or $response -eq 'N'
 }
 
 Install-Tasks -UseActivateStata $useActivateStata
@@ -430,5 +430,3 @@ Write-Host "  Alt+Ctrl+Enter: Include statement"
 Write-Host "  Alt+Shift+Ctrl+Enter: Include file"
 Write-Host "  Shift+Enter: Paste selection to terminal"
 Write-Host "  Alt+Enter: Paste current line to terminal"
-
-
