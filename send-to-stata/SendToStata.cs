@@ -112,41 +112,47 @@ internal static partial class Program
 
     #endregion
 
-    [STAThread]
-    static int Main(string[] args)
+    public class ParsedArguments
     {
-        // Parse arguments
-        bool statement = false;
-        bool fileMode = false;
-        bool include = false;
-        bool returnFocus = false;
-        string? file = null;
-        int row = 0;
+        public bool Statement { get; set; }
+        public bool FileMode { get; set; }
+        public bool Include { get; set; }
+        public bool ActivateStata { get; set; }
+        public string? File { get; set; }
+        public int Row { get; set; }
+    }
 
+    public static ParsedArguments ParseArguments(string[] args)
+    {
+        var result = new ParsedArguments();
+        
         for (int i = 0; i < args.Length; i++)
         {
             string arg = args[i].ToLowerInvariant();
             switch (arg)
             {
                 case "-statement":
-                    statement = true;
+                    result.Statement = true;
                     break;
                 case "-filemode":
-                    fileMode = true;
+                    result.FileMode = true;
                     break;
                 case "-include":
-                    include = true;
+                    result.Include = true;
+                    break;
+                case "-activatestata":
+                    result.ActivateStata = true;
                     break;
                 case "-returnfocus":
-                    returnFocus = true;
+                    Console.Error.WriteLine("Warning: -ReturnFocus is deprecated and will be removed in a future version. Return focus is now the default behavior.");
                     break;
                 case "-file":
                     if (i + 1 < args.Length)
-                        file = args[++i];
+                        result.File = args[++i];
                     break;
                 case "-row":
                     if (i + 1 < args.Length && int.TryParse(args[++i], out int r))
-                        row = r;
+                        result.Row = r;
                     break;
                 case "-clippause":
                     if (i + 1 < args.Length && int.TryParse(args[++i], out int cp))
@@ -162,23 +168,31 @@ internal static partial class Program
                     break;
             }
         }
+        
+        return result;
+    }
+
+    [STAThread]
+    static int Main(string[] args)
+    {
+        var parsed = ParseArguments(args);
 
         // Validate arguments
-        if (statement && fileMode)
+        if (parsed.Statement && parsed.FileMode)
         {
             Console.Error.WriteLine("Error: Cannot specify both -Statement and -FileMode");
             return EXIT_INVALID_ARGS;
         }
 
-        if (string.IsNullOrEmpty(file))
+        if (string.IsNullOrEmpty(parsed.File))
         {
             Console.Error.WriteLine("Error: -File parameter is required");
             return EXIT_INVALID_ARGS;
         }
 
-        if (!File.Exists(file))
+        if (!File.Exists(parsed.File))
         {
-            Console.Error.WriteLine($"Error: Cannot read file: {file}");
+            Console.Error.WriteLine($"Error: Cannot read file: {parsed.File}");
             return EXIT_FILE_NOT_FOUND;
         }
 
@@ -191,13 +205,13 @@ internal static partial class Program
         {
             content = selectedText;
         }
-        else if (fileMode)
+        else if (parsed.FileMode)
         {
-            content = File.ReadAllText(file);
+            content = File.ReadAllText(parsed.File);
         }
-        else if (row > 0)
+        else if (parsed.Row > 0)
         {
-            content = GetStatementAtRow(file, row);
+            content = GetStatementAtRow(parsed.File, parsed.Row);
         }
         else
         {
@@ -213,8 +227,8 @@ internal static partial class Program
             return EXIT_TEMP_FILE_FAIL;
         }
 
-        // Send to Stata
-        return SendToStataWindow(tempFile, include, returnFocus);
+        // Send to Stata - return focus unless -ActivateStata is specified
+        return SendToStataWindow(tempFile, parsed.Include, !parsed.ActivateStata);
     }
 
     /// <summary>
