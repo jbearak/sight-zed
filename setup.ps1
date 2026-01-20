@@ -93,17 +93,18 @@ function Ensure-Arm64MsvcLibs {
         Write-Warning "vs_installer.exe not found; cannot auto-add ARM64 MSVC component."
         return
     }
-    $productId = & "$vsInstaller" list --quiet | Select-String "$InstallPath" | ForEach-Object {
+    $productId = & "$vsInstaller" list --quiet | Select-String ([regex]::Escape($InstallPath)) | ForEach-Object {
         ($_ -split '\s+')[0]
     } | Select-Object -First 1
-    $pidArg = if ($productId) { "--productId `"$productId`"" } else { "" }
-    $args = "--modify --installPath `"$InstallPath`" $pidArg --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 --quiet --norestart --wait"
+    $argList = @('--modify', '--installPath', $InstallPath)
+    if ($productId) { $argList += '--productId', $productId }
+    $argList += '--add', 'Microsoft.VisualStudio.Component.VC.Tools.ARM64', '--quiet', '--norestart', '--wait'
     Write-Host "ARM64 MSVC libs missing; adding component via vs_installer..."
     if (Test-Administrator) {
-        & $vsInstaller $args
+        & $vsInstaller @argList
         if ($LASTEXITCODE -ne 0) { throw "vs_installer.exe failed with exit code $LASTEXITCODE" }
     } else {
-        Invoke-ElevatedProcess -FilePath $vsInstaller -ArgumentString $args
+        Invoke-ElevatedProcess -FilePath $vsInstaller -ArgumentString ($argList -join ' ')
     }
 }
 function Confirm-Install {
