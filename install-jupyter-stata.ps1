@@ -15,6 +15,48 @@ param (
 )
 
 # ============================================================================
+# PowerShell 7+ Check
+# ============================================================================
+# This script requires PowerShell 7+ due to syntax and module compatibility.
+# If running in Windows PowerShell 5.1, attempt to re-launch with pwsh.
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    $scriptPath = $MyInvocation.MyCommand.Path
+    $pwshPath = Get-Command pwsh -ErrorAction SilentlyContinue
+    
+    if ($pwshPath) {
+        Write-Host "Re-launching with PowerShell 7..." -ForegroundColor Yellow
+        
+        if ($scriptPath) {
+            # Running from a file - re-invoke with pwsh
+            $scriptArgs = @()
+            if ($uninstall) { $scriptArgs += '-Uninstall' }
+            if ($removeConfig) { $scriptArgs += '-RemoveConfig' }
+            & pwsh -File $scriptPath @scriptArgs
+            exit $LASTEXITCODE
+        } else {
+            # Piped via irm | iex - re-fetch and pipe to pwsh
+            $scriptArgs = ""
+            if ($uninstall) { $scriptArgs += " -Uninstall" }
+            if ($removeConfig) { $scriptArgs += " -RemoveConfig" }
+            $url = "https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-stata.ps1"
+            & pwsh -NoProfile -ExecutionPolicy Bypass -Command "irm '$url' | iex$scriptArgs"
+            exit $LASTEXITCODE
+        }
+    }
+    
+    Write-Host "ERROR: This script requires PowerShell 7+." -ForegroundColor Red
+    Write-Host ""
+    Write-Host "You're running Windows PowerShell $($PSVersionTable.PSVersion)" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Install PowerShell 7:" -ForegroundColor Cyan
+    Write-Host "  winget install Microsoft.PowerShell"
+    Write-Host ""
+    Write-Host "Then run:" -ForegroundColor Cyan
+    Write-Host "  pwsh -c `"irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-stata.ps1 | iex`""
+    exit 1
+}
+
+# ============================================================================
 # Configuration Constants
 # ============================================================================
 $VENV_DIR = "$env:LOCALAPPDATA\stata_kernel\venv"

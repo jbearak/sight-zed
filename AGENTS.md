@@ -12,7 +12,14 @@ When a new version of the Sight LSP is released:
 
 **IMPORTANT:** Zed's built-in REPL currently only supports Python, TypeScript (Deno), R, Julia, and Scala. Stata is not yet supported as a first-class REPL language. The installation scripts below set up `stata_kernel` for use in external Jupyter clients (Jupyter Lab, Jupyter Notebook, etc.). Zed may still be able to discover and connect to the kernels via its Jupyter integration, but behavior can vary across versions and often requires a restart (see notes below).
 
-**PowerShell requirement:** Use **PowerShell 7+** (`pwsh`). Windows PowerShell 5.1 may fail to parse the installer scripts.
+**PowerShell requirement:** These scripts require **PowerShell 7+** (`pwsh`). If you run them with Windows PowerShell 5.1, they will:
+1. Automatically re-launch with `pwsh` if it's installed
+2. Otherwise, display instructions to install PowerShell 7
+
+To install PowerShell 7:
+```powershell
+winget install Microsoft.PowerShell
+```
 
 Install on Windows:
 

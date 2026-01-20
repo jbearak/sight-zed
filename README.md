@@ -36,8 +36,15 @@ Execute Stata code directly from Zed with keyboard shortcuts. Works with both th
 
 ### Windows
 
-Requires PowerShell 5.0+ (included with Windows 10/11).
+> [!IMPORTANT]
+> The Windows scripts require **PowerShell 7+** (`pwsh`).
 
+**Install PowerShell 7** (if not already installed):
+```powershell
+winget install Microsoft.PowerShell
+```
+
+Then run the installer (works from any PowerShell version):
 ```powershell
 irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.ps1 | iex
 ```
@@ -51,14 +58,14 @@ irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-sta
 | `shift-enter` | Paste selection to terminal |
 | `alt-enter` | Paste current line to terminal |
 
-**Focus behavior:** The installer prompts whether to return focus to Zed after sending code to Stata. For CI/CD or scripted installs, use `-ReturnFocus`:
+**Focus behavior:** The installer prompts whether to return focus to Zed after sending code to Stata. For CI/CD or scripted installs, pass arguments after the pipe:
 
 ```powershell
 # Return focus to Zed (recommended for iterative coding)
-irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.ps1 -OutFile i.ps1; .\i.ps1 -ReturnFocus true
+irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.ps1 | iex -ReturnFocus true
 
 # Stay in Stata (useful for inspecting output)
-irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.ps1 -OutFile i.ps1; .\i.ps1 -ReturnFocus false
+irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.ps1 | iex -ReturnFocus false
 ```
 
 > **Why a separate install?** Zed extensions can't register custom keybindings or tasks—those must live in user config files. The send-to-stata functionality requires both, so it can't be bundled into the extension itself.
@@ -92,10 +99,17 @@ Usage in Zed:
 
 ### Windows
 
-Requires **PowerShell 7+** (`pwsh`). Windows PowerShell 5.1 may fail to parse the installer.
+> [!IMPORTANT]
+> The Windows scripts require **PowerShell 7+** (`pwsh`).
 
+**Install PowerShell 7** (if not already installed):
 ```powershell
-irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-stata.ps1 | pwsh -NoProfile -ExecutionPolicy Bypass -File -
+winget install Microsoft.PowerShell
+```
+
+Then run the installer (works from any PowerShell version):
+```powershell
+irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-stata.ps1 | iex
 ```
 
 The Windows installer is intentionally opinionated to be reliable across Python/Jupyter setups:
@@ -134,12 +148,17 @@ cargo build --release --target wasm32-wasip1
 
 ### Send-to-Stata
 
-If you prefer to install from a local clone instead of curl-pipe:
+Install from a local clone:
 
 ```bash
 git clone https://github.com/jbearak/sight-zed
 cd sight-zed
+
+# macOS
 ./install-send-to-stata.sh
+
+# Windows (PowerShell 7+)
+pwsh -File .\install-send-to-stata.ps1
 ```
 
 ### Jupyter Kernel
@@ -149,7 +168,12 @@ Install stata_kernel from a local clone:
 ```bash
 git clone https://github.com/jbearak/sight-zed
 cd sight-zed
+
+# macOS
 ./install-jupyter-stata.sh
+
+# Windows (PowerShell 7+)
+pwsh -File .\install-jupyter-stata.ps1
 ```
 
 ## Related Projects
