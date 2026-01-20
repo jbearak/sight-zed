@@ -10,7 +10,7 @@ When a new version of the Sight LSP is released:
 
 ## Jupyter Stata Kernel on Windows
 
-**IMPORTANT:** Zed's built-in REPL currently only supports Python, TypeScript (Deno), R, Julia, and Scala. Stata is not yet supported, even with Jupyter kernels installed. The installation scripts below set up `stata_kernel` for use in external Jupyter clients (Jupyter Lab, Jupyter Notebook, etc.), not for Zed's REPL.
+**IMPORTANT:** Zed's built-in REPL currently only supports Python, TypeScript (Deno), R, Julia, and Scala. Stata is not yet supported as a first-class REPL language. The installation scripts below set up `stata_kernel` for use in external Jupyter clients (Jupyter Lab, Jupyter Notebook, etc.). Zed may still be able to discover and connect to the kernels via its Jupyter integration, but behavior can vary across versions and often requires a restart (see notes below).
 
 **PowerShell requirement:** Use **PowerShell 7+** (`pwsh`). Windows PowerShell 5.1 may fail to parse the installer scripts.
 
@@ -25,7 +25,9 @@ What the installer does (Windows):
 - Installs `stata_kernel` plus a minimal, pinned Jupyter runtime needed for kernels
 - Registers two kernels: **Stata** and **Stata (Workspace)**
 - Writes/updates `%USERPROFILE%\.stata_kernel.conf`
-- Ensures kernels are placed where Zed can discover them reliably (see notes below)
+- Ensures kernels are placed where Zed can discover them reliably
+
+**Important:** After installation or upgrades, **restart Zed**. Kernel discovery/connection state can be cached; a restart is often required before the kernels can connect.
 
 ### Windows-Specific Learnings / Gotchas (Why the Script Looks “Hacky”)
 
@@ -38,24 +40,32 @@ This can redirect Jupyter’s data dir to a non-standard location (e.g. `...\Loc
 **What we do:** On Windows, prefer `py -3.11` via the Python Launcher (`C:\Windows\py.exe`) so we can reliably target a real Python installation even when `python` points at the Store shim.
 
 #### 2) Pin to Python 3.11 (especially on Windows/ARM64)
-`stata_kernel` has historically worked best on Python 3.9–3.11. Newer versions (3.12/3.13) have caused repeated dependency and kernel registration issues on Windows.
+`stata_kernel` has historically worked best on Python 3.9–3.11. Newer versions (3.12/3.13) have caused repeated dependency and kernelspec issues on Windows.
 
-**What we do:** Prefer **Python 3.11** via `py -3.11`. If the existing venv was created with a different Python (e.g. 3.13), the installer **forcefully recreates** the venv to ensure consistency.
+**What we do:** Prefer **Python 3.11** via `py -3.11`. If the existing venv was created with a different Python, the installer **forcefully recreates** the venv to ensure consistency.
 
 #### 3) Do NOT install the full `jupyter` meta-package on Windows
 Installing the `jupyter` meta-package can pull in `notebook`/`jupyterlab` and transitive dependencies like `pywinpty`, which may require native builds (NuGet/Rust toolchain) and can fail—especially on Windows/ARM64.
 
-**What we do:** Install only the minimal components needed for kernelspecs and kernel launching:
+**What we do:** Install only the minimal components needed for kernelspecs and kernel launching, plus only the runtime deps that `stata_kernel` actually imports:
 - `jupyter-core`
 - `jupyter-client`
 - `ipykernel` (pinned to a Zed-compatible version)
 
 #### 4) `stata_kernel` dependency pins are too old—install it with `--no-deps`
-`stata_kernel` pins some dependencies to very old versions (e.g., `ipykernel<5`, `packaging<18`). On modern Python/Jupyter stacks this causes pip resolver backtracking and may force builds that fail.
+`stata_kernel` pins some dependencies to very old versions (e.g., `ipykernel<5`, `packaging<18`). On modern Python/Jupyter stacks this causes pip resolver backtracking and can force native builds that fail.
 
-**What we do:** Install `stata_kernel` with `--no-deps` and then install a modern, pinned set of runtime deps explicitly (including the pinned `ipykernel`).
+**What we do:** Install `stata_kernel` with `--no-deps` and then install a modern, pinned set of runtime deps explicitly (including the pinned `ipykernel`). On Windows this also includes dependencies required for imports and startup like:
+- `pywin32` (provides `win32com` for Automation mode)
+- `beautifulsoup4` (provides `bs4`)
+- `fake-useragent`
 
-#### 5) Deterministic kernelspec registration (always write `kernel.json`)
+#### 5) Avoid installing `notebook` (prevents `pywinpty` build failures)
+`stata_kernel` tries to copy a CodeMirror mode file into the `notebook` package at runtime (`importlib.resources.files("notebook")...`). Installing `notebook` on Windows can pull in `pywinpty`, which may require native builds and fail (especially on Windows/ARM64).
+
+**What we do:** Do **not** install `notebook`. Instead, the kernelspec wrapper **monkey-patches** `importlib.resources.files("notebook")` to point at a small stub directory so `stata_kernel` can start without `notebook`.
+
+#### 6) Deterministic kernelspec registration (always write `kernel.json`)
 On some Windows setups, `stata_kernel.install` can produce an incomplete kernelspec directory (e.g., `stata` exists but `kernel.json` is missing), which breaks both Jupyter and Zed discovery.
 
 **What we do:** The installer writes the kernelspecs directly into:
@@ -64,12 +74,12 @@ On some Windows setups, `stata_kernel.install` can produce an incomplete kernels
 
 This includes:
 - `kernel.json` (required)
-- a small Python wrapper script that launches `stata_kernel` via `ipykernel`
+- a small Python wrapper script that launches `stata_kernel` via `ipykernel` (and applies the `notebook` stub patch above)
 
 This approach is intentionally “dumb but reliable”.
 
-#### 6) When changing Python versions, you must rebuild the venv
-If you switch Python versions (or fix Store-Python alias issues), the existing venv won’t magically follow. The installer now recreates the venv automatically when it detects a non-preferred version.
+#### 7) When changing Python versions, you must rebuild the venv
+If you switch Python versions (or fix Store-Python alias issues), the existing venv won’t magically follow. The installer recreates the venv automatically when it detects a non-preferred version.
 
 
 ### Kernel Differences

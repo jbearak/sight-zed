@@ -94,7 +94,8 @@ Requires **PowerShell 7+** (`pwsh`). Windows PowerShell 5.1 may fail to parse th
 irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-stata.ps1 | pwsh -NoProfile -ExecutionPolicy Bypass -File -
 ```
 
-**Important:** After installation, you must restart Zed for the changes to take effect. The installer adds the Jupyter virtual environment to your PATH so Zed can discover the kernels.
+**Important:** After installing or updating the Jupyter kernels, **restart Zed**. Kernel discovery/connection state can be cached, and a restart is often required before the kernels can connect successfully. The installer adds the Jupyter virtual environment to your PATH so Zed can discover the kernels.
+
 After installation, you can use the kernels with `jupyter lab` or `jupyter notebook`:
 
 ```bash
