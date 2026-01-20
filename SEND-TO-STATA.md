@@ -48,7 +48,7 @@ pwsh -File .\install-send-to-stata.ps1
 ```
 
 > [TIP]
-> The installer prompts whether to return focus to Zed after sending code to Stata. For non-interactive installs, pass `-ReturnFocus true` or `-ReturnFocus false`.
+> By default, focus stays in Zed after sending code to Stata—matching Stata's own do-file editor behavior. The installer prompts whether you'd prefer to switch focus to Stata instead. See [Focus Behavior](#focus-behavior) for details.
 
 The installer will:
 1. Copy the send-to-stata script to the appropriate location
@@ -144,6 +144,66 @@ By default, temp `.do` files are kept even if AppleScript fails (useful for debu
 
 ```bash
 export STATA_CLEANUP_ON_ERROR=1
+```
+
+## Focus Behavior
+
+By default, focus stays in Zed after sending code to Stata. This matches Stata's own do-file editor behavior, letting you continue typing without manually switching windows.
+
+If you prefer to switch focus to Stata after sending code (useful when Zed is fullscreen and you want to see output immediately), you can configure this during installation.
+
+### Configuring During Installation
+
+The installer prompts for your preference:
+
+```
+Focus behavior after sending code to Stata:
+  [Y] Switch to Stata (see output immediately)
+  [N] Stay in Zed (keep typing without switching windows)
+
+Switch to Stata after sending code? [y/N]
+```
+
+Press Enter (or `n`) to keep the default (stay in Zed), or `y` to switch focus to Stata.
+
+### Non-Interactive Installation
+
+For CI/CD or scripted installs, pass the focus preference as a flag:
+
+**macOS:**
+```bash
+# Stay in Zed (default)
+./install-send-to-stata.sh --stay-in-zed
+
+# Switch to Stata
+./install-send-to-stata.sh --activate-stata
+```
+
+**Windows:**
+```powershell
+# Stay in Zed (default)
+.\install-send-to-stata.ps1 -ActivateStata false
+
+# Switch to Stata
+.\install-send-to-stata.ps1 -ActivateStata true
+```
+
+### Changing Focus Behavior After Installation
+
+To change your focus preference after installation, re-run the installer. It will update the Zed tasks with your new preference.
+
+**macOS:**
+```bash
+./install-send-to-stata.sh  # Interactive prompt
+# or
+./install-send-to-stata.sh --activate-stata  # Non-interactive
+```
+
+**Windows:**
+```powershell
+.\install-send-to-stata.ps1  # Interactive prompt
+# or
+.\install-send-to-stata.ps1 -ActivateStata true  # Non-interactive
 ```
 
 ## Manual Installation
