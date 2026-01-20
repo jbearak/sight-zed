@@ -403,6 +403,10 @@ if ($ActivateStata -eq "true" -or $ActivateStata -eq "yes" -or $ActivateStata -e
 } elseif ($ActivateStata -eq "false" -or $ActivateStata -eq "no" -or $ActivateStata -eq "0") {
     # Explicit false via parameter (for CI/CD)
     $useActivateStata = $false
+} elseif (-not [string]::IsNullOrEmpty($ActivateStata)) {
+    # Invalid value provided - fail fast for CI/non-interactive
+    Write-Error "Invalid value for -ActivateStata: '$ActivateStata'. Accepted values: true, yes, 1, false, no, 0"
+    exit 1
 } elseif ($ReturnFocus) {
     # Deprecated param is now a no-op; keep it accepted so old scripts don't break
     Write-Host ""
