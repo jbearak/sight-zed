@@ -64,8 +64,8 @@ Describe "Checksum Verification" {
             $stream = [System.IO.MemoryStream]::new([System.Text.Encoding]::UTF8.GetBytes($content))
             $actualHash = (Get-FileHash -InputStream $stream -Algorithm SHA256).Hash
             
-            # Correct hash should pass
-            $actualHash | Should Be $actualHash
+            # Verify SHA256 hash format (64 hex characters)
+            $actualHash | Should -Match '^[A-F0-9]{64}$'
             
             # Wrong hash should differ
             $wrongHash = "0000000000000000000000000000000000000000000000000000000000000000"
@@ -87,12 +87,18 @@ Describe "Checksum Verification" {
 
 Describe "Automation Registration" {
     It "Property14: Registration is idempotent" {
-        if ($env:OS -ne "Windows_NT") { Set-ItResult -Skipped -Because "Windows-only test" }
-        # Windows-only test implementation
+        if ($env:OS -ne "Windows_NT") { 
+            Set-ItResult -Skipped -Because "Windows-only test" 
+        } else {
+            Set-ItResult -Pending -Because "Test not yet implemented"
+        }
     }
     
     It "Property15: Version mismatch detection" {
-        if ($env:OS -ne "Windows_NT") { Set-ItResult -Skipped -Because "Windows-only test" }
-        # Windows-only test implementation
+        if ($env:OS -ne "Windows_NT") { 
+            Set-ItResult -Skipped -Because "Windows-only test" 
+        } else {
+            Set-ItResult -Pending -Because "Test not yet implemented"
+        }
     }
 }

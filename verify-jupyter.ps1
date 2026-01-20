@@ -72,7 +72,8 @@ try {
 # Check 4: Kernels
 Write-Section "Installed Jupyter Kernels"
 try {
-    $kernelList = & jupyter kernelspec list --json 2>&1 | ConvertFrom-Json
+    $kernelJson = & jupyter kernelspec list --json 2>$null
+    $kernelList = $kernelJson | ConvertFrom-Json
 
     if ($kernelList.kernelspecs) {
         $kernelCount = ($kernelList.kernelspecs | Get-Member -MemberType NoteProperty).Count
