@@ -9,6 +9,10 @@
 
 set -euo pipefail
 
+# Pin ipykernel for Zed compatibility / cross-platform consistency.
+# If you change this, also update the Windows installer.
+IPYKERNEL_VERSION="6.28.0"
+
 # ============================================================================
 # Configuration Constants
 # ============================================================================
@@ -71,7 +75,7 @@ check_python3() {
     echo "  apt install python3-venv"
     exit 1
   fi
-  
+
   # Determine best Python to use
   PYTHON_CMD="python3"
   local py_version
@@ -79,7 +83,7 @@ check_python3() {
   local py_major py_minor
   py_major=$(echo "$py_version" | cut -d. -f1)
   py_minor=$(echo "$py_version" | cut -d. -f2)
-  
+
   # stata_kernel works best with Python 3.9-3.11
   # Python 3.12+ removed the 'imp' module that old ipykernel versions need
   if [[ "$py_major" -eq 3 ]] && [[ "$py_minor" -ge 12 ]]; then
@@ -125,7 +129,7 @@ detect_stata_app() {
     local apps=("StataMP" "StataSE" "StataIC" "StataBE" "Stata")
     local executables=("stata-mp" "stata-se" "stata-ic" "stata-be" "stata")
     local editions=("MP" "SE" "IC" "BE" "IC")
-    
+
     for i in "${!apps[@]}"; do
       local app_path="/Applications/Stata/${apps[$i]}.app/Contents/MacOS/${executables[$i]}"
       if [[ -x "$app_path" ]]; then
@@ -134,7 +138,7 @@ detect_stata_app() {
         break
       fi
     done
-    
+
     if [[ -z "$STATA_PATH" ]]; then
       print_error "No Stata installation found in /Applications/Stata/"
       echo ""
@@ -143,7 +147,7 @@ detect_stata_app() {
       exit 1
     fi
   fi
-  
+
   # Determine execution mode (allow override)
   if [[ -n "${STATA_EXECUTION_MODE:-}" ]]; then
     EXECUTION_MODE="$STATA_EXECUTION_MODE"
@@ -206,20 +210,20 @@ install_packages() {
     exit 2
   fi
   print_success "Installed stata_kernel and jupyter"
-  
+
   # stata_kernel pins old ipykernel (<5.0.0) which uses the deprecated 'imp' module
   # removed in Python 3.12. Upgrade ipykernel to fix compatibility.
   local py_version py_major py_minor
   py_version=$("$VENV_DIR/bin/python" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
   py_major=$(echo "$py_version" | cut -d. -f1)
   py_minor=$(echo "$py_version" | cut -d. -f2)
-  
+
   if [[ "$py_major" -eq 3 ]] && [[ "$py_minor" -ge 12 ]]; then
-    print_info "Upgrading ipykernel for Python $py_version compatibility..."
-    if ! "$VENV_DIR/bin/pip" install --upgrade ipykernel &>/dev/null; then
-      print_warning "Failed to upgrade ipykernel - kernel may not start correctly"
+    print_info "Installing ipykernel==$IPYKERNEL_VERSION for Zed compatibility..."
+    if ! "$VENV_DIR/bin/pip" install --upgrade "ipykernel==$IPYKERNEL_VERSION" &>/dev/null; then
+      print_warning "Failed to install pinned ipykernel - kernel may not start correctly"
     else
-      print_success "Upgraded ipykernel for Python $py_version"
+      print_success "Installed ipykernel==$IPYKERNEL_VERSION"
     fi
   fi
 }
@@ -281,7 +285,7 @@ update_config_setting() {
   tmp_file=$(mktemp)
   # shellcheck disable=SC2064  # Intentional: expand now, not at signal time (local var)
   trap "rm -f '$tmp_file'" RETURN
-  
+
   if grep -q "^${key}[[:space:]]*=" "$CONFIG_FILE"; then
     sed "s|^${key}[[:space:]]*=.*|${key} = ${escaped_value}|" "$CONFIG_FILE" > "$tmp_file"
     mv "$tmp_file" "$CONFIG_FILE"
@@ -337,12 +341,12 @@ verify_kernel_spec() {
     print_error "Kernel spec not found at $KERNEL_DIR/kernel.json"
     exit 3
   fi
-  
+
   # Verify language is "stata" (lowercase) for Zed matching
   if ! grep -q '"language"[[:space:]]*:[[:space:]]*"stata"' "$KERNEL_DIR/kernel.json"; then
     print_warning "Kernel language may not be set correctly for Zed"
   fi
-  
+
   print_success "Verified kernel spec at $KERNEL_DIR"
 }
 
@@ -372,25 +376,25 @@ def find_workspace_root(start_path: Path) -> Path:
     Returns the workspace root, or start_path if no marker found.
     """
     markers = ['.git', '.stata-project', '.project']
-    
+
     current = start_path.resolve()
-    
+
     # Don't go above home directory
     # Resolve home to handle symlinks like /var -> /private/var on macOS
     home = Path.home().resolve()
-    
+
     while current != current.parent:
         # Stop if we've gone above home
         try:
             current.relative_to(home)
         except ValueError:
             break
-            
+
         for marker in markers:
             if (current / marker).exists():
                 return current
         current = current.parent
-    
+
     # No marker found, return original (resolved)
     return start_path.resolve()
 
@@ -398,17 +402,17 @@ def find_workspace_root(start_path: Path) -> Path:
 def main():
     # Get the current working directory (set by Zed to file's directory)
     cwd = Path.cwd()
-    
+
     # Find workspace root
     workspace_root = find_workspace_root(cwd)
-    
+
     # Change to workspace root
     os.chdir(workspace_root)
-    
+
     # Now import and run stata_kernel
     from stata_kernel import kernel
     from ipykernel.kernelapp import IPKernelApp
-    
+
     IPKernelApp.launch_instance(kernel_class=kernel.StataKernel)
 
 
@@ -420,15 +424,15 @@ PYTHON_EOF
 # Installs the workspace kernel alongside the standard stata kernel.
 install_workspace_kernel() {
   print_info "Installing workspace kernel..."
-  
+
   # Create kernel directory
   mkdir -p "$WORKSPACE_KERNEL_DIR"
-  
+
   # Write the wrapper script
   local wrapper_script="$WORKSPACE_KERNEL_DIR/stata_workspace_kernel.py"
   get_workspace_kernel_script > "$wrapper_script"
   chmod +x "$wrapper_script"
-  
+
   # Create kernel.json
   local kernel_json="$WORKSPACE_KERNEL_DIR/kernel.json"
   cat > "$kernel_json" << EOF
@@ -442,7 +446,7 @@ install_workspace_kernel() {
   "language": "stata"
 }
 EOF
-  
+
   print_success "Installed workspace kernel at $WORKSPACE_KERNEL_DIR"
 }
 
@@ -464,9 +468,9 @@ uninstall_workspace_kernel() {
 # Args: $1 - "true" to also remove config file
 uninstall() {
   local remove_config="${1:-false}"
-  
+
   print_info "Uninstalling stata_kernel..."
-  
+
   # Remove virtual environment
   if [[ -d "$VENV_DIR" ]]; then
     rm -rf "$VENV_DIR"
@@ -474,7 +478,7 @@ uninstall() {
   else
     print_info "Virtual environment not found (already removed)"
   fi
-  
+
   # Remove kernel spec
   if [[ -d "$KERNEL_DIR" ]]; then
     rm -rf "$KERNEL_DIR"
@@ -482,10 +486,10 @@ uninstall() {
   else
     print_info "Kernel spec not found (already removed)"
   fi
-  
+
   # Remove workspace kernel
   uninstall_workspace_kernel
-  
+
   # Optionally remove config
   if [[ "$remove_config" == "true" ]]; then
     if [[ -f "$CONFIG_FILE" ]]; then
@@ -497,7 +501,7 @@ uninstall() {
   else
     print_info "Configuration preserved at $CONFIG_FILE (use --remove-config to delete)"
   fi
-  
+
   print_success "Uninstallation complete"
 }
 
@@ -565,7 +569,7 @@ main() {
         ;;
     esac
   done
-  
+
   if [[ "$do_uninstall" == "true" ]]; then
     uninstall "$remove_config"
     exit 0

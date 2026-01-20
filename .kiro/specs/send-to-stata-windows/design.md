@@ -689,8 +689,8 @@ Terminal keybindings for pasting code directly to an active terminal panel (usef
 {
   "context": "Editor && extension == do",
   "bindings": {
-    "shift-enter": ["editor::Copy", "terminal_panel::ToggleFocus", "terminal::Paste", "SendKeystrokes", "enter"],
-    "alt-enter": ["editor::SelectLine", "editor::Copy", "terminal_panel::ToggleFocus", "terminal::Paste", "SendKeystrokes", "enter"]
+    "shift-enter": ["workspace::SendKeystrokes", "ctrl-c ctrl-` ctrl-v enter"],
+    "alt-enter": ["workspace::SendKeystrokes", "home shift-end ctrl-c ctrl-` ctrl-v enter"]
   }
 }
 ```
