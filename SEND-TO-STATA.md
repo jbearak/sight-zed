@@ -156,15 +156,27 @@ If you prefer to switch focus to Stata after sending code (useful when Zed is fu
 
 The installer prompts for your preference:
 
+**macOS:**
 ```
 Focus behavior after sending code to Stata:
-  [Y] Switch to Stata (see output immediately)
+  [Y] Switch to Stata (ensures you see output, even if Zed is fullscreen)
   [N] Stay in Zed (keep typing without switching windows)
 
 Switch to Stata after sending code? [y/N]
 ```
 
 Press Enter (or `n`) to keep the default (stay in Zed), or `y` to switch focus to Stata.
+
+**Windows:**
+```
+Focus behavior after sending code to Stata:
+  [Y] Return focus to Zed (keep typing without switching windows)
+  [N] Stay in Stata (ensures you see output, even if Zed is fullscreen)
+
+Return focus to Zed after sending code to Stata? [Y/n]
+```
+
+Press Enter (or `y`) to keep the default (return to Zed), or `n` to stay in Stata.
 
 ### Non-Interactive Installation
 

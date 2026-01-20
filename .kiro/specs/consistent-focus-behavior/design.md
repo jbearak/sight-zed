@@ -146,20 +146,22 @@ fi
 
 **Parameter Changes**:
 - New: `-ActivateStata` parameter (accepts `true`/`false`)
-- Existing: `-ReturnFocus` deprecated but still functional
+- Existing: `-ReturnFocus` deprecated but still functional (now a no-op)
 
-**Interactive Prompt** (updated wording):
+**Interactive Prompt** (actual implementation):
 ```
 Focus behavior after sending code to Stata:
-  [Y] Switch to Stata (see output immediately)
-  [N] Stay in Zed (keep typing without switching windows)
+  [Y] Return focus to Zed (keep typing without switching windows)
+  [N] Stay in Stata (ensures you see output, even if Zed is fullscreen)
 
-Switch to Stata after sending code? [y/N]
+Return focus to Zed after sending code to Stata? [Y/n]
 ```
+
+Note: The Windows prompt uses inverted logic compared to macOS—answering "n" (stay in Stata) results in `-ActivateStata` being added to task commands.
 
 **Task Generation**:
 ```powershell
-# If user selects "Yes" or -ActivateStata true
+# If user answers "n" (stay in Stata) or -ActivateStata true
 $activateArg = if ($UseActivateStata) { " -ActivateStata" } else { "" }
 
 # Task command includes flag conditionally
