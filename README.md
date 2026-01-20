@@ -69,7 +69,16 @@ See [SEND-TO-STATA.md](SEND-TO-STATA.md) for full documentation, configuration o
 
 **Note:** Zed's built-in REPL currently only supports Python, TypeScript (Deno), R, Julia, and Scala. Stata is not yet supported, even with the Jupyter kernels installed.
 
-However, you can still install [stata_kernel](https://kylebarron.dev/stata_kernel/) for use in Jupyter Lab/Notebook or other Jupyter clients outside of Zed:
+However, you can still install [stata_kernel](https://kylebarron.dev/stata_kernel/) for use in Jupyter Lab/Notebook or other Jupyter clients outside of Zed.
+
+### Windows Notes (Installer Behavior)
+
+On Windows, `install-jupyter-stata.ps1` is intentionally opinionated to be reliable across Python/Jupyter setups:
+
+- **Uses Python 3.11 via the Python Launcher (`py -3.11`)** when available (stata_kernel is most stable on 3.9–3.11; newer versions have caused dependency and kernelspec issues).
+- **Recreates the venv if needed** to ensure the venv is actually using Python 3.11.
+- **Installs only minimal Jupyter components** (`jupyter-core`, `jupyter-client`, and a pinned `ipykernel`) instead of the full `jupyter` meta-package to avoid pulling in `notebook`/`jupyterlab` and native build dependencies (e.g. `pywinpty`).
+- **Writes kernelspecs deterministically** into `%APPDATA%\jupyter\kernels\...` (including `kernel.json`) so Zed can discover them reliably.
 
 ### macOS
 

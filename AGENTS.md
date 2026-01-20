@@ -10,21 +10,67 @@ When a new version of the Sight LSP is released:
 
 ## Jupyter Stata Kernel on Windows
 
-**IMPORTANT:** Zed's built-in REPL currently only supports Python, TypeScript (Deno), R, Julia, and Scala. Stata is not yet supported, even with Jupyter kernels installed. The installation scripts below set up stata_kernel for use in external Jupyter clients (Jupyter Lab, Jupyter Notebook, etc.), not for Zed's REPL.
+**IMPORTANT:** Zed's built-in REPL currently only supports Python, TypeScript (Deno), R, Julia, and Scala. Stata is not yet supported, even with Jupyter kernels installed. The installation scripts below set up `stata_kernel` for use in external Jupyter clients (Jupyter Lab, Jupyter Notebook, etc.), not for Zed's REPL.
 
 **PowerShell requirement:** Use **PowerShell 7+** (`pwsh`). Windows PowerShell 5.1 may fail to parse the installer scripts.
 
-The Windows version supports installing Jupyter kernels similar to macOS/Linux. Use the PowerShell script to install:
+Install on Windows:
 
 ```powershell
 pwsh -File .\install-jupyter-stata.ps1
 ```
 
-This script:
-- Creates a virtual environment with Python
-- Installs stata_kernel and Jupyter
-- Sets up two kernels: "Stata" and "Stata (Workspace)"
-- Configures the workspace kernel to detect project roots
+What the installer does (Windows):
+- Creates (or recreates) an isolated virtual environment at `%LOCALAPPDATA%\stata_kernel\venv`
+- Installs `stata_kernel` plus a minimal, pinned Jupyter runtime needed for kernels
+- Registers two kernels: **Stata** and **Stata (Workspace)**
+- Writes/updates `%USERPROFILE%\.stata_kernel.conf`
+- Ensures kernels are placed where Zed can discover them reliably (see notes below)
+
+### Windows-Specific Learnings / Gotchas (Why the Script Looks “Hacky”)
+
+#### 1) Avoid Microsoft Store Python (`WindowsApps`) for kernel discovery
+Windows “App Execution Aliases” can cause `python` to resolve to the Microsoft Store shim under:
+- `...\AppData\Local\Microsoft\WindowsApps\python.exe`
+
+This can redirect Jupyter’s data dir to a non-standard location (e.g. `...\LocalCache\Roaming\jupyter`) and break kernel discovery.
+
+**What we do:** On Windows, prefer `py -3.11` via the Python Launcher (`C:\Windows\py.exe`) so we can reliably target a real Python installation even when `python` points at the Store shim.
+
+#### 2) Pin to Python 3.11 (especially on Windows/ARM64)
+`stata_kernel` has historically worked best on Python 3.9–3.11. Newer versions (3.12/3.13) have caused repeated dependency and kernel registration issues on Windows.
+
+**What we do:** Prefer **Python 3.11** via `py -3.11`. If the existing venv was created with a different Python (e.g. 3.13), the installer **forcefully recreates** the venv to ensure consistency.
+
+#### 3) Do NOT install the full `jupyter` meta-package on Windows
+Installing the `jupyter` meta-package can pull in `notebook`/`jupyterlab` and transitive dependencies like `pywinpty`, which may require native builds (NuGet/Rust toolchain) and can fail—especially on Windows/ARM64.
+
+**What we do:** Install only the minimal components needed for kernelspecs and kernel launching:
+- `jupyter-core`
+- `jupyter-client`
+- `ipykernel` (pinned to a Zed-compatible version)
+
+#### 4) `stata_kernel` dependency pins are too old—install it with `--no-deps`
+`stata_kernel` pins some dependencies to very old versions (e.g., `ipykernel<5`, `packaging<18`). On modern Python/Jupyter stacks this causes pip resolver backtracking and may force builds that fail.
+
+**What we do:** Install `stata_kernel` with `--no-deps` and then install a modern, pinned set of runtime deps explicitly (including the pinned `ipykernel`).
+
+#### 5) Deterministic kernelspec registration (always write `kernel.json`)
+On some Windows setups, `stata_kernel.install` can produce an incomplete kernelspec directory (e.g., `stata` exists but `kernel.json` is missing), which breaks both Jupyter and Zed discovery.
+
+**What we do:** The installer writes the kernelspecs directly into:
+- `%APPDATA%\jupyter\kernels\stata`
+- `%APPDATA%\jupyter\kernels\stata_workspace`
+
+This includes:
+- `kernel.json` (required)
+- a small Python wrapper script that launches `stata_kernel` via `ipykernel`
+
+This approach is intentionally “dumb but reliable”.
+
+#### 6) When changing Python versions, you must rebuild the venv
+If you switch Python versions (or fix Store-Python alias issues), the existing venv won’t magically follow. The installer now recreates the venv automatically when it detects a non-preferred version.
+
 
 ### Kernel Differences
 

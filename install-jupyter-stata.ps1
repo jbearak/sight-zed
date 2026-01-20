@@ -630,11 +630,14 @@ function Install-Packages {
     $pyMajor = [int]$pyVersion.Split('.')[0]
     $pyMinor = [int]$pyVersion.Split('.')[1]
 
-    if ($pyMajor -eq 3 -and $pyMinor -ge 13) {
-        # Python 3.13+: stata_kernel has incompatible dependency pins
-        # Install stata_kernel without dependencies, then install jupyter separately
+    if ($pyMajor -eq 3 -and $pyMinor -ge 11) {
+        # Python 3.11+: stata_kernel's dependency pins are very old (e.g., ipykernel<5, packaging<18)
+        # and can force pip into backtracking and/or native builds on Windows/ARM64 (e.g. pywinpty).
+        #
+        # Strategy: install stata_kernel WITHOUT dependencies, then install a modern, minimal set
+        # of Jupyter/runtime deps explicitly (including a Zed-compatible ipykernel pin).
         Write-InfoMessage "Installing stata_kernel (without dependencies) for Python $pyVersion..."
-        $stataKernelOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --no-deps stata_kernel 2>&1
+        $stataKernelOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade --no-deps stata_kernel 2>&1
         if ($LASTEXITCODE -ne 0) {
             Write-ErrorMessage "Failed to install stata_kernel"
             Write-Host $stataKernelOutput
@@ -643,53 +646,32 @@ function Install-Packages {
             Write-SuccessMessage "Installed stata_kernel"
         }
 
-        # IMPORTANT: Because we install stata_kernel with --no-deps on Python 3.13+,
-        # we must explicitly install runtime dependencies that stata_kernel imports.
-        # If these are missing, the kernel will fail at import-time (e.g. missing PIL/Pillow).
-        Write-InfoMessage "Installing stata_kernel runtime dependencies (Python $pyVersion)..."
+        # Install runtime deps that stata_kernel imports, plus minimal Jupyter components.
+        # Avoid the full `jupyter` meta-package (notebook/jupyterlab) to prevent pulling in pywinpty.
+        Write-InfoMessage "Installing pinned minimal Jupyter/runtime dependencies (Python $pyVersion)..."
         $depsOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade `
-            pillow `
-            matplotlib `
-            pandas `
-            numpy `
-            pyzmq `
-            tornado `
+            "ipykernel==$IPYKERNEL_VERSION" `
+            jupyter-core `
+            jupyter-client `
             traitlets `
-            jupyter_client `
-            packaging `
-            pexpect 2>&1
+            tornado `
+            pyzmq `
+            pillow `
+            pexpect `
+            numpy `
+            pandas `
+            matplotlib `
+            packaging 2>&1
         if ($LASTEXITCODE -ne 0) {
-            Write-WarningMessage "Failed to install one or more stata_kernel runtime dependencies. The kernel may not start."
+            Write-ErrorMessage "Failed to install pinned minimal Jupyter/runtime dependencies"
             Write-Host $depsOutput
-        } else {
-            Write-SuccessMessage "Installed stata_kernel runtime dependencies"
-        }
-
-        # Install minimal Jupyter components needed for kernelspecs.
-        # Avoid the full `jupyter` meta-package since it drags in notebook/jupyterlab,
-        # which can pull in pywinpty and require native builds (NuGet/Rust) on Windows.
-        Write-InfoMessage "Installing minimal Jupyter components (jupyter-core, jupyter-client)..."
-        $jupyterOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade jupyter-core jupyter-client 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            Write-ErrorMessage "Failed to install minimal Jupyter components"
-            Write-Host $jupyterOutput
             exit 3
         } else {
-            Write-SuccessMessage "Installed minimal Jupyter components"
-
-            # Pin ipykernel to a Zed-compatible version (avoid ipykernel 7.x issues on Windows)
-            Write-InfoMessage "Installing ipykernel==$IPYKERNEL_VERSION for Zed compatibility..."
-            $ipykernelOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade "ipykernel==$IPYKERNEL_VERSION" 2>&1
-            if ($LASTEXITCODE -ne 0) {
-                Write-WarningMessage "Failed to install pinned ipykernel, but continuing..."
-                Write-Host $ipykernelOutput
-            } else {
-                Write-SuccessMessage "Installed ipykernel==$IPYKERNEL_VERSION"
-            }
+            Write-SuccessMessage "Installed pinned minimal Jupyter/runtime dependencies"
         }
     } else {
-        # Python 3.12 and below: install stata_kernel + minimal Jupyter components.
-        # Avoid `jupyter` meta-package to prevent pulling in notebook/jupyterlab -> pywinpty native builds.
+        # Python 3.10 and below: normal installation is generally fine.
+        # Still avoid the `jupyter` meta-package to reduce risk of native builds on Windows.
         Write-InfoMessage "Installing stata_kernel and minimal Jupyter components (this may take a minute)..."
         $installOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade stata_kernel jupyter-core jupyter-client 2>&1
         if ($LASTEXITCODE -ne 0) {
@@ -699,16 +681,14 @@ function Install-Packages {
         }
         Write-SuccessMessage "Installed stata_kernel and minimal Jupyter components"
 
-        if ($pyMajor -eq 3 -and $pyMinor -ge 12) {
-            # Pin ipykernel to a Zed-compatible version (avoid ipykernel 7.x issues on Windows)
-            Write-InfoMessage "Installing ipykernel==$IPYKERNEL_VERSION for Zed compatibility..."
-            $ipykernelOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade "ipykernel==$IPYKERNEL_VERSION" 2>&1
-            if ($LASTEXITCODE -ne 0) {
-                Write-WarningMessage "Failed to install pinned ipykernel, but continuing..."
-                Write-Host $ipykernelOutput
-            } else {
-                Write-SuccessMessage "Installed ipykernel==$IPYKERNEL_VERSION"
-            }
+        # Pin ipykernel to a Zed-compatible version (avoid ipykernel 7.x issues on Windows)
+        Write-InfoMessage "Installing ipykernel==$IPYKERNEL_VERSION for Zed compatibility..."
+        $ipykernelOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade "ipykernel==$IPYKERNEL_VERSION" 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-WarningMessage "Failed to install pinned ipykernel, but continuing..."
+            Write-Host $ipykernelOutput
+        } else {
+            Write-SuccessMessage "Installed ipykernel==$IPYKERNEL_VERSION"
         }
     }
 }
