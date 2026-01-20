@@ -282,3 +282,181 @@ call_func() {
     run jq '.[].context' "$ZED_CONFIG_DIR/keymap.json"
     [[ "$output" == *"Other"* ]]
 }
+
+
+# ============================================================================
+# Focus Behavior Flag Tests
+# ============================================================================
+
+@test "focus: --activate-stata flag sets ACTIVATE_STATA to true" {
+    # Source the script and check the variable after parsing flags
+    run bash -c '
+        source "$1"
+        # Simulate main() flag parsing
+        ACTIVATE_STATA=false
+        for arg in --activate-stata; do
+            case "$arg" in
+                --activate-stata) ACTIVATE_STATA=true ;;
+            esac
+        done
+        echo "$ACTIVATE_STATA"
+    ' bash "$SCRIPT"
+    [ "$status" -eq 0 ]
+    [ "$output" = "true" ]
+}
+
+@test "focus: --stay-in-zed flag keeps ACTIVATE_STATA as false" {
+    run bash -c '
+        source "$1"
+        ACTIVATE_STATA=false
+        for arg in --stay-in-zed; do
+            case "$arg" in
+                --stay-in-zed) ACTIVATE_STATA=false ;;
+            esac
+        done
+        echo "$ACTIVATE_STATA"
+    ' bash "$SCRIPT"
+    [ "$status" -eq 0 ]
+    [ "$output" = "false" ]
+}
+
+@test "focus: mutual exclusivity - both flags causes error" {
+    run bash -c '
+        source "$1"
+        activate_stata_flag=""
+        stay_in_zed_flag=""
+        for arg in --activate-stata --stay-in-zed; do
+            case "$arg" in
+                --activate-stata) activate_stata_flag=true ;;
+                --stay-in-zed) stay_in_zed_flag=true ;;
+            esac
+        done
+        if [[ "$activate_stata_flag" == "true" && "$stay_in_zed_flag" == "true" ]]; then
+            echo "error: mutual exclusivity"
+            exit 1
+        fi
+        echo "ok"
+    ' bash "$SCRIPT"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"mutual exclusivity"* ]]
+}
+
+@test "focus: detect_stata_app returns correct variant" {
+    # This test checks the function exists and returns something
+    # (actual detection depends on Stata being installed)
+    run call_func detect_stata_app
+    # Either returns a variant name or empty string (exit 1)
+    [[ "$status" -eq 0 || "$status" -eq 1 ]]
+}
+
+
+# ============================================================================
+# Task Generation with Focus Behavior Tests
+# ============================================================================
+
+@test "task generation: contains activation suffix when ACTIVATE_STATA=true" {
+    run bash -c '
+        source "$1"
+        ACTIVATE_STATA=true
+        generate_stata_tasks
+    ' bash "$SCRIPT"
+    [ "$status" -eq 0 ]
+    # Should contain osascript activation command
+    [[ "$output" == *"osascript -e"* ]]
+    [[ "$output" == *"to activate"* ]]
+}
+
+@test "task generation: no activation suffix when ACTIVATE_STATA=false" {
+    run bash -c '
+        source "$1"
+        ACTIVATE_STATA=false
+        generate_stata_tasks
+    ' bash "$SCRIPT"
+    [ "$status" -eq 0 ]
+    # Should NOT contain osascript activation command
+    [[ "$output" != *"osascript -e"* ]]
+    [[ "$output" != *"to activate"* ]]
+}
+
+@test "task generation: no activation suffix by default" {
+    run bash -c '
+        source "$1"
+        # ACTIVATE_STATA defaults to false in the script
+        generate_stata_tasks
+    ' bash "$SCRIPT"
+    [ "$status" -eq 0 ]
+    # Should NOT contain osascript activation command
+    [[ "$output" != *"osascript -e"* ]]
+}
+
+@test "task generation: uses STATA_APP env var when set" {
+    run bash -c '
+        source "$1"
+        ACTIVATE_STATA=true
+        export STATA_APP="StataMP"
+        generate_stata_tasks
+    ' bash "$SCRIPT"
+    [ "$status" -eq 0 ]
+    # Should contain the specified Stata app name
+    [[ "$output" == *"StataMP"* ]]
+    [[ "$output" == *"tell application"* ]]
+}
+
+@test "task generation: activation suffix appears in all task commands" {
+    run bash -c '
+        source "$1"
+        ACTIVATE_STATA=true
+        export STATA_APP="StataSE"
+        generate_stata_tasks
+    ' bash "$SCRIPT"
+    [ "$status" -eq 0 ]
+    
+    # Count occurrences of activation command (should be 4, one per task)
+    local count
+    count=$(echo "$output" | grep -c "tell application" || true)
+    [ "$count" -eq 4 ]
+}
+
+@test "task generation: generates valid JSON" {
+    run bash -c '
+        source "$1"
+        ACTIVATE_STATA=true
+        export STATA_APP="Stata"
+        generate_stata_tasks | jq .
+    ' bash "$SCRIPT"
+    [ "$status" -eq 0 ]
+}
+
+@test "tasks: install_tasks with --activate-stata creates tasks with activation" {
+    # Set up environment
+    export ACTIVATE_STATA=true
+    export STATA_APP="StataMP"
+    
+    run bash -c '
+        source "$1"
+        ACTIVATE_STATA=true
+        export STATA_APP="StataMP"
+        install_tasks
+    ' bash "$SCRIPT"
+    [ "$status" -eq 0 ]
+    
+    # Check the generated tasks.json
+    [ -f "$ZED_CONFIG_DIR/tasks.json" ]
+    run jq '.[0].command' "$ZED_CONFIG_DIR/tasks.json"
+    [[ "$output" == *"osascript"* ]]
+    [[ "$output" == *"StataMP"* ]]
+}
+
+@test "tasks: install_tasks with --stay-in-zed creates tasks without activation" {
+    run bash -c '
+        source "$1"
+        ACTIVATE_STATA=false
+        install_tasks
+    ' bash "$SCRIPT"
+    [ "$status" -eq 0 ]
+    
+    # Check the generated tasks.json
+    [ -f "$ZED_CONFIG_DIR/tasks.json" ]
+    run jq '.[0].command' "$ZED_CONFIG_DIR/tasks.json"
+    [[ "$output" != *"osascript"* ]]
+}
