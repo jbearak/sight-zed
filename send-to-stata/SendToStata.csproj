@@ -15,4 +15,8 @@
     <IlcOptimizationPreference>Size</IlcOptimizationPreference>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="SendToStata.Tests" />
+  </ItemGroup>
+
 </Project>
