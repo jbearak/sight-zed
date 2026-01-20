@@ -1,13 +1,15 @@
-# Sight - Zed Extension for Stata
+# Zed Extension for Stata
 
-A Zed editor extension providing Stata language support using the [Sight LSP](https://github.com/jbearak/sight).
+A [Zed](https://zed.dev) extension providing support for the Stata statistical programming language.
 
 ## Features
 
-- Syntax highlighting via tree-sitter grammar
-- Language server integration with Sight LSP
-- Code completion, hover information, and diagnostics
-- Send code to Stata with keyboard shortcuts (requires additional setup—see below)
+- Code completion
+- Diagnostics (e.g., detects syntax errors and undefined macros)
+- Syntax highlighting
+- Run Stata code from the editor (requires additional setup—see below)
+  - [Send to Stata]()
+  - [Jupyter REPL](#Send-)
 
 > **⚠️ Development Status:** This is an early-stage implementation. While functional, it requires substantial testing and code review. Contributions and feedback are welcome!
 
@@ -28,58 +30,46 @@ Syntax highlighting, completions, and diagnostics will work immediately once you
 
 Execute Stata code directly from Zed with keyboard shortcuts. Works with both the Stata application and terminal sessions.
 
+> [!INFO]
+> **Why a separate install?** Zed extensions can't register custom keybindings or tasks—those must live in user config files. The send-to-stata functionality requires both, so it can't be bundled into the extension itself.
+
+See [SEND-TO-STATA.md](SEND-TO-STATA.md) for full documentation, configuration options, and troubleshooting.
+
+### Keyboard Shortcuts
+
+| Mac                   | Windows                | Action                                 |
+|-----------------------|------------------------|----------------------------------------|
+| `cmd-enter`           | `ctrl-enter`           | Send statement to Stata app            |
+| `shift-cmd-enter`     | `shift-ctrl-enter`     | Send file to Stata app                 |
+| `opt-cmd-enter`       | `alt-ctrl-enter`       | Include statement (preserves locals)   |
+| `opt-shift-cmd-enter` | `alt-shift-ctrl-enter` | Include file (preserves locals)        |
+| `shift-enter`         | `shift-enter`          | Paste selection to terminal            |
+| `opt-enter`           | `alt-enter`            | Paste current line to terminal         |
+
+
 ### macOS
 
+**Run the installer in Terminal:**
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.sh)"
 ```
-
-| Shortcut | Action |
-|----------|--------|
-| `cmd-enter` | Send statement to Stata app |
-| `shift-cmd-enter` | Send file to Stata app |
-| `opt-cmd-enter` | Include statement (preserves locals) |
-| `opt-shift-cmd-enter` | Include file (preserves locals) |
-| `shift-enter` | Paste selection to terminal |
-| `opt-enter` | Paste current line to terminal |
 
 ### Windows
 
 > [!IMPORTANT]
 > The Windows scripts require **PowerShell 7+** (`pwsh`).
+> **Install PowerShell 7** (if not already installed):
+> ```powershell
+> winget install Microsoft.PowerShell
+> ```
 
-**Install PowerShell 7** (if not already installed):
-```powershell
-winget install Microsoft.PowerShell
-```
-
-Then run the installer (works from any PowerShell version):
+**Run the installer in PowerShell:**
 ```powershell
 irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.ps1 | iex
 ```
 
-| Shortcut | Action |
-|----------|--------|
-| `ctrl-enter` | Send statement to Stata app |
-| `shift-ctrl-enter` | Send file to Stata app |
-| `alt-ctrl-enter` | Include statement (preserves locals) |
-| `alt-shift-ctrl-enter` | Include file (preserves locals) |
-| `shift-enter` | Paste selection to terminal |
-| `alt-enter` | Paste current line to terminal |
-
-**Focus behavior:** The installer prompts whether to return focus to Zed after sending code to Stata. For CI/CD or scripted installs, pass arguments after the pipe:
-
-```powershell
-# Return focus to Zed (recommended for iterative coding)
-irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.ps1 | iex -ReturnFocus true
-
-# Stay in Stata (useful for inspecting output)
-irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.ps1 | iex -ReturnFocus false
-```
-
-> **Why a separate install?** Zed extensions can't register custom keybindings or tasks—those must live in user config files. The send-to-stata functionality requires both, so it can't be bundled into the extension itself.
-
-See [SEND-TO-STATA.md](SEND-TO-STATA.md) for full documentation, configuration options, and troubleshooting.
+> [!TIP]
+> **Focus behavior:** The installer prompts whether to return focus to Zed after sending code to Stata. 
 
 ## Jupyter REPL
 
@@ -102,6 +92,7 @@ Usage in Zed:
 
 ### macOS
 
+**Run the installer in Terminal:**
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-stata.sh)"
 ```
@@ -110,26 +101,25 @@ Usage in Zed:
 
 > [!IMPORTANT]
 > The Windows scripts require **PowerShell 7+** (`pwsh`).
+> **Install PowerShell 7** (if not already installed):
+> ```powershell
+> winget install Microsoft.PowerShell
+> ```
 
-**Install PowerShell 7** (if not already installed):
-```powershell
-winget install Microsoft.PowerShell
-```
-
-Then run the installer (works from any PowerShell version):
+**Run the installer in PowerShell:**
 ```powershell
 irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-stata.ps1 | iex
 ```
 
-The Windows installer is intentionally opinionated to be reliable across Python/Jupyter setups:
-
-- **Uses Python 3.11 via the Python Launcher (`py -3.11`)** when available (stata_kernel is most stable on 3.9–3.11; newer versions have caused dependency and kernelspec issues).
-- **Recreates the venv if needed** to ensure the venv is actually using Python 3.11.
-- **Installs only minimal Jupyter components** (`jupyter-core`, `jupyter-client`, and a pinned `ipykernel`) instead of the full `jupyter` meta-package to avoid pulling in `notebook`/`jupyterlab` and native build dependencies (e.g. `pywinpty`).
-- **Writes kernelspecs deterministically** into `%APPDATA%\jupyter\kernels\...` (including `kernel.json`) so Zed can discover them reliably.
-
 > [!IMPORTANT]
 > After installing or updating the Jupyter kernels, **restart Zed**. Kernel discovery/connection state can be cached, and a restart is often required before the kernels can connect successfully. The installer adds the Jupyter virtual environment to your PATH so Zed can discover the kernels.
+
+> [!CAUTION]
+> The Windows installer is intentionally opinionated to work reliably:
+> - **Uses Python 3.11 via the Python Launcher (`py -3.11`)** (newer versions have caused dependency and kernelspec issues).
+> - **Recreates the venv if needed** to ensure the venv is actually using Python 3.11.
+> - **Installs only minimal Jupyter components** (`jupyter-core`, `jupyter-client`, and a pinned `ipykernel`) instead of the full `jupyter` meta-package to avoid pulling in `notebook`/`jupyterlab` and native build dependencies (e.g. `pywinpty`).
+> - **Writes kernelspecs deterministically** into `%APPDATA%\jupyter\kernels\...` (including `kernel.json`) so Zed can discover them.
 
 ## Choosing Between Send-to-Stata and Jupyter REPL
 
@@ -192,4 +182,6 @@ pwsh -File .\install-jupyter-stata.ps1
 
 ## License
 
-GPL-3.0
+Copyright © 2026 Jonathan Marc Bearak
+
+[GPLv3](LICENSE) - This project is open source software. You can use, modify, and distribute it with attribution, but any derivative works must also be open source under GPLv3.
