@@ -2,7 +2,8 @@ param(
     [switch]$Uninstall,
     [switch]$RegisterAutomation,
     [switch]$SkipAutomationCheck,
-    [string]$ReturnFocus = ""
+    [string]$ReturnFocus = "",
+    [string]$ActivateStata = ""
 )
 
 # ============================================================================
@@ -13,10 +14,10 @@ param(
 if ($PSVersionTable.PSVersion.Major -lt 7) {
     $scriptPath = $MyInvocation.MyCommand.Path
     $pwshPath = Get-Command pwsh -ErrorAction SilentlyContinue
-    
+
     if ($pwshPath) {
         Write-Host "Re-launching with PowerShell 7..." -ForegroundColor Yellow
-        
+
         if ($scriptPath) {
             # Running from a file - re-invoke with pwsh
             $scriptArgs = @()
@@ -24,6 +25,7 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
             if ($RegisterAutomation) { $scriptArgs += '-RegisterAutomation' }
             if ($SkipAutomationCheck) { $scriptArgs += '-SkipAutomationCheck' }
             if ($ReturnFocus) { $scriptArgs += '-ReturnFocus'; $scriptArgs += $ReturnFocus }
+            if ($ActivateStata) { $scriptArgs += '-ActivateStata'; $scriptArgs += $ActivateStata }
             & pwsh -File $scriptPath @scriptArgs
             exit $LASTEXITCODE
         } else {
@@ -33,13 +35,14 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
             if ($RegisterAutomation) { $scriptArgs += '-RegisterAutomation' }
             if ($SkipAutomationCheck) { $scriptArgs += '-SkipAutomationCheck' }
             if ($ReturnFocus) { $scriptArgs += '-ReturnFocus'; $scriptArgs += $ReturnFocus }
+            if ($ActivateStata) { $scriptArgs += '-ActivateStata'; $scriptArgs += $ActivateStata }
             $url = "https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.ps1"
             $argsStr = ($scriptArgs | ForEach-Object { "'$_'" }) -join ','
             & pwsh -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm '$url'))) $argsStr"
             exit $LASTEXITCODE
         }
     }
-    
+
     Write-Host "ERROR: This script requires PowerShell 7+." -ForegroundColor Red
     Write-Host ""
     Write-Host "You're running Windows PowerShell $($PSVersionTable.PSVersion)" -ForegroundColor Yellow
@@ -116,7 +119,7 @@ function Install-Executable {
 }
 
 function Install-Tasks {
-    param([bool]$UseReturnFocus)
+    param([bool]$UseActivateStata)
 
     $tasksPath = "$env:APPDATA\Zed\tasks.json"
     $tasks = @()
@@ -133,12 +136,12 @@ function Install-Tasks {
     # Native executable - Zed wraps commands in PowerShell, so we use & (call operator)
     # Zed expands $ZED_FILE and $ZED_ROW before passing to shell
     $exePath = "$env:APPDATA\Zed\stata\send-to-stata.exe"
-    $returnFocusArg = if ($UseReturnFocus) { " -ReturnFocus" } else { "" }
+    $activateStataArg = if ($UseActivateStata) { " -ActivateStata" } else { "" }
 
     $newTasks = @(
         @{
             label = "Stata: Send Statement"
-            command = "& `"$exePath`" -Statement$returnFocusArg -File `"`$ZED_FILE`" -Row `$ZED_ROW"
+            command = "& `"$exePath`" -Statement$activateStataArg -File `"`$ZED_FILE`" -Row `$ZED_ROW"
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
@@ -146,7 +149,7 @@ function Install-Tasks {
         },
         @{
             label = "Stata: Send File"
-            command = "& `"$exePath`" -FileMode$returnFocusArg -File `"`$ZED_FILE`""
+            command = "& `"$exePath`" -FileMode$activateStataArg -File `"`$ZED_FILE`""
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
@@ -154,7 +157,7 @@ function Install-Tasks {
         },
         @{
             label = "Stata: Include Statement"
-            command = "& `"$exePath`" -Statement -Include$returnFocusArg -File `"`$ZED_FILE`" -Row `$ZED_ROW"
+            command = "& `"$exePath`" -Statement -Include$activateStataArg -File `"`$ZED_FILE`" -Row `$ZED_ROW"
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
@@ -162,7 +165,7 @@ function Install-Tasks {
         },
         @{
             label = "Stata: Include File"
-            command = "& `"$exePath`" -FileMode -Include$returnFocusArg -File `"`$ZED_FILE`""
+            command = "& `"$exePath`" -FileMode -Include$activateStataArg -File `"`$ZED_FILE`""
             use_new_terminal = $false
             allow_concurrent_runs = $true
             reveal = "never"
@@ -387,26 +390,36 @@ if ($stataPath) {
     Write-Host "Stata installation not found in standard locations"
 }
 
-# Determine ReturnFocus setting
-$useReturnFocus = $false
-if ($ReturnFocus -eq "true" -or $ReturnFocus -eq "yes" -or $ReturnFocus -eq "1") {
+# Determine ActivateStata setting
+# New semantics:
+# - Default is to stay in Zed (do NOT activate Stata)
+# - If ActivateStata is true/yes/1 OR user answers "y", add -ActivateStata to task commands
+# Backward compat:
+# - ReturnFocus parameter is accepted but ignored (focus behavior is now controlled by -ActivateStata)
+$useActivateStata = $false
+if ($ActivateStata -eq "true" -or $ActivateStata -eq "yes" -or $ActivateStata -eq "1") {
     # Explicit true via parameter (for CI/CD)
-    $useReturnFocus = $true
-} elseif ($ReturnFocus -eq "false" -or $ReturnFocus -eq "no" -or $ReturnFocus -eq "0") {
+    $useActivateStata = $true
+} elseif ($ActivateStata -eq "false" -or $ActivateStata -eq "no" -or $ActivateStata -eq "0") {
     # Explicit false via parameter (for CI/CD)
-    $useReturnFocus = $false
+    $useActivateStata = $false
+} elseif ($ReturnFocus) {
+    # Deprecated param is now a no-op; keep it accepted so old scripts don't break
+    Write-Host ""
+    Write-Host "Note: -ReturnFocus is deprecated and is now a no-op. Focus behavior is controlled by -ActivateStata."
+    $useActivateStata = $false
 } else {
     # Interactive prompt (no parameter or empty string)
     Write-Host ""
     Write-Host "Focus behavior after sending code to Stata:"
-    Write-Host "  [Y] Return focus to Zed (keep typing without switching windows)"
-    Write-Host "  [N] Stay in Stata (ensures you see output, even if Zed is fullscreen)"
+    Write-Host "  [Y] Switch to Stata (ensures you see output, even if Zed is fullscreen)"
+    Write-Host "  [N] Stay in Zed (keep typing without switching windows)"
     Write-Host ""
-    $response = Read-Host "Return focus to Zed after sending code? [y/N]"
-    $useReturnFocus = $response -eq 'y' -or $response -eq 'Y'
+    $response = Read-Host "Switch to Stata after sending code? [y/N]"
+    $useActivateStata = $response -eq 'y' -or $response -eq 'Y'
 }
 
-Install-Tasks -UseReturnFocus $useReturnFocus
+Install-Tasks -UseActivateStata $useActivateStata
 Install-Keybindings
 
 Write-Host "Send-to-Stata installed successfully!"
