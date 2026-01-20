@@ -282,6 +282,7 @@ internal static partial class Program
 
     /// <summary>
     /// Finds a running Stata window.
+    /// Returns a Process that the caller must dispose.
     /// </summary>
     private static Process? FindStataWindow()
     {
@@ -299,26 +300,21 @@ internal static partial class Program
                     var processes = Process.GetProcessesByName(pattern.Replace("Stata", $"Stata{prefix}"));
                     foreach (var proc in processes)
                     {
-                        bool isMatch = false;
                         try
                         {
-                            isMatch = !string.IsNullOrEmpty(proc.MainWindowTitle) &&
+                            if (!string.IsNullOrEmpty(proc.MainWindowTitle) &&
                                 titleRegex.IsMatch(proc.MainWindowTitle) &&
-                                !proc.MainWindowTitle.Contains("Viewer");
-                            
-                            if (isMatch)
+                                !proc.MainWindowTitle.Contains("Viewer"))
                             {
-                                // Get PID before any disposal
-                                int pid = proc.Id;
-                                proc.Dispose();
-                                return Process.GetProcessById(pid);
+                                // Return this process - caller is responsible for disposal
+                                return proc;
                             }
                         }
-                        finally
+                        catch
                         {
-                            if (!isMatch)
-                                proc.Dispose();
+                            // Process may have exited, continue searching
                         }
+                        proc.Dispose();
                     }
                 }
             }
@@ -333,30 +329,25 @@ internal static partial class Program
         {
             foreach (var proc in Process.GetProcesses())
             {
-                bool isMatch = false;
                 try
                 {
                     if (proc.ProcessName.StartsWith("Stata", StringComparison.OrdinalIgnoreCase) ||
                         proc.ProcessName.StartsWith("StataNow", StringComparison.OrdinalIgnoreCase))
                     {
-                        isMatch = !string.IsNullOrEmpty(proc.MainWindowTitle) &&
+                        if (!string.IsNullOrEmpty(proc.MainWindowTitle) &&
                             titleRegex.IsMatch(proc.MainWindowTitle) &&
-                            !proc.MainWindowTitle.Contains("Viewer");
-                        
-                        if (isMatch)
+                            !proc.MainWindowTitle.Contains("Viewer"))
                         {
-                            // Get PID before any disposal
-                            int pid = proc.Id;
-                            proc.Dispose();
-                            return Process.GetProcessById(pid);
+                            // Return this process - caller is responsible for disposal
+                            return proc;
                         }
                     }
                 }
-                finally
+                catch
                 {
-                    if (!isMatch)
-                        proc.Dispose();
+                    // Process may have exited, continue searching
                 }
+                proc.Dispose();
             }
         }
         catch
