@@ -1,4 +1,4 @@
-﻿param(
+param(
     [switch]$Uninstall,
     [switch]$RegisterAutomation,
     [switch]$SkipAutomationCheck,
@@ -163,7 +163,7 @@ function Find-StataInstallation {
     $variants = @("StataMP-64.exe", "StataSE-64.exe", "StataBE-64.exe", "StataIC-64.exe",
                  "StataMP.exe", "StataSE.exe", "StataBE.exe", "StataIC.exe")
 
-    for ($version = 19; $version -ge 13; $version--) {
+    for ($version = 50; $version -ge 13; $version--) {
         $searchPaths = @(
             "C:\Program Files\Stata$version\",
             "C:\Program Files (x86)\Stata$version\",

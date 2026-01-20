@@ -357,6 +357,40 @@ function Check-Prerequisites {
 # Stata Detection
 # ============================================================================
 
+function Find-StataInstallation {
+    if ($env:STATA_PATH -and (Test-Path $env:STATA_PATH)) {
+        return $env:STATA_PATH
+    }
+
+    $variants = @("StataMP-64.exe", "StataSE-64.exe", "StataBE-64.exe", "StataIC-64.exe",
+                 "StataMP.exe", "StataSE.exe", "StataBE.exe", "StataIC.exe")
+
+    for ($version = 50; $version -ge 13; $version--) {
+        $searchPaths = @(
+            "C:\Program Files\Stata$version\",
+            "C:\Program Files (x86)\Stata$version\",
+            "C:\Stata$version\",
+            "C:\Program Files\StataNow$version\",
+            "C:\Program Files (x86)\StataNow$version\",
+            "C:\StataNow$version\"
+        )
+
+        foreach ($path in $searchPaths) {
+            foreach ($variant in $variants) {
+                $fullPath = Join-Path $path $variant
+                if (Test-Path $fullPath) { return $fullPath }
+            }
+        }
+    }
+
+    foreach ($variant in $variants) {
+        $fullPath = Join-Path "C:\Stata\" $variant
+        if (Test-Path $fullPath) { return $fullPath }
+    }
+
+    return $null
+}
+
 function Detect-StataApp {
     $script:STATA_PATH = $env:STATA_PATH
     $script:STATA_EDITION = ""
@@ -382,26 +416,29 @@ function Detect-StataApp {
             $script:STATA_EDITION = "IC"  # Default assumption
         }
     } else {
-        # Auto-detect from common Stata installation paths
-        $apps = @("StataMP", "StataSE", "StataIC", "StataBE", "Stata")
-        $executables = @("stata-mp", "stata-se", "stata-ic", "stata-be", "stata")
-        $editions = @("MP", "SE", "IC", "BE", "IC")
-
-        for ($i = 0; $i -lt $apps.Length; $i++) {
-            $appPath = "$env:ProgramFiles\Stata${apps[$i]}\${executables[$i]}.exe"
-            if (Test-Path -Path $appPath) {
-                $script:STATA_PATH = $appPath
-                $script:STATA_EDITION = $editions[$i]
-                break
-            }
-        }
-
-        if ([string]::IsNullOrEmpty($script:STATA_PATH)) {
+        # Use comprehensive Stata detection
+        $stataPath = Find-StataInstallation
+        if ([string]::IsNullOrEmpty($stataPath)) {
             Write-ErrorMessage "No Stata installation found in common paths"
             Write-Host ""
             Write-Host "Set STATA_PATH environment variable:"
             Write-Host "  [System.Environment]::SetEnvironmentVariable('STATA_PATH', 'C:\path\to\stata.exe', 'User')"
             exit 1
+        }
+
+        $script:STATA_PATH = $stataPath
+
+        # Extract edition from path
+        if ($script:STATA_PATH -like "*stata-mp*" -or $script:STATA_PATH -like "*StataMP*") {
+            $script:STATA_EDITION = "MP"
+        } elseif ($script:STATA_PATH -like "*stata-se*" -or $script:STATA_PATH -like "*StataSE*") {
+            $script:STATA_EDITION = "SE"
+        } elseif ($script:STATA_PATH -like "*stata-ic*" -or $script:STATA_PATH -like "*StataIC*") {
+            $script:STATA_EDITION = "IC"
+        } elseif ($script:STATA_PATH -like "*stata-be*" -or $script:STATA_PATH -like "*StataBE*") {
+            $script:STATA_EDITION = "BE"
+        } else {
+            $script:STATA_EDITION = "IC"  # Default assumption
         }
     }
 
