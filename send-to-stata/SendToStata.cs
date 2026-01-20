@@ -300,6 +300,7 @@ internal static partial class Program
                     var processes = Process.GetProcessesByName(pattern.Replace("Stata", $"Stata{prefix}"));
                     foreach (var proc in processes)
                     {
+                        bool shouldDispose = true;
                         try
                         {
                             if (!string.IsNullOrEmpty(proc.MainWindowTitle) &&
@@ -307,6 +308,7 @@ internal static partial class Program
                                 !proc.MainWindowTitle.Contains("Viewer"))
                             {
                                 // Return this process - caller is responsible for disposal
+                                shouldDispose = false;
                                 return proc;
                             }
                         }
@@ -314,7 +316,11 @@ internal static partial class Program
                         {
                             // Process may have exited, continue searching
                         }
-                        proc.Dispose();
+                        finally
+                        {
+                            if (shouldDispose)
+                                proc.Dispose();
+                        }
                     }
                 }
             }
@@ -329,6 +335,7 @@ internal static partial class Program
         {
             foreach (var proc in Process.GetProcesses())
             {
+                bool shouldDispose = true;
                 try
                 {
                     if (proc.ProcessName.StartsWith("Stata", StringComparison.OrdinalIgnoreCase) ||
@@ -339,6 +346,7 @@ internal static partial class Program
                             !proc.MainWindowTitle.Contains("Viewer"))
                         {
                             // Return this process - caller is responsible for disposal
+                            shouldDispose = false;
                             return proc;
                         }
                     }
@@ -347,7 +355,11 @@ internal static partial class Program
                 {
                     // Process may have exited, continue searching
                 }
-                proc.Dispose();
+                finally
+                {
+                    if (shouldDispose)
+                        proc.Dispose();
+                }
             }
         }
         catch
