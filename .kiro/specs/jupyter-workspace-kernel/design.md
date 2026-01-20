@@ -195,8 +195,9 @@ The `print_summary()` function is updated to explain both kernels:
 
   Usage in Zed:
     1. Open a .do file
-    2. Open the REPL panel (View → Toggle REPL)
-    3. Select 'Stata' or 'Stata (Workspace)' as the kernel
+    2. Select 'stata' or 'stata_workspace' as the kernel
+    3. Click the 🔄 icon in the editor toolbar to execute code
+       or use Control+Shift+Enter keyboard shortcut
 
   To set a default kernel, add to ~/.config/zed/settings.json:
 

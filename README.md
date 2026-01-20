@@ -76,6 +76,12 @@ The installer creates two Jupyter kernels:
 
 The workspace kernel walks up from the file's directory looking for `.git`, `.stata-project`, or `.project` markers to find the project root. If no marker is found, it falls back to the file's directory.
 
+Usage in Zed:
+1. Open a `.do` file
+2. Select `stata` or `stata_workspace` as the kernel
+3. Click the 🔄 icon in the editor toolbar to execute code
+   or use Control+Shift+Enter keyboard shortcut
+
 > **Note:** stata_kernel works well for interactive exploration but can hang on long-running loops or operations taking more than several seconds. For batch scripts or iterative workflows, use [Send to Stata](#send-to-stata-optional) instead. See [comparison table](#choosing-between-send-to-stata-and-jupyter-repl) below.
 
 ### macOS

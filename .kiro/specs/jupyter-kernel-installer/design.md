@@ -580,8 +580,9 @@ For all configuration options, see the [stata_kernel documentation](https://kyle
 ### Usage in Zed
 
 1. Open a `.do` file
-2. Open the REPL panel (View → Toggle REPL)
-3. Select "Stata" as the kernel
+2. Select "stata" as the kernel
+3. Click the 🔄 icon in the editor toolbar to execute code
+   or use Control+Shift+Enter keyboard shortcut
 4. Execute code with the REPL keybindings
 
 ### Uninstall
