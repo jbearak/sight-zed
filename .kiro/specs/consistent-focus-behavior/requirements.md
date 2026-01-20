@@ -62,10 +62,15 @@ This feature adds consistent focus behavior to the send-to-stata functionality a
 #### Acceptance Criteria
 
 1. WHEN the Installer runs interactively, THE Installer SHALL prompt the user with a focus behavior question
-2. THE prompt text SHALL be consistent across both platforms
-3. THE prompt SHALL default to "No" (stay in Zed) when the user presses Enter without input
-4. WHEN the user selects "Yes" (switch to Stata), THE Installer SHALL add the `--activate-stata` flag to all Zed task commands
-5. WHEN the user selects "No" (stay in Zed), THE Installer SHALL NOT add the `--activate-stata` flag to Zed task commands
+2. THE prompt SHALL clearly explain the two options (stay in Zed vs switch to Stata) on both platforms
+3. THE macOS prompt SHALL default to "No" (stay in Zed) when the user presses Enter without input
+4. THE Windows prompt SHALL default to "Yes" (return to Zed) when the user presses Enter without input
+5. WHEN the user selects to switch focus to Stata (macOS: "y", Windows: "n"), THE Installer SHALL add the activation mechanism to all Zed task commands
+6. WHEN the user selects to stay in Zed (macOS: "n" or Enter, Windows: "y" or Enter), THE Installer SHALL NOT add the activation mechanism to Zed task commands
+
+**Implementation Note:** The macOS and Windows prompts use different wording due to platform conventions:
+- macOS asks "Switch to Stata after sending code? [y/N]" (default: stay in Zed)
+- Windows asks "Return focus to Zed after sending code to Stata? [Y/n]" (default: return to Zed)
 
 ### Requirement 6: Non-Interactive Installation Support
 
