@@ -703,7 +703,7 @@ internal static partial class Program
         return null;
     }
 
-    [GeneratedRegex(@"(Stata|StataNow)/(MP|SE|BE|IC)", RegexOptions.IgnoreCase)]
+[GeneratedRegex(@"^(Stata|StataNow)/(MP|SE|BE|IC)", RegexOptions.IgnoreCase)]
     private static partial Regex StataTitleRegex();
 
     /// <summary>
