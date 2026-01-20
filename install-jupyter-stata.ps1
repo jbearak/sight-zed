@@ -15,8 +15,9 @@ param (
 # ============================================================================
 $VENV_DIR = "$env:LOCALAPPDATA\stata_kernel\venv"
 $CONFIG_FILE = "$env:USERPROFILE\.stata_kernel.conf"
-$KERNEL_DIR = "$env:LOCALAPPDATA\jupyter\kernels\stata"
-$WORKSPACE_KERNEL_DIR = "$env:LOCALAPPDATA\jupyter\kernels\stata_workspace"
+# Kernel directories are dynamically detected (don't hardcode - Microsoft Store Python uses different paths)
+$script:KERNEL_DIR = $null
+$script:WORKSPACE_KERNEL_DIR = $null
 
 # ============================================================================
 # Output Helpers
@@ -163,7 +164,7 @@ function Check-Python3 {
 
     # stata_kernel works best with Python 3.9-3.11
     if ($pyMajor -eq 3 -and $pyMinor -ge 12) {
-        Write-WarningMessage "Python $pyVersion detected. stata_kernel may need package upgrades for compatibility."
+        Write-InfoMessage "Python $pyVersion detected. stata_kernel may need package upgrades for compatibility."
         Write-InfoMessage "The installer will handle this automatically."
     }
 
@@ -461,6 +462,23 @@ function Detect-StataApp {
 function Create-Venv {
     if (Test-Path -Path "$VENV_DIR\Scripts\python.exe") {
         Write-InfoMessage "Virtual environment already exists at $VENV_DIR"
+        # Ensure pip exists even if venv already exists (Python 3.13 issue)
+        if (-not (Test-Path -Path "$VENV_DIR\Scripts\pip.exe")) {
+            Write-InfoMessage "pip not found in existing venv, bootstrapping..."
+            try {
+                $ensurePipOutput = & "$VENV_DIR\Scripts\python.exe" -m ensurepip --upgrade 2>&1
+                if ($LASTEXITCODE -ne 0) {
+                    Write-ErrorMessage "Failed to bootstrap pip: $ensurePipOutput"
+                    Write-Host "Please delete the venv and try again: Remove-Item -Recurse -Force '$VENV_DIR'"
+                    exit 2
+                }
+                Write-SuccessMessage "pip bootstrapped successfully"
+            } catch {
+                Write-ErrorMessage "Failed to bootstrap pip: $_"
+                Write-Host "Please delete the venv and try again: Remove-Item -Recurse -Force '$VENV_DIR'"
+                exit 2
+            }
+        }
         return
     }
 
@@ -473,32 +491,107 @@ function Create-Venv {
     try {
         & $script:PYTHON_CMD -m venv $VENV_DIR
         Write-SuccessMessage "Created virtual environment at $VENV_DIR"
+
+        # Ensure pip is available (Python 3.13 sometimes doesn't include it)
+        if (-not (Test-Path -Path "$VENV_DIR\Scripts\pip.exe")) {
+            Write-InfoMessage "Bootstrapping pip..."
+            try {
+                $ensurePipOutput = & "$VENV_DIR\Scripts\python.exe" -m ensurepip --upgrade 2>&1
+                if ($LASTEXITCODE -ne 0) {
+                    Write-ErrorMessage "Failed to bootstrap pip: $ensurePipOutput"
+                    Write-Host "Venv creation failed. Please try deleting and recreating."
+                    exit 2
+                }
+                Write-SuccessMessage "pip bootstrapped successfully"
+            } catch {
+                Write-ErrorMessage "Failed to bootstrap pip: $_"
+                exit 2
+            }
+        }
     } catch {
-        Write-ErrorMessage "Failed to create virtual environment"
+        Write-ErrorMessage "Failed to create virtual environment: $_"
         exit 2
     }
 }
 
 function Install-Packages {
     Write-InfoMessage "Installing packages..."
-    try {
-        & "$VENV_DIR\Scripts\pip.exe" install --upgrade pip | Out-Null
-        & "$VENV_DIR\Scripts\pip.exe" install --upgrade stata_kernel jupyter | Out-Null
-        Write-SuccessMessage "Installed stata_kernel and jupyter"
 
-        # Check Python version for ipykernel upgrade
-        $pyVersion = & "$VENV_DIR\Scripts\python.exe" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
-        $pyMajor = [int]$pyVersion.Split('.')[0]
-        $pyMinor = [int]$pyVersion.Split('.')[1]
+    # Verify pip exists
+    if (-not (Test-Path -Path "$VENV_DIR\Scripts\pip.exe")) {
+        Write-ErrorMessage "pip.exe not found at $VENV_DIR\Scripts\pip.exe"
+        Write-Host "This can happen with Python 3.13. Please delete the venv and try again:"
+        Write-Host "  Remove-Item -Recurse -Force '$VENV_DIR'"
+        exit 2
+    }
+
+    # Upgrade pip first (use python -m pip to avoid self-upgrade issues on Windows)
+    Write-InfoMessage "Upgrading pip..."
+    $pipUpgradeOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade pip 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-ErrorMessage "Failed to upgrade pip"
+        Write-Host $pipUpgradeOutput
+        exit 2
+    }
+    Write-SuccessMessage "pip upgraded successfully"
+
+    # Check Python version to determine installation strategy
+    $pyVersion = & "$VENV_DIR\Scripts\python.exe" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
+    $pyMajor = [int]$pyVersion.Split('.')[0]
+    $pyMinor = [int]$pyVersion.Split('.')[1]
+
+    if ($pyMajor -eq 3 -and $pyMinor -ge 13) {
+        # Python 3.13+: stata_kernel has incompatible dependency pins
+        # Install stata_kernel without dependencies, then install jupyter separately
+        Write-InfoMessage "Installing stata_kernel (without dependencies) for Python $pyVersion..."
+        $stataKernelOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --no-deps stata_kernel 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-ErrorMessage "Failed to install stata_kernel"
+            Write-Host $stataKernelOutput
+            exit 2
+        }
+        Write-SuccessMessage "Installed stata_kernel"
+
+        # Install jupyter which brings in modern dependencies
+        Write-InfoMessage "Installing jupyter (this may take a minute)..."
+        $jupyterOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install jupyter 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-ErrorMessage "Failed to install jupyter"
+            Write-Host $jupyterOutput
+            exit 2
+        }
+        Write-SuccessMessage "Installed jupyter"
+
+        # Upgrade ipykernel to latest for Python 3.13+ compatibility
+        Write-InfoMessage "Upgrading ipykernel for Python $pyVersion compatibility..."
+        $ipykernelOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade ipykernel 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-WarningMessage "Failed to upgrade ipykernel, but continuing..."
+            Write-Host $ipykernelOutput
+        } else {
+            Write-SuccessMessage "Upgraded ipykernel"
+        }
+    } else {
+        # Python 3.12 and below: normal installation
+        Write-InfoMessage "Installing stata_kernel and jupyter (this may take a minute)..."
+        $installOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade stata_kernel jupyter 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-ErrorMessage "Failed to install stata_kernel and jupyter"
+            Write-Host $installOutput
+            exit 2
+        }
+        Write-SuccessMessage "Installed stata_kernel and jupyter"
 
         if ($pyMajor -eq 3 -and $pyMinor -ge 12) {
             Write-InfoMessage "Upgrading ipykernel for Python $pyVersion compatibility..."
-            & "$VENV_DIR\Scripts\pip.exe" install --upgrade ipykernel | Out-Null
-            Write-SuccessMessage "Upgraded ipykernel for Python $pyVersion"
+            $ipykernelOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade ipykernel 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                Write-WarningMessage "Failed to upgrade ipykernel, but continuing..."
+                Write-Host $ipykernelOutput
+            } else {
+                Write-SuccessMessage "Upgraded ipykernel for Python $pyVersion"
+            }
         }
-    } catch {
-        Write-ErrorMessage "Failed to install packages"
-        exit 2
     }
 }
 
@@ -555,8 +648,8 @@ function Write-Config {
     } else {
         # Update existing config - preserve user settings
         $configContent = Get-Content -Path $CONFIG_FILE -Raw
-        $configContent = $configContent -replace "stata_path[[:space:]]*=.*", "stata_path = $($script:STATA_PATH)"
-        $configContent = $configContent -replace "execution_mode[[:space:]]*=.*", "execution_mode = $($script:EXECUTION_MODE)"
+        $configContent = $configContent -replace "stata_path\s*=.*", "stata_path = $($script:STATA_PATH)"
+        $configContent = $configContent -replace "execution_mode\s*=.*", "execution_mode = $($script:EXECUTION_MODE)"
         $configContent | Out-File -FilePath $CONFIG_FILE -Encoding utf8
         Write-SuccessMessage "Updated configuration at $CONFIG_FILE"
     }
@@ -578,18 +671,41 @@ function Register-Kernel {
 }
 
 function Verify-KernelSpec {
-    if (-not (Test-Path -Path "$KERNEL_DIR\kernel.json")) {
-        Write-ErrorMessage "Kernel spec not found at $KERNEL_DIR\kernel.json"
+    # Dynamically find where the stata kernel was installed
+    try {
+        $kernelListOutput = & "$VENV_DIR\Scripts\jupyter.exe" kernelspec list --json 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-ErrorMessage "Failed to list Jupyter kernels"
+            Write-Host $kernelListOutput
+            exit 3
+        }
+
+        $kernelList = $kernelListOutput | ConvertFrom-Json
+        if (-not $kernelList.kernelspecs.stata) {
+            Write-ErrorMessage "Stata kernel not found in Jupyter kernelspec list"
+            exit 3
+        }
+
+        $script:KERNEL_DIR = $kernelList.kernelspecs.stata.resource_dir
+        Write-InfoMessage "Found stata kernel at: $script:KERNEL_DIR"
+
+        # Verify kernel.json exists
+        if (-not (Test-Path -Path "$script:KERNEL_DIR\kernel.json")) {
+            Write-ErrorMessage "Kernel spec not found at $script:KERNEL_DIR\kernel.json"
+            exit 3
+        }
+
+        # Verify language is "stata" (lowercase) for Zed matching
+        $kernelJson = Get-Content -Path "$script:KERNEL_DIR\kernel.json" -Raw
+        if (-not ($kernelJson -match '"language"\s*:\s*"stata"')) {
+            Write-WarningMessage "Kernel language may not be set correctly for Zed"
+        }
+
+        Write-SuccessMessage "Verified kernel spec at $script:KERNEL_DIR"
+    } catch {
+        Write-ErrorMessage "Failed to verify kernel spec: $_"
         exit 3
     }
-
-    # Verify language is "stata" (lowercase) for Zed matching
-    $kernelJson = Get-Content -Path "$KERNEL_DIR\kernel.json" -Raw
-    if (-not ($kernelJson -match '"language"[[:space:]]*:[[:space:]]*"stata"')) {
-        Write-WarningMessage "Kernel language may not be set correctly for Zed"
-    }
-
-    Write-SuccessMessage "Verified kernel spec at $KERNEL_DIR"
 }
 
 # ============================================================================
@@ -661,9 +777,13 @@ if __name__ == '__main__':
 function Install-WorkspaceKernel {
     Write-InfoMessage "Installing workspace kernel..."
 
-    # Create kernel directory
-    if (-not (Test-Path -Path $WORKSPACE_KERNEL_DIR)) {
-        New-Item -ItemType Directory -Path $WORKSPACE_KERNEL_DIR -Force | Out-Null
+    # Determine workspace kernel directory (sibling to the stata kernel)
+    $kernelParentDir = Split-Path -Path $script:KERNEL_DIR -Parent
+    $script:WORKSPACE_KERNEL_DIR = Join-Path $kernelParentDir "stata_workspace"
+
+    # Create workspace kernel directory
+    if (-not (Test-Path -Path $script:WORKSPACE_KERNEL_DIR)) {
+        New-Item -ItemType Directory -Path $script:WORKSPACE_KERNEL_DIR -Force | Out-Null
     }
 
     # Write the wrapper script
@@ -679,16 +799,35 @@ function Install-WorkspaceKernel {
 
     $kernelJson | Out-File -FilePath "$WORKSPACE_KERNEL_DIR\kernel.json" -Encoding utf8
 
-    Write-SuccessMessage "Installed workspace kernel at $WORKSPACE_KERNEL_DIR"
+    Write-SuccessMessage "Installed workspace kernel at $script:WORKSPACE_KERNEL_DIR"
 }
 
 function Uninstall-WorkspaceKernel {
-    if (Test-Path -Path $WORKSPACE_KERNEL_DIR) {
-        Remove-Item -Path $WORKSPACE_KERNEL_DIR -Recurse -Force
-        Write-SuccessMessage "Removed workspace kernel"
-    } else {
-        Write-InfoMessage "Workspace kernel not found (already removed)"
+    # Dynamically find workspace kernel location
+    try {
+        $jupyterPath = "$VENV_DIR\Scripts\jupyter.exe"
+        if (-not (Test-Path -Path $jupyterPath)) {
+            Write-InfoMessage "Workspace kernel not found (jupyter not installed)"
+            return
+        }
+
+        $kernelListOutput = & $jupyterPath kernelspec list --json 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            $kernelList = $kernelListOutput | ConvertFrom-Json
+            if ($kernelList.kernelspecs.stata_workspace) {
+                $workspaceKernelPath = $kernelList.kernelspecs.stata_workspace.resource_dir
+                if (Test-Path -Path $workspaceKernelPath) {
+                    Remove-Item -Path $workspaceKernelPath -Recurse -Force
+                    Write-SuccessMessage "Removed workspace kernel"
+                    return
+                }
+            }
+        }
+    } catch {
+        # Ignore errors during uninstall
     }
+
+    Write-InfoMessage "Workspace kernel not found (already removed)"
 }
 
 # ============================================================================
@@ -700,6 +839,37 @@ function Uninstall {
 
     Write-InfoMessage "Uninstalling stata_kernel..."
 
+    # Remove workspace kernel first (before removing venv)
+    Uninstall-WorkspaceKernel
+
+    # Remove kernel spec - dynamically find it
+    try {
+        $jupyterPath = "$VENV_DIR\Scripts\jupyter.exe"
+        if (Test-Path -Path $jupyterPath) {
+            $kernelListOutput = & $jupyterPath kernelspec list --json 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                $kernelList = $kernelListOutput | ConvertFrom-Json
+                if ($kernelList.kernelspecs.stata) {
+                    $kernelPath = $kernelList.kernelspecs.stata.resource_dir
+                    if (Test-Path -Path $kernelPath) {
+                        Remove-Item -Path $kernelPath -Recurse -Force
+                        Write-SuccessMessage "Removed kernel spec"
+                    } else {
+                        Write-InfoMessage "Kernel spec not found (already removed)"
+                    }
+                } else {
+                    Write-InfoMessage "Kernel spec not found (already removed)"
+                }
+            } else {
+                Write-InfoMessage "Could not list kernels (venv may be broken)"
+            }
+        } else {
+            Write-InfoMessage "Kernel spec not found (already removed)"
+        }
+    } catch {
+        Write-InfoMessage "Could not remove kernel spec (may already be removed)"
+    }
+
     # Remove virtual environment
     if (Test-Path -Path $VENV_DIR) {
         Remove-Item -Path $VENV_DIR -Recurse -Force
@@ -707,17 +877,6 @@ function Uninstall {
     } else {
         Write-InfoMessage "Virtual environment not found (already removed)"
     }
-
-    # Remove kernel spec
-    if (Test-Path -Path $KERNEL_DIR) {
-        Remove-Item -Path $KERNEL_DIR -Recurse -Force
-        Write-SuccessMessage "Removed kernel spec"
-    } else {
-        Write-InfoMessage "Kernel spec not found (already removed)"
-    }
-
-    # Remove workspace kernel
-    Uninstall-WorkspaceKernel
 
     # Optionally remove config
     if ($removeConfig) {
