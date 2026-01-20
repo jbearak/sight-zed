@@ -22,10 +22,15 @@ if ($DryRun) {
     return
 }
 
+if ($content -eq $updated) {
+    Write-Host "Checksum already up to date."
+    return
+}
+
 Set-Content -Path $InstallerPath -Value $updated -Encoding UTF8
 
 # stage and commit
 & git add $InstallerPath
-& git commit -m "chore: update send-to-stata.ps1 checksum`n`nCo-Authored-By: Warp <agent@warp.dev>"
+& git commit -m "chore: update send-to-stata.ps1 checksum"
 
 Write-Host "Updated checksum to $hash and committed."

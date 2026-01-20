@@ -632,7 +632,7 @@ function Install-SendToStata {
 
     $args = @()
     if ($RegisterAutomation) { $args += '-RegisterAutomation' }
-    if ($Yes) { $args += '-RegisterAutomation' }
+    if ($Yes) { $args += '-Yes' }
     if ($SkipAutomationCheck) { $args += '-SkipAutomationCheck' }
 
     Write-Host "Installing send-to-stata integration..."

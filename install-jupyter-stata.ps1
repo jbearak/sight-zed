@@ -580,6 +580,12 @@ function Create-Venv {
             & $script:PYTHON_CMD -m venv $VENV_DIR
         }
 
+        # Verify venv creation succeeded
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -Path "$VENV_DIR\Scripts\python.exe")) {
+            Write-ErrorMessage "Failed to create virtual environment at $VENV_DIR"
+            exit 2
+        }
+
         Write-SuccessMessage "Created virtual environment at $VENV_DIR"
 
         # Ensure pip is available (Python 3.13 sometimes doesn't include it)
@@ -1105,7 +1111,7 @@ function Install-WorkspaceKernel {
     }
 
     # Write the wrapper script
-    $wrapperScript = "$WORKSPACE_KERNEL_DIR\stata_workspace_kernel.py"
+    $wrapperScript = "$script:WORKSPACE_KERNEL_DIR\stata_workspace_kernel.py"
     Get-WorkspaceKernelScript | Out-File -FilePath $wrapperScript -Encoding utf8
 
     # Create kernel.json
@@ -1115,7 +1121,7 @@ function Install-WorkspaceKernel {
         language = "stata"
     } | ConvertTo-Json -Depth 4
 
-    $kernelJson | Out-File -FilePath "$WORKSPACE_KERNEL_DIR\kernel.json" -Encoding utf8
+    $kernelJson | Out-File -FilePath "$script:WORKSPACE_KERNEL_DIR\kernel.json" -Encoding utf8
 
     Write-SuccessMessage "Installed workspace kernel at $script:WORKSPACE_KERNEL_DIR"
 }

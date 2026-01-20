@@ -278,19 +278,23 @@ function Uninstall-SendToStata {
 
     $tasksPath = "$env:APPDATA\Zed\tasks.json"
     if (Test-Path $tasksPath) {
-        $tasks = Get-Content $tasksPath | ConvertFrom-Json
-        $tasks = $tasks | Where-Object { !$_.label.StartsWith("Stata:") }
-        $tasks | ConvertTo-Json -Depth 10 | Out-File $tasksPath -Encoding UTF8
+        $tasks = Get-Content $tasksPath -Raw | ConvertFrom-Json
+        $tasks = $tasks | Where-Object { -not $_.label -or -not $_.label.StartsWith("Stata:") }
+        $json = ConvertTo-Json -InputObject $tasks -Depth 10 -Compress
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::WriteAllText($tasksPath, $json, $utf8NoBom)
         Write-Host "Removed Stata tasks"
     }
 
     $keymapPath = "$env:APPDATA\Zed\keymap.json"
     if (Test-Path $keymapPath) {
-        $keybindings = Get-Content $keymapPath | ConvertFrom-Json
+        $keybindings = Get-Content $keymapPath -Raw | ConvertFrom-Json
         $keybindings = $keybindings | Where-Object {
-            !($_.context -eq "Editor && extension == do")
+            -not $_.context -or $_.context -ne "Editor && extension == do"
         }
-        $keybindings | ConvertTo-Json -Depth 10 | Out-File $keymapPath -Encoding UTF8
+        $json = ConvertTo-Json -InputObject $keybindings -Depth 10 -Compress
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::WriteAllText($keymapPath, $json, $utf8NoBom)
         Write-Host "Removed Stata keybindings"
     }
 }
