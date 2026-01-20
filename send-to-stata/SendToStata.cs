@@ -468,8 +468,7 @@ internal static partial class Program
                 return false;
             }
 
-            // Clipboard now owns the memory, don't free it
-            hGlobal = IntPtr.Zero;
+            // Clipboard now owns the memory - do not free hGlobal
             return true;
         }
         finally
