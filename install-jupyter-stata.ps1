@@ -1059,16 +1059,8 @@ def find_workspace_root(start_path: Path) -> Path:
 
     current = start_path.resolve()
 
-    # Don't go above home directory
-    home = Path.home().resolve()
-
+    # Walk up to filesystem root (current == current.parent at root)
     while current != current.parent:
-        # Stop if we've gone above home
-        try:
-            current.relative_to(home)
-        except ValueError:
-            break
-
         for marker in markers:
             if (current / marker).exists():
                 return current
