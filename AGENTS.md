@@ -8,6 +8,62 @@ When a new version of the Sight LSP is released:
 2. Update `SERVER_VERSION` constant to the new tag (e.g., `"v0.1.12"`)
 3. The extension downloads binaries from GitHub releases at `jbearak/sight`
 
+## Jupyter Stata Kernel on Windows
+
+The Windows version now supports Jupyter functionality similar to macOS/Linux. Use the PowerShell script to install:
+
+```powershell
+.\install-jupyter-stata.ps1
+```
+
+This script:
+- Creates a virtual environment with Python
+- Installs stata_kernel and Jupyter
+- Sets up two kernels: "Stata" and "Stata (Workspace)"
+- Configures the workspace kernel to detect project roots
+
+### Kernel Differences
+
+| Kernel | Working Directory | Use Case |
+|--------|-------------------|----------|
+| **Stata** | File's directory | Scripts with paths relative to the script location |
+| **Stata (Workspace)** | Workspace root | Scripts with paths relative to the project root |
+
+### Workspace Detection
+
+The "Stata (Workspace)" kernel walks up from the file's directory looking for these marker files:
+1. `.git` — Git repository root
+2. `.stata-project` — Stata-specific project marker
+3. `.project` — Generic project marker
+
+### Setting Default Kernel
+
+Users can set a default kernel in `%APPDATA%\zed\settings.json`:
+
+```json
+{
+  "jupyter": {
+    "kernel_selections": {
+      "stata": "stata_workspace"
+    }
+  }
+}
+```
+
+### Uninstallation
+
+To uninstall:
+```powershell
+.\install-jupyter-stata.ps1 --uninstall
+```
+
+To uninstall including config:
+```powershell
+.\install-jupyter-stata.ps1 --uninstall --remove-config
+```
+
+## Updating the Tree-Sitter Grammar
+
 ## Updating the Tree-Sitter Grammar
 
 When the tree-sitter-stata grammar is updated:
