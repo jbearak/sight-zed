@@ -65,9 +65,16 @@ irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-sta
 
 See [SEND-TO-STATA.md](SEND-TO-STATA.md) for full documentation, configuration options, and troubleshooting.
 
-## Jupyter REPL (Not Yet Supported)
+## Jupyter REPL
 
-**Note:** Zed's built-in REPL currently only supports Python, TypeScript (Deno), R, Julia, and Scala. Stata is not yet supported, even with the Jupyter kernels installed.
+The installer creates two Jupyter kernels:
+
+| Kernel | Working Directory | Use Case |
+|--------|-------------------|----------|
+| **Stata** | File's directory | Scripts with paths relative to the script location |
+| **Stata (Workspace)** | Workspace root | Scripts with paths relative to the project root |
+
+The workspace kernel walks up from the file's directory looking for `.git`, `.stata-project`, or `.project` markers to find the project root. If no marker is found, it falls back to the file's directory.
 
 > **Note:** stata_kernel works well for interactive exploration but can hang on long-running loops or operations taking more than several seconds. For batch scripts or iterative workflows, use [Send to Stata](#send-to-stata-optional) instead. See [comparison table](#choosing-between-send-to-stata-and-jupyter-repl) below.
 
@@ -92,27 +99,8 @@ The Windows installer is intentionally opinionated to be reliable across Python/
 - **Installs only minimal Jupyter components** (`jupyter-core`, `jupyter-client`, and a pinned `ipykernel`) instead of the full `jupyter` meta-package to avoid pulling in `notebook`/`jupyterlab` and native build dependencies (e.g. `pywinpty`).
 - **Writes kernelspecs deterministically** into `%APPDATA%\jupyter\kernels\...` (including `kernel.json`) so Zed can discover them reliably.
 
-**Important:** After installing or updating the Jupyter kernels, **restart Zed**. Kernel discovery/connection state can be cached, and a restart is often required before the kernels can connect successfully. The installer adds the Jupyter virtual environment to your PATH so Zed can discover the kernels.
-
-After installation, you can use the kernels with `jupyter lab` or `jupyter notebook`:
-
-```bash
-# Start Jupyter Lab with access to Stata kernels
-jupyter lab
-```
-
-### Available Kernels
-
-| Kernel | Working Directory | Use Case |
-|--------|-------------------|----------|
-| Stata | File's directory | Scripts with paths relative to the script location |
-| Stata (Workspace) | Project root | Scripts with paths relative to the project root |
-
-The workspace kernel walks up from the file's directory looking for `.git`, `.stata-project`, or `.project` markers to find the project root.
-
-**Configuration:** The installer creates `~/.stata_kernel.conf` (or `%USERPROFILE%\.stata_kernel.conf` on Windows) with auto-detected settings. Edit this file to customize graph format, cache directory, and other options.
-
-> **Future Support:** If you'd like to see Stata REPL support added to Zed, consider opening a feature request on the [Zed GitHub repository](https://github.com/zed-industries/zed/issues).
+> [!IMPORTANT]
+> After installing or updating the Jupyter kernels, **restart Zed**. Kernel discovery/connection state can be cached, and a restart is often required before the kernels can connect successfully. The installer adds the Jupyter virtual environment to your PATH so Zed can discover the kernels.
 
 ## Choosing Between Send-to-Stata and Jupyter REPL
 
@@ -124,6 +112,9 @@ The workspace kernel walks up from the file's directory looking for `.git`, `.st
 | Operations > several seconds | Send to Stata | Avoids potential instability |
 | Graph-heavy workflows | Send to Stata | Graphs can trigger kernel hangs |
 | Production batch jobs | Send to Stata | Reliable unattended execution |
+
+> [!TIP]
+> The installer creates `~/.stata_kernel.conf` (or `%USERPROFILE%\.stata_kernel.conf` on Windows) with auto-detected settings. Edit this file to customize graph format, cache directory, and other options.
 
 ## Building from Source
 
