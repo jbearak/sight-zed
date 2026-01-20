@@ -9,6 +9,15 @@ A Zed editor extension providing Stata language support using the [Sight LSP](ht
 - Code completion, hover information, and diagnostics
 - Send code to Stata with keyboard shortcuts (requires additional setup—see below)
 
+> **⚠️ Development Status:** This is an early-stage implementation. While functional, it requires substantial testing and code review. Contributions and feedback are welcome!
+
+> **Related Repositories:**
+>
+> - [tree-sitter-stata](https://github.com/jbearak/tree-sitter) - A tree-sitter grammar
+> - [Sight](https://github.com/jbearak/sight) - A language server and VS Code extension for Stata
+> 
+> This Zed extension uses the tree-sitter grammar and language server from those repositories to provide syntax highlighting and diagnostics.
+
 ## Installation
 
 Install from the Zed extension marketplace by searching for "Sight" or "Stata".
