@@ -31,12 +31,13 @@ function New-RandomCompoundString {
 function New-RandomTasksJson {
     $taskName = "Task" + (Get-Random -Maximum 1000)
     $command = "echo " + (New-RandomCompoundString)
+    $escapedCommand = $command.Replace('"', '\"')
     
     return @"
 [
   {
     "label": "$taskName",
-    "command": "$command"
+    "command": "$escapedCommand"
   }
 ]
 "@
