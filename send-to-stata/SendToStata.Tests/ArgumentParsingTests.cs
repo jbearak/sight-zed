@@ -37,8 +37,10 @@ public class ArgumentParsingTests
         }
     }
 
-    [Fact]
-    public void ParseArguments_BothFlags_ActivateStataTakesPrecedence()
+    [Theory]
+    [InlineData("-ReturnFocus", "-ActivateStata")]
+    [InlineData("-ActivateStata", "-ReturnFocus")]
+    public void ParseArguments_BothFlags_ActivateStataTakesPrecedence(string first, string second)
     {
         var originalError = Console.Error;
         using var stringWriter = new StringWriter();
@@ -46,7 +48,7 @@ public class ArgumentParsingTests
         
         try
         {
-            var args = new[] { "-ReturnFocus", "-ActivateStata" };
+            var args = new[] { first, second };
             var result = Program.ParseArguments(args);
             
             Assert.True(result.ActivateStata);
