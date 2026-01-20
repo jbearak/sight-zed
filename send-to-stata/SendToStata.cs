@@ -282,6 +282,7 @@ internal static partial class Program
 
     /// <summary>
     /// Finds a running Stata window.
+    /// Returns a Process that the caller must dispose.
     /// </summary>
     private static Process? FindStataWindow()
     {
@@ -299,21 +300,26 @@ internal static partial class Program
                     var processes = Process.GetProcessesByName(pattern.Replace("Stata", $"Stata{prefix}"));
                     foreach (var proc in processes)
                     {
+                        bool shouldDispose = true;
                         try
                         {
                             if (!string.IsNullOrEmpty(proc.MainWindowTitle) &&
                                 titleRegex.IsMatch(proc.MainWindowTitle) &&
                                 !proc.MainWindowTitle.Contains("Viewer"))
                             {
-                                // Return a fresh reference to avoid returning disposed object
-                                int pid = proc.Id;
-                                proc.Dispose();
-                                return Process.GetProcessById(pid);
+                                // Return this process - caller is responsible for disposal
+                                shouldDispose = false;
+                                return proc;
                             }
+                        }
+                        catch
+                        {
+                            // Process may have exited, continue searching
                         }
                         finally
                         {
-                            proc.Dispose();
+                            if (shouldDispose)
+                                proc.Dispose();
                         }
                     }
                 }
@@ -329,6 +335,7 @@ internal static partial class Program
         {
             foreach (var proc in Process.GetProcesses())
             {
+                bool shouldDispose = true;
                 try
                 {
                     if (proc.ProcessName.StartsWith("Stata", StringComparison.OrdinalIgnoreCase) ||
@@ -338,16 +345,20 @@ internal static partial class Program
                             titleRegex.IsMatch(proc.MainWindowTitle) &&
                             !proc.MainWindowTitle.Contains("Viewer"))
                         {
-                            // Return a fresh reference to avoid returning disposed object
-                            int pid = proc.Id;
-                            proc.Dispose();
-                            return Process.GetProcessById(pid);
+                            // Return this process - caller is responsible for disposal
+                            shouldDispose = false;
+                            return proc;
                         }
                     }
                 }
+                catch
+                {
+                    // Process may have exited, continue searching
+                }
                 finally
                 {
-                    proc.Dispose();
+                    if (shouldDispose)
+                        proc.Dispose();
                 }
             }
         }
