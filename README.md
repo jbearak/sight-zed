@@ -42,6 +42,8 @@ See [SEND-TO-STATA.md](SEND-TO-STATA.md) for full documentation, configuration o
 
 Execute Stata code in Zed's built-in REPL panel using [stata_kernel](https://kylebarron.dev/stata_kernel/). This provides an interactive environment without switching to the Stata application.
 
+> **Note:** stata_kernel works well for interactive exploration but can hang on long-running loops or operations taking more than several seconds. For batch scripts or iterative workflows, use [Send to Stata](#send-to-stata-optional) instead. See [comparison table](#choosing-between-send-to-stata-and-jupyter-repl) below.
+
 **Install (macOS only):**
 
 ```bash
@@ -80,6 +82,16 @@ Add to `~/.config/zed/settings.json`:
 
 **Configuration:** The installer creates `~/.stata_kernel.conf` with auto-detected settings. Edit this file to customize graph format, cache directory, and other options.
 
+## Choosing Between Send-to-Stata and Jupyter REPL
+
+| Scenario | Recommended | Why |
+|----------|-------------|-----|
+| Quick data exploration | Jupyter REPL | Inline results, fast iteration |
+| Testing individual commands | Jupyter REPL | Interactive feedback |
+| Loops with many iterations | Send to Stata | Avoids kernel hang issues |
+| Operations > several seconds | Send to Stata | Avoids potential instability |
+| Graph-heavy workflows | Send to Stata | Graphs can trigger kernel hangs |
+| Production batch jobs | Send to Stata | Reliable unattended execution |
 
 ## Building from Source
 
