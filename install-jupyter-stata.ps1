@@ -1,9 +1,13 @@
 # install-jupyter-stata.ps1 - Install stata_kernel for Zed Jupyter integration on Windows
 #
+# Requirements:
+#   - PowerShell 7+ (pwsh). Windows PowerShell 5.1 may fail to parse this script.
+#     Install from: https://learn.microsoft.com/powershell/scripting/install/installing-powershell-on-windows
+#
 # Usage:
-#   .\install-jupyter-stata.ps1                    Install stata_kernel
-#   .\install-jupyter-stata.ps1 --uninstall        Remove installation
-#   .\install-jupyter-stata.ps1 --uninstall --remove-config  Remove including config
+#   pwsh -File .\install-jupyter-stata.ps1                         Install stata_kernel
+#   pwsh -File .\install-jupyter-stata.ps1 -Uninstall              Remove installation
+#   pwsh -File .\install-jupyter-stata.ps1 -Uninstall -RemoveConfig  Remove including config
 
 param (
     [switch]$uninstall,
@@ -15,9 +19,27 @@ param (
 # ============================================================================
 $VENV_DIR = "$env:LOCALAPPDATA\stata_kernel\venv"
 $CONFIG_FILE = "$env:USERPROFILE\.stata_kernel.conf"
-# Kernel directories are dynamically detected (don't hardcode - Microsoft Store Python uses different paths)
+
+# Preferred Python version for stata_kernel on Windows.
+# stata_kernel is most stable on Python 3.9–3.11; Python 3.12+ has caused repeated dependency and kernelspec issues.
+$PREFERRED_PYTHON_MAJOR = 3
+$PREFERRED_PYTHON_MINOR = 11
+
+# Zed kernel discovery on Windows is most reliable when kernels are installed under:
+#   %APPDATA%\jupyter\kernels\...
+# Microsoft Store Python often redirects Jupyter's data dir to:
+#   ...\LocalCache\Roaming\jupyter
+# which Zed may not scan. We force installs into %APPDATA%.
+$KERNEL_INSTALL_PREFIX = $env:APPDATA
 $script:KERNEL_DIR = $null
 $script:WORKSPACE_KERNEL_DIR = $null
+
+# ============================================================================
+# Zed Compatibility Pins
+# ============================================================================
+# Zed's REPL currently has known issues with ipykernel 7.x on Windows (e.g. iopub
+# status messages including "starting"). Pin to a Zed-compatible version.
+$IPYKERNEL_VERSION = "6.28.0"
 
 # ============================================================================
 # Output Helpers
@@ -57,85 +79,121 @@ function Check-Windows {
 function Check-Python3 {
     $pythonPath = $null
 
-    # First try to find existing Python installation
-    try {
-        $pythonPath = (Get-Command python -ErrorAction Stop).Source
-        Write-InfoMessage "Found Python at: $pythonPath"
-
-        # Test if this Python actually works
+    function Get-PythonVersion {
+        param([string]$path)
         try {
-            $testOutput = & $pythonPath --version 2>&1
-            if ($testOutput -match "Python was not found") {
-                Write-WarningMessage "Found Microsoft Store Python stub, will attempt real installation"
-                $pythonPath = Install-PythonAutomatically
-                if (-not $pythonPath) {
-                    Write-ErrorMessage "Python installation failed"
-                    exit 1
-                }
-            } elseif ($testOutput -match "Python \d+\.\d+") {
-                Write-InfoMessage "Python executable works: $testOutput"
-            } else {
-                Write-WarningMessage "Python executable test failed, will attempt real installation"
-                $pythonPath = Install-PythonAutomatically
-                if (-not $pythonPath) {
-                    Write-ErrorMessage "Python installation failed"
-                    exit 1
-                }
+            $v = & $path -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')" 2>$null
+            if (-not $v) { return $null }
+            $parts = $v.Trim().Split('.')
+            if ($parts.Count -lt 2) { return $null }
+            return @{
+                Major = [int]$parts[0]
+                Minor = [int]$parts[1]
+                Micro = if ($parts.Count -ge 3) { [int]$parts[2] } else { 0 }
+                Raw = $v.Trim()
             }
         } catch {
-            Write-WarningMessage "Python executable test failed: $_"
-            $pythonPath = Install-PythonAutomatically
-            if (-not $pythonPath) {
-                Write-ErrorMessage "Python installation failed"
-                exit 1
+            return $null
+        }
+    }
+
+    function Is-MicrosoftStorePython {
+        param([string]$path)
+        if (-not $path) { return $false }
+        return ($path -match "\\WindowsApps\\") -or ($path -match "\\Program Files\\WindowsApps\\") -or ($path -match "\\Local\\Microsoft\\WindowsApps\\")
+    }
+
+    function Is-PreferredPython {
+        param($ver)
+        if (-not $ver) { return $false }
+        return ($ver.Major -eq $PREFERRED_PYTHON_MAJOR -and $ver.Minor -eq $PREFERRED_PYTHON_MINOR)
+    }
+
+    function Find-PreferredPythonPath {
+        # Try common python.org install locations first (per-user install)
+        $candidates = @()
+
+        if ($env:LOCALAPPDATA) {
+            $candidates += Join-Path $env:LOCALAPPDATA "Programs\Python\Python311\python.exe"
+            $candidates += Join-Path $env:LOCALAPPDATA "Programs\Python\Python311-64\python.exe"
+        }
+
+        # Try py launcher if present
+        try {
+            $py = (Get-Command py -ErrorAction Stop).Source
+            if ($py) {
+                $candidates += $py
+            }
+        } catch {}
+
+        foreach ($c in $candidates) {
+            if (-not (Test-Path -Path $c)) { continue }
+
+            if ($c -like "*\py.exe") {
+                # Use py launcher to resolve 3.11
+                try {
+                    $ver = & $c -3.11 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')" 2>$null
+                    if ($ver -match "^3\.11\.\d+$") {
+                        return "$c -3.11"
+                    }
+                } catch {}
+                continue
+            }
+
+            $verInfo = Get-PythonVersion $c
+            if (Is-PreferredPython $verInfo) {
+                return $c
             }
         }
-    } catch {
-        try {
-            $pythonPath = (Get-Command python3 -ErrorAction Stop).Source
-            Write-InfoMessage "Found Python3 at: $pythonPath"
 
-            # Test if this Python actually works
-            try {
-                $testOutput = & $pythonPath --version 2>&1
-                if ($testOutput -match "Python was not found") {
-                    Write-WarningMessage "Found Microsoft Store Python stub, will attempt real installation"
-                    $pythonPath = Install-PythonAutomatically
-                    if (-not $pythonPath) {
-                        Write-ErrorMessage "Python installation failed"
-                        exit 1
-                    }
-                } elseif ($testOutput -match "Python \d+\.\d+") {
-                    Write-InfoMessage "Python executable works: $testOutput"
-                } else {
-                    Write-WarningMessage "Python executable test failed, will attempt real installation"
-                    $pythonPath = Install-PythonAutomatically
-                    if (-not $pythonPath) {
-                        Write-ErrorMessage "Python installation failed"
-                        exit 1
-                    }
-                }
-            } catch {
-                Write-WarningMessage "Python executable test failed: $_"
-                $pythonPath = Install-PythonAutomatically
-                if (-not $pythonPath) {
-                    Write-ErrorMessage "Python installation failed"
-                    exit 1
-                }
-            }
+        return $null
+    }
+
+    # Prefer Python 3.11 when possible
+    $preferred = Find-PreferredPythonPath
+    if ($preferred) {
+        if ($preferred -like "*\py.exe -3.11") {
+            Write-InfoMessage "Found preferred Python via py launcher: $preferred"
+            return $preferred
+        }
+
+        Write-InfoMessage "Found preferred Python at: $preferred"
+        $pythonPath = $preferred
+    } else {
+        # Fall back to whatever `python` / `python3` resolves to, but avoid Microsoft Store Python if possible.
+        try {
+            $pythonPath = (Get-Command python -ErrorAction Stop).Source
+            Write-InfoMessage "Found Python at: $pythonPath"
         } catch {
-            Write-InfoMessage "Python not found, attempting automatic installation..."
+            try {
+                $pythonPath = (Get-Command python3 -ErrorAction Stop).Source
+                Write-InfoMessage "Found Python3 at: $pythonPath"
+            } catch {
+                $pythonPath = $null
+            }
+        }
+
+        if (-not $pythonPath -or (Is-MicrosoftStorePython $pythonPath)) {
+            Write-WarningMessage "Python not found or Microsoft Store Python detected. Attempting to install Python $PREFERRED_PYTHON_MAJOR.$PREFERRED_PYTHON_MINOR automatically..."
             $pythonPath = Install-PythonAutomatically
             if (-not $pythonPath) {
                 Write-ErrorMessage "Python installation failed"
                 Write-Host ""
                 Write-Host "Please install Python manually from: https://www.python.org/downloads/"
-                Write-Host "Make sure to check 'Add Python to PATH' during installation."
+                Write-Host "Make sure to:"
+                Write-Host "  1. Download Python $PREFERRED_PYTHON_MAJOR.$PREFERRED_PYTHON_MINOR (recommended for stata_kernel)"
+                Write-Host "  2. Check 'Add Python to PATH' during installation"
+                Write-Host "  3. Run this script again after installation"
                 Write-Host ""
-                Write-Host "After installing Python, run this script again."
                 exit 1
             }
         }
+    }
+
+    # If we got "py -3.11" as a command string, skip venv probe here (handled later by Create-Venv).
+    if ($pythonPath -like "*\py.exe -3.11") {
+        Write-InfoMessage "Using Python $PREFERRED_PYTHON_MAJOR.$PREFERRED_PYTHON_MINOR via py launcher for venv creation"
+        return $pythonPath
     }
 
     # Now check if venv module is available
@@ -147,12 +205,12 @@ function Check-Python3 {
     try {
         $venvCheck = & $pythonPath -c "import venv; print('venv available')"
         if (-not ($venvCheck -like "*venv available*")) {
-            Write-ErrorMessage "python3 venv module is required but not available"
+            Write-ErrorMessage "python venv module is required but not available"
             exit 1
         }
         Write-InfoMessage "venv module is available"
     } catch {
-        Write-ErrorMessage "python3 venv module is required but not available: $_"
+        Write-ErrorMessage "python venv module is required but not available: $_"
         exit 1
     }
 
@@ -162,10 +220,8 @@ function Check-Python3 {
     $pyMinor = [int]$pyVersion.Split('.')[1]
     Write-InfoMessage "Python version: $pyVersion"
 
-    # stata_kernel works best with Python 3.9-3.11
-    if ($pyMajor -eq 3 -and $pyMinor -ge 12) {
-        Write-InfoMessage "Python $pyVersion detected. stata_kernel may need package upgrades for compatibility."
-        Write-InfoMessage "The installer will handle this automatically."
+    if ($pyMajor -ne $PREFERRED_PYTHON_MAJOR -or $pyMinor -ne $PREFERRED_PYTHON_MINOR) {
+        Write-WarningMessage "Non-preferred Python detected ($pyVersion). For best results, install Python $PREFERRED_PYTHON_MAJOR.$PREFERRED_PYTHON_MINOR."
     }
 
     return $pythonPath
@@ -175,12 +231,13 @@ function Install-PythonAutomatically {
     Write-Host "Attempting to install Python automatically..."
     Write-Host ""
 
+    # Prefer installing Python 3.11 specifically (stata_kernel stability).
     # Try to install Python using winget if available
     try {
         Write-InfoMessage "Checking for winget (Windows Package Manager)..."
         $wingetPath = Get-Command winget -ErrorAction SilentlyContinue
         if ($wingetPath) {
-            Write-InfoMessage "Installing Python using winget..."
+            Write-InfoMessage "Installing Python $PREFERRED_PYTHON_MAJOR.$PREFERRED_PYTHON_MINOR using winget..."
             try {
                 # Test winget first to make sure it's working
                 $wingetTest = & winget --version 2>&1
@@ -189,20 +246,23 @@ function Install-PythonAutomatically {
                     return $null
                 }
 
-                # Try multiple Python package names
+                # Try Python 3.11 package IDs first, then fall back to generic packages
                 $pythonPackages = @(
+                    "Python.Python.3.11",
                     "Python.Python.3",
                     "Python.Python",
                     "Python.3",
                     "python"
                 )
 
+                $installedSomething = $false
                 foreach ($pkg in $pythonPackages) {
                     Write-InfoMessage "Attempting to install Python package: $pkg"
                     $installResult = & winget install --accept-package-agreements --accept-source-agreements $pkg 2>&1
 
                     if ($installResult -match "Successfully installed") {
                         Write-SuccessMessage "Python installed successfully via winget ($pkg)"
+                        $installedSomething = $true
                         break
                     } elseif ($installResult -match "No package found") {
                         Write-InfoMessage "Package $pkg not found, trying next..."
@@ -213,43 +273,47 @@ function Install-PythonAutomatically {
                     }
                 }
 
-                if (-not ($installResult -match "Successfully installed")) {
-                    Write-WarningMessage "All winget package installations failed"
-                    return $null
+                if (-not $installedSomething) {
+                    Write-WarningMessage "winget did not report a successful Python installation"
                 }
 
-                # Verify Python is actually installed and working
+                # IMPORTANT: Do NOT verify by calling `python` / `python3`, since that may resolve
+                # to Microsoft Store Python shims (WindowsApps) even after installation.
+                # Instead, prefer returning the Python Launcher command which can target 3.11 explicitly.
                 try {
-                    $pythonPath = (Get-Command python -ErrorAction Stop).Source
-                    $testOutput = & $pythonPath --version 2>&1
-                    if ($testOutput -match "Python \d+\.\d+") {
-                        Write-InfoMessage "Verified Python installation: $testOutput"
-                        return $pythonPath
-                    } else {
-                        Write-WarningMessage "Python installation verification failed"
-                        return $null
+                    $pyLauncher = (Get-Command py -ErrorAction Stop).Source
+                    $ver = & $pyLauncher -3.11 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>$null
+                    if ($ver -match "^3\.11$") {
+                        Write-InfoMessage "Verified Python 3.11 via py launcher"
+                        return "$pyLauncher -3.11"
                     }
                 } catch {
-                    try {
-                        $pythonPath = (Get-Command python3 -ErrorAction Stop).Source
-                        $testOutput = & $pythonPath --version 2>&1
-                        if ($testOutput -match "Python \d+\.\d+") {
-                            Write-InfoMessage "Verified Python installation: $testOutput"
-                            return $pythonPath
-                        } else {
-                            Write-WarningMessage "Python installation verification failed"
-                            return $null
-                        }
-                    } catch {
-                        Write-WarningMessage "Could not find Python after winget installation"
-                        return $null
+                    # Ignore and fall through
+                }
+
+                # Fall back: try common python.org install locations for 3.11
+                $candidate = $null
+                if ($env:LOCALAPPDATA) {
+                    $candidate = Join-Path $env:LOCALAPPDATA "Programs\Python\Python311\python.exe"
+                    if (-not (Test-Path -Path $candidate)) {
+                        $candidate = Join-Path $env:LOCALAPPDATA "Programs\Python\Python311-64\python.exe"
                     }
                 }
+                if ($candidate -and (Test-Path -Path $candidate)) {
+                    $testOutput = & $candidate --version 2>&1
+                    if ($testOutput -match "^Python 3\.11") {
+                        Write-InfoMessage "Verified Python installation at: $candidate ($testOutput)"
+                        return $candidate
+                    }
+                }
+
+                Write-WarningMessage "Could not verify Python 3.11 after installation; you may need to restart the terminal or disable Microsoft Store Python app execution aliases."
+                return $null
             } catch {
                 Write-WarningMessage "winget installation failed: $_"
             }
         } else {
-            Write-InfoMessage "winget not available"
+            Write-InfoMessage "winget not found"
         }
     } catch {
         Write-WarningMessage "winget check failed: $_"
@@ -461,25 +525,43 @@ function Detect-StataApp {
 
 function Create-Venv {
     if (Test-Path -Path "$VENV_DIR\Scripts\python.exe") {
-        Write-InfoMessage "Virtual environment already exists at $VENV_DIR"
-        # Ensure pip exists even if venv already exists (Python 3.13 issue)
-        if (-not (Test-Path -Path "$VENV_DIR\Scripts\pip.exe")) {
-            Write-InfoMessage "pip not found in existing venv, bootstrapping..."
+        # Force recreation if the existing venv is not using the preferred Python (3.11).
+        $existingVenvVersion = $null
+        try {
+            $existingVenvVersion = & "$VENV_DIR\Scripts\python.exe" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>$null
+        } catch {
+            $existingVenvVersion = $null
+        }
+
+        if ($existingVenvVersion -ne "$PREFERRED_PYTHON_MAJOR.$PREFERRED_PYTHON_MINOR") {
+            Write-WarningMessage "Virtual environment exists but uses Python $existingVenvVersion (preferred: $PREFERRED_PYTHON_MAJOR.$PREFERRED_PYTHON_MINOR). Recreating venv..."
             try {
-                $ensurePipOutput = & "$VENV_DIR\Scripts\python.exe" -m ensurepip --upgrade 2>&1
-                if ($LASTEXITCODE -ne 0) {
-                    Write-ErrorMessage "Failed to bootstrap pip: $ensurePipOutput"
+                Remove-Item -Recurse -Force "$VENV_DIR"
+            } catch {
+                Write-ErrorMessage "Failed to remove existing venv at ${VENV_DIR}: $($_.Exception.Message)"
+                exit 2
+            }
+        } else {
+            Write-InfoMessage "Virtual environment already exists at $VENV_DIR (Python $existingVenvVersion)"
+            # Ensure pip exists even if venv already exists (Python 3.13 issue)
+            if (-not (Test-Path -Path "$VENV_DIR\Scripts\pip.exe")) {
+                Write-InfoMessage "pip not found in existing venv, bootstrapping..."
+                try {
+                    $ensurePipOutput = & "$VENV_DIR\Scripts\python.exe" -m ensurepip --upgrade 2>&1
+                    if ($LASTEXITCODE -ne 0) {
+                        Write-ErrorMessage "Failed to bootstrap pip: $ensurePipOutput"
+                        Write-Host "Please delete the venv and try again: Remove-Item -Recurse -Force '$VENV_DIR'"
+                        exit 2
+                    }
+                    Write-SuccessMessage "pip bootstrapped successfully"
+                } catch {
+                    Write-ErrorMessage "Failed to bootstrap pip: $_"
                     Write-Host "Please delete the venv and try again: Remove-Item -Recurse -Force '$VENV_DIR'"
                     exit 2
                 }
-                Write-SuccessMessage "pip bootstrapped successfully"
-            } catch {
-                Write-ErrorMessage "Failed to bootstrap pip: $_"
-                Write-Host "Please delete the venv and try again: Remove-Item -Recurse -Force '$VENV_DIR'"
-                exit 2
             }
+            return
         }
-        return
     }
 
     Write-InfoMessage "Creating virtual environment..."
@@ -489,7 +571,15 @@ function Create-Venv {
     }
 
     try {
-        & $script:PYTHON_CMD -m venv $VENV_DIR
+        # If we have the Python Launcher command string (e.g. "C:\Windows\py.exe -3.11"),
+        # invoke it correctly (executable + args). This avoids PATH/AppExecutionAlias issues.
+        if ($script:PYTHON_CMD -like "*\py.exe -3.11") {
+            $pyExe = $script:PYTHON_CMD -replace " -3\.11$", ""
+            & $pyExe -3.11 -m venv $VENV_DIR
+        } else {
+            & $script:PYTHON_CMD -m venv $VENV_DIR
+        }
+
         Write-SuccessMessage "Created virtual environment at $VENV_DIR"
 
         # Ensure pip is available (Python 3.13 sometimes doesn't include it)
@@ -548,48 +638,76 @@ function Install-Packages {
         if ($LASTEXITCODE -ne 0) {
             Write-ErrorMessage "Failed to install stata_kernel"
             Write-Host $stataKernelOutput
-            exit 2
-        }
-        Write-SuccessMessage "Installed stata_kernel"
-
-        # Install jupyter which brings in modern dependencies
-        Write-InfoMessage "Installing jupyter (this may take a minute)..."
-        $jupyterOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install jupyter 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            Write-ErrorMessage "Failed to install jupyter"
-            Write-Host $jupyterOutput
-            exit 2
-        }
-        Write-SuccessMessage "Installed jupyter"
-
-        # Upgrade ipykernel to latest for Python 3.13+ compatibility
-        Write-InfoMessage "Upgrading ipykernel for Python $pyVersion compatibility..."
-        $ipykernelOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade ipykernel 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            Write-WarningMessage "Failed to upgrade ipykernel, but continuing..."
-            Write-Host $ipykernelOutput
+            exit 3
         } else {
-            Write-SuccessMessage "Upgraded ipykernel"
+            Write-SuccessMessage "Installed stata_kernel"
+        }
+
+        # IMPORTANT: Because we install stata_kernel with --no-deps on Python 3.13+,
+        # we must explicitly install runtime dependencies that stata_kernel imports.
+        # If these are missing, the kernel will fail at import-time (e.g. missing PIL/Pillow).
+        Write-InfoMessage "Installing stata_kernel runtime dependencies (Python $pyVersion)..."
+        $depsOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade `
+            pillow `
+            matplotlib `
+            pandas `
+            numpy `
+            pyzmq `
+            tornado `
+            traitlets `
+            jupyter_client `
+            packaging `
+            pexpect 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-WarningMessage "Failed to install one or more stata_kernel runtime dependencies. The kernel may not start."
+            Write-Host $depsOutput
+        } else {
+            Write-SuccessMessage "Installed stata_kernel runtime dependencies"
+        }
+
+        # Install minimal Jupyter components needed for kernelspecs.
+        # Avoid the full `jupyter` meta-package since it drags in notebook/jupyterlab,
+        # which can pull in pywinpty and require native builds (NuGet/Rust) on Windows.
+        Write-InfoMessage "Installing minimal Jupyter components (jupyter-core, jupyter-client)..."
+        $jupyterOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade jupyter-core jupyter-client 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-ErrorMessage "Failed to install minimal Jupyter components"
+            Write-Host $jupyterOutput
+            exit 3
+        } else {
+            Write-SuccessMessage "Installed minimal Jupyter components"
+
+            # Pin ipykernel to a Zed-compatible version (avoid ipykernel 7.x issues on Windows)
+            Write-InfoMessage "Installing ipykernel==$IPYKERNEL_VERSION for Zed compatibility..."
+            $ipykernelOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade "ipykernel==$IPYKERNEL_VERSION" 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                Write-WarningMessage "Failed to install pinned ipykernel, but continuing..."
+                Write-Host $ipykernelOutput
+            } else {
+                Write-SuccessMessage "Installed ipykernel==$IPYKERNEL_VERSION"
+            }
         }
     } else {
-        # Python 3.12 and below: normal installation
-        Write-InfoMessage "Installing stata_kernel and jupyter (this may take a minute)..."
-        $installOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade stata_kernel jupyter 2>&1
+        # Python 3.12 and below: install stata_kernel + minimal Jupyter components.
+        # Avoid `jupyter` meta-package to prevent pulling in notebook/jupyterlab -> pywinpty native builds.
+        Write-InfoMessage "Installing stata_kernel and minimal Jupyter components (this may take a minute)..."
+        $installOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade stata_kernel jupyter-core jupyter-client 2>&1
         if ($LASTEXITCODE -ne 0) {
-            Write-ErrorMessage "Failed to install stata_kernel and jupyter"
+            Write-ErrorMessage "Failed to install stata_kernel and minimal Jupyter components"
             Write-Host $installOutput
             exit 2
         }
-        Write-SuccessMessage "Installed stata_kernel and jupyter"
+        Write-SuccessMessage "Installed stata_kernel and minimal Jupyter components"
 
         if ($pyMajor -eq 3 -and $pyMinor -ge 12) {
-            Write-InfoMessage "Upgrading ipykernel for Python $pyVersion compatibility..."
-            $ipykernelOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade ipykernel 2>&1
+            # Pin ipykernel to a Zed-compatible version (avoid ipykernel 7.x issues on Windows)
+            Write-InfoMessage "Installing ipykernel==$IPYKERNEL_VERSION for Zed compatibility..."
+            $ipykernelOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade "ipykernel==$IPYKERNEL_VERSION" 2>&1
             if ($LASTEXITCODE -ne 0) {
-                Write-WarningMessage "Failed to upgrade ipykernel, but continuing..."
+                Write-WarningMessage "Failed to install pinned ipykernel, but continuing..."
                 Write-Host $ipykernelOutput
             } else {
-                Write-SuccessMessage "Upgraded ipykernel for Python $pyVersion"
+                Write-SuccessMessage "Installed ipykernel==$IPYKERNEL_VERSION"
             }
         }
     }
@@ -660,12 +778,61 @@ function Write-Config {
 # ============================================================================
 
 function Register-Kernel {
-    Write-InfoMessage "Registering kernel with Jupyter..."
+    Write-InfoMessage "Registering kernel with Jupyter (deterministic kernelspec written into %APPDATA% for Zed discovery)..."
     try {
-        & "$VENV_DIR\Scripts\python.exe" -m stata_kernel.install | Out-Null
-        Write-SuccessMessage "Registered stata kernel"
+        # Deterministic install location:
+        #   %APPDATA%\jupyter\kernels\stata
+        $forcedKernelDir = Join-Path (Join-Path $KERNEL_INSTALL_PREFIX "jupyter\kernels") "stata"
+
+        if (-not (Test-Path -Path (Split-Path -Path $forcedKernelDir -Parent))) {
+            New-Item -ItemType Directory -Path (Split-Path -Path $forcedKernelDir -Parent) -Force | Out-Null
+        }
+
+        if (Test-Path -Path $forcedKernelDir) {
+            Remove-Item -Path $forcedKernelDir -Recurse -Force
+        }
+
+        New-Item -ItemType Directory -Path $forcedKernelDir -Force | Out-Null
+
+        # Write wrapper script that launches stata_kernel via ipykernel.
+        # This avoids relying on stata_kernel.install (which has produced incomplete kernelspecs on some Windows setups).
+        $wrapperScript = Join-Path $forcedKernelDir "stata_kernel.py"
+        @'
+#!/usr/bin/env python3
+"""
+Deterministic wrapper kernel for stata_kernel.
+
+This wrapper exists because `stata_kernel.install` can fail to write a complete kernelspec
+(e.g. missing kernel.json) on some Windows Python/Jupyter setups.
+
+It simply imports stata_kernel and launches the kernel via IPKernelApp.
+"""
+
+from stata_kernel import kernel
+from ipykernel.kernelapp import IPKernelApp
+
+IPKernelApp.launch_instance(kernel_class=kernel.StataKernel)
+'@ | Out-File -FilePath $wrapperScript -Encoding utf8
+
+        # Create kernel.json
+        $kernelJson = @{
+            argv = @("$VENV_DIR\Scripts\python.exe", "$wrapperScript", "-f", "{connection_file}")
+            display_name = "Stata"
+            language = "stata"
+        } | ConvertTo-Json -Depth 4
+
+        $kernelJsonPath = Join-Path $forcedKernelDir "kernel.json"
+        $kernelJson | Out-File -FilePath $kernelJsonPath -Encoding utf8
+
+        if (-not (Test-Path -Path $kernelJsonPath)) {
+            Write-ErrorMessage "Failed to write kernel spec at $kernelJsonPath"
+            exit 3
+        }
+
+        $script:KERNEL_DIR = $forcedKernelDir
+        Write-SuccessMessage "Registered stata kernel into: $forcedKernelDir"
     } catch {
-        Write-ErrorMessage "Failed to register kernel"
+        Write-ErrorMessage "Failed to register kernel: $($_.Exception.Message)"
         exit 3
     }
 }
@@ -673,14 +840,25 @@ function Register-Kernel {
 function Verify-KernelSpec {
     # Dynamically find where the stata kernel was installed
     try {
-        $kernelListOutput = & "$VENV_DIR\Scripts\jupyter.exe" kernelspec list --json 2>&1
+        $kernelListOutputRaw = & "$VENV_DIR\Scripts\jupyter.exe" kernelspec list --json 2>&1
         if ($LASTEXITCODE -ne 0) {
             Write-ErrorMessage "Failed to list Jupyter kernels"
-            Write-Host $kernelListOutput
+            Write-Host $kernelListOutputRaw
             exit 3
         }
 
-        $kernelList = $kernelListOutput | ConvertFrom-Json
+        # Some Python/Jupyter setups emit debug warnings to stderr before JSON.
+        # Since we capture 2>&1, strip any leading non-JSON lines and parse from the first '{'.
+        $kernelListOutput = ($kernelListOutputRaw | Out-String)
+        $jsonStart = $kernelListOutput.IndexOf('{')
+        if ($jsonStart -lt 0) {
+            Write-ErrorMessage "Failed to parse Jupyter kernelspec JSON (no JSON object found)"
+            Write-Host $kernelListOutputRaw
+            exit 3
+        }
+        $kernelListJson = $kernelListOutput.Substring($jsonStart)
+
+        $kernelList = $kernelListJson | ConvertFrom-Json
         if (-not $kernelList.kernelspecs.stata) {
             Write-ErrorMessage "Stata kernel not found in Jupyter kernelspec list"
             exit 3
@@ -698,12 +876,12 @@ function Verify-KernelSpec {
         # Verify language is "stata" (lowercase) for Zed matching
         $kernelJson = Get-Content -Path "$script:KERNEL_DIR\kernel.json" -Raw
         if (-not ($kernelJson -match '"language"\s*:\s*"stata"')) {
-            Write-WarningMessage "Kernel language may not be set correctly for Zed"
+            Write-WarningMessage "Kernel language may not be set correctly for Zed (expected `"stata`")"
         }
 
         Write-SuccessMessage "Verified kernel spec at $script:KERNEL_DIR"
     } catch {
-        Write-ErrorMessage "Failed to verify kernel spec: $_"
+        Write-ErrorMessage "Failed to verify kernel spec: $($_.Exception.Message)"
         exit 3
     }
 }
@@ -777,9 +955,9 @@ if __name__ == '__main__':
 function Install-WorkspaceKernel {
     Write-InfoMessage "Installing workspace kernel..."
 
-    # Determine workspace kernel directory (sibling to the stata kernel)
-    $kernelParentDir = Split-Path -Path $script:KERNEL_DIR -Parent
-    $script:WORKSPACE_KERNEL_DIR = Join-Path $kernelParentDir "stata_workspace"
+    # Install the workspace kernel into the same forced prefix location used for the main kernel,
+    # so Zed can discover both consistently.
+    $script:WORKSPACE_KERNEL_DIR = Join-Path (Join-Path $KERNEL_INSTALL_PREFIX "jupyter\\kernels") "stata_workspace"
 
     # Create workspace kernel directory
     if (-not (Test-Path -Path $script:WORKSPACE_KERNEL_DIR)) {

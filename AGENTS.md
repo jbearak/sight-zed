@@ -10,10 +10,14 @@ When a new version of the Sight LSP is released:
 
 ## Jupyter Stata Kernel on Windows
 
-The Windows version now supports Jupyter functionality similar to macOS/Linux. Use the PowerShell script to install:
+**IMPORTANT:** Zed's built-in REPL currently only supports Python, TypeScript (Deno), R, Julia, and Scala. Stata is not yet supported, even with Jupyter kernels installed. The installation scripts below set up stata_kernel for use in external Jupyter clients (Jupyter Lab, Jupyter Notebook, etc.), not for Zed's REPL.
+
+**PowerShell requirement:** Use **PowerShell 7+** (`pwsh`). Windows PowerShell 5.1 may fail to parse the installer scripts.
+
+The Windows version supports installing Jupyter kernels similar to macOS/Linux. Use the PowerShell script to install:
 
 ```powershell
-.\install-jupyter-stata.ps1
+pwsh -File .\install-jupyter-stata.ps1
 ```
 
 This script:
@@ -36,19 +40,19 @@ The "Stata (Workspace)" kernel walks up from the file's directory looking for th
 2. `.stata-project` — Stata-specific project marker
 3. `.project` — Generic project marker
 
-### Setting Default Kernel
+### Using the Kernels
 
-Users can set a default kernel in `%APPDATA%\zed\settings.json`:
+Since Zed doesn't support Stata REPL yet, use the installed kernels with external Jupyter clients:
 
-```json
-{
-  "jupyter": {
-    "kernel_selections": {
-      "stata": "stata_workspace"
-    }
-  }
-}
+```bash
+# Start Jupyter Lab
+jupyter lab
+
+# Or Jupyter Notebook
+jupyter notebook
 ```
+
+Both kernels (stata and stata_workspace) will be available in the kernel selection menu.
 
 ### Uninstallation
 

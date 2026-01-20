@@ -65,9 +65,11 @@ irm .../install-send-to-stata.ps1 -OutFile i.ps1; .\i.ps1 -ReturnFocus false
 
 See [SEND-TO-STATA.md](SEND-TO-STATA.md) for full documentation, configuration options, and troubleshooting.
 
-## Jupyter REPL (Optional)
+## Jupyter REPL (Not Yet Supported)
 
-Execute Stata code in Zed's built-in REPL panel using [stata_kernel](https://kylebarron.dev/stata_kernel/). This provides an interactive environment without switching to the Stata application.
+**Note:** Zed's built-in REPL currently only supports Python, TypeScript (Deno), R, Julia, and Scala. Stata is not yet supported, even with the Jupyter kernels installed.
+
+However, you can still install [stata_kernel](https://kylebarron.dev/stata_kernel/) for use in Jupyter Lab/Notebook or other Jupyter clients outside of Zed:
 
 ### macOS
 
@@ -77,45 +79,32 @@ Execute Stata code in Zed's built-in REPL panel using [stata_kernel](https://kyl
 
 ### Windows
 
-Requires PowerShell 5.0+ (included with Windows 10/11).
+Requires **PowerShell 7+** (`pwsh`). Windows PowerShell 5.1 may fail to parse the installer.
 
 ```powershell
-irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-stata.ps1 | iex
+irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-stata.ps1 | pwsh -NoProfile -ExecutionPolicy Bypass -File -
 ```
 
 **Important:** After installation, you must restart Zed for the changes to take effect. The installer adds the Jupyter virtual environment to your PATH so Zed can discover the kernels.
+After installation, you can use the kernels with `jupyter lab` or `jupyter notebook`:
 
-### Usage
-1. Open a `.do` file
-2. Open the REPL panel (View → Toggle REPL)
-3. Select a kernel:
-   - **Stata** — starts in the file's directory
-   - **Stata (Workspace)** — starts in the workspace root (looks for project markers)
-
-### Choosing a Kernel
-
-| Kernel | Working Directory | Best For |
-|--------|-------------------|----------|
-| Stata | File's directory | Scripts with paths relative to the script |
-| Stata (Workspace) | Project root | Scripts with paths relative to the project root |
-
-The workspace kernel walks up from the file's directory looking for `.git`, `.stata-project`, or `.project` markers to find the project root. If no marker is found, it falls back to the file's directory.
-
-### Setting a Default Kernel
-
-Add to `~/.config/zed/settings.json`:
-
-```json
-{
-  "jupyter": {
-    "kernel_selections": {
-      "stata": "stata_workspace"
-    }
-  }
-}
+```bash
+# Start Jupyter Lab with access to Stata kernels
+jupyter lab
 ```
 
-**Configuration:** The installer creates `~/.stata_kernel.conf` with auto-detected settings. Edit this file to customize graph format, cache directory, and other options.
+### Available Kernels
+
+| Kernel | Working Directory | Use Case |
+|--------|-------------------|----------|
+| Stata | File's directory | Scripts with paths relative to the script location |
+| Stata (Workspace) | Project root | Scripts with paths relative to the project root |
+
+The workspace kernel walks up from the file's directory looking for `.git`, `.stata-project`, or `.project` markers to find the project root.
+
+**Configuration:** The installer creates `~/.stata_kernel.conf` (or `%USERPROFILE%\.stata_kernel.conf` on Windows) with auto-detected settings. Edit this file to customize graph format, cache directory, and other options.
+
+> **Future Support:** If you'd like to see Stata REPL support added to Zed, consider opening a feature request on the [Zed GitHub repository](https://github.com/zed-industries/zed/issues).
 
 
 ## Building from Source
