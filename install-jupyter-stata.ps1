@@ -34,12 +34,13 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
             & pwsh -File $scriptPath @scriptArgs
             exit $LASTEXITCODE
         } else {
-            # Piped via irm | iex - re-fetch and pipe to pwsh
-            $scriptArgs = ""
-            if ($uninstall) { $scriptArgs += " -Uninstall" }
-            if ($removeConfig) { $scriptArgs += " -RemoveConfig" }
+            # Piped via irm | iex - re-fetch and invoke as scriptblock with args
+            $scriptArgs = @()
+            if ($uninstall) { $scriptArgs += '-Uninstall' }
+            if ($removeConfig) { $scriptArgs += '-RemoveConfig' }
             $url = "https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-stata.ps1"
-            & pwsh -NoProfile -ExecutionPolicy Bypass -Command "irm '$url' | iex$scriptArgs"
+            $argsStr = ($scriptArgs | ForEach-Object { "'$_'" }) -join ','
+            & pwsh -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm '$url'))) $argsStr"
             exit $LASTEXITCODE
         }
     }

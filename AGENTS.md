@@ -137,8 +137,6 @@ To uninstall including config:
 
 ## Updating the Tree-Sitter Grammar
 
-## Updating the Tree-Sitter Grammar
-
 When the tree-sitter-stata grammar is updated:
 
 1. Edit `extension.toml`

@@ -27,14 +27,15 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
             & pwsh -File $scriptPath @scriptArgs
             exit $LASTEXITCODE
         } else {
-            # Piped via irm | iex - re-fetch and pipe to pwsh
-            $scriptArgs = ""
-            if ($Uninstall) { $scriptArgs += " -Uninstall" }
-            if ($RegisterAutomation) { $scriptArgs += " -RegisterAutomation" }
-            if ($SkipAutomationCheck) { $scriptArgs += " -SkipAutomationCheck" }
-            if ($ReturnFocus) { $scriptArgs += " -ReturnFocus $ReturnFocus" }
+            # Piped via irm | iex - re-fetch and invoke as scriptblock with args
+            $scriptArgs = @()
+            if ($Uninstall) { $scriptArgs += '-Uninstall' }
+            if ($RegisterAutomation) { $scriptArgs += '-RegisterAutomation' }
+            if ($SkipAutomationCheck) { $scriptArgs += '-SkipAutomationCheck' }
+            if ($ReturnFocus) { $scriptArgs += '-ReturnFocus'; $scriptArgs += $ReturnFocus }
             $url = "https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.ps1"
-            & pwsh -NoProfile -ExecutionPolicy Bypass -Command "irm '$url' | iex$scriptArgs"
+            $argsStr = ($scriptArgs | ForEach-Object { "'$_'" }) -join ','
+            & pwsh -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm '$url'))) $argsStr"
             exit $LASTEXITCODE
         }
     }
