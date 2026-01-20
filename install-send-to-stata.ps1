@@ -393,7 +393,7 @@ if ($stataPath) {
 # Determine ActivateStata setting
 # New semantics:
 # - Default is to stay in Zed (do NOT activate Stata)
-# - If ActivateStata is true/yes/1 OR user answers "y", add -ActivateStata to task commands
+# - If ActivateStata is true/yes/1 OR user answers "n" (stay in Stata), add -ActivateStata to task commands
 # Backward compat:
 # - ReturnFocus parameter is accepted but ignored (focus behavior is now controlled by -ActivateStata)
 $useActivateStata = $false
@@ -420,6 +420,7 @@ if ($ActivateStata -eq "true" -or $ActivateStata -eq "yes" -or $ActivateStata -e
     Write-Host "  [N] Stay in Stata (ensures you see output, even if Zed is fullscreen)"
     Write-Host ""
     $response = Read-Host "Return focus to Zed after sending code to Stata? [Y/n]"
+    # "n" means don't return focus to Zed, i.e., activate/stay in Stata
     $useActivateStata = $response -eq 'n' -or $response -eq 'N'
 }
 

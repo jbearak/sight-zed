@@ -197,7 +197,7 @@ internal static partial class Program
                     result.ActivateStata = true;
                     break;
                 case "-returnfocus":
-                    Console.Error.WriteLine("Warning: -ReturnFocus is deprecated and will be removed in a future version. Return focus is now the default behavior.");
+                    Console.Error.WriteLine("Warning: -ReturnFocus is deprecated and will be removed in a future version. The default behavior is now to return focus to Zed. Use -ActivateStata to keep focus in Stata.");
                     break;
                 case "-file":
                     if (i + 1 < args.Length)
@@ -209,15 +209,15 @@ internal static partial class Program
                     break;
                 case "-clippause":
                     if (i + 1 < args.Length && int.TryParse(args[++i], out int cp))
-                        _clipPause = cp;
+                        _clipPause = Math.Max(0, cp);
                     break;
                 case "-winpause":
                     if (i + 1 < args.Length && int.TryParse(args[++i], out int wp))
-                        _winPause = wp;
+                        _winPause = Math.Max(0, wp);
                     break;
                 case "-keypause":
                     if (i + 1 < args.Length && int.TryParse(args[++i], out int kp))
-                        _keyPause = kp;
+                        _keyPause = Math.Max(0, kp);
                     break;
             }
         }
@@ -280,7 +280,7 @@ internal static partial class Program
             return EXIT_TEMP_FILE_FAIL;
         }
 
-        // Send to Stata - return focus unless -ActivateStata is specified
+        // Send to Stata - return focus to Zed unless -ActivateStata is specified
         return SendToStataWindow(tempFile, parsed.Include, !parsed.ActivateStata);
     }
 
