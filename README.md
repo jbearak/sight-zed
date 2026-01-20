@@ -30,7 +30,7 @@ Syntax highlighting, completions, and diagnostics will work immediately once you
 
 Execute Stata code directly from Zed with keyboard shortcuts. Works with both the Stata application and terminal sessions.
 
-> [!INFO]
+> [!NOTE]
 > **Why a separate install?** Zed extensions can't register custom keybindings or tasks—those must live in user config files. The send-to-stata functionality requires both, so it can't be bundled into the extension itself.
 
 See [SEND-TO-STATA.md](SEND-TO-STATA.md) for full documentation, configuration options, and troubleshooting.
