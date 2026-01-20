@@ -2,6 +2,7 @@
 /target/
 *.wasm
 !extension.wasm
+*.pdb
 
 # Cargo
 Cargo.lock
