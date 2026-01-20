@@ -5,6 +5,7 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <PublishAot>true</PublishAot>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <Deterministic>true</Deterministic>
     <AssemblyName>send-to-stata</AssemblyName>
     <RootNamespace>SendToStata</RootNamespace>
     <Nullable>enable</Nullable>
