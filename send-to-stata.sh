@@ -6,13 +6,18 @@
 #   send-to-stata.sh <mode> [options]
 #
 # Modes:
-#   --statement   Send current statement to Stata GUI
-#   --file-mode   Send entire file to Stata GUI
+#   --statement      Send current statement to Stata GUI
+#   --file-mode      Send entire file to Stata GUI
+#   --cd-workspace   Change Stata's working directory to workspace root
+#   --cd-file        Change Stata's working directory to file's directory
+#   --upward         Execute lines from start of file to cursor row
+#   --downward       Execute lines from cursor row to end of file
 #
 # Options:
-#   --file <path>     Source file path (required)
-#   --row <number>    Cursor row, 1-indexed (required for --statement without --text)
-#   --text <string>   Selected text (if provided, used instead of file/row)
+#   --file <path>       Source file path (required for most modes)
+#   --row <number>      Cursor row, 1-indexed (required for --statement without --text, --upward, --downward)
+#   --text <string>     Selected text (if provided, used instead of file/row)
+#   --workspace <path>  Workspace root path (required for --cd-workspace)
 #   --stdin           Read text from stdin (mutually exclusive with --text)
 #
 # Exit Codes:
@@ -37,6 +42,7 @@ ROW=""
 TEXT=""
 STDIN_MODE=false
 INCLUDE_MODE=false
+WORKSPACE_PATH=""
 
 # Prints usage information to stdout.
 print_usage() {
@@ -44,15 +50,20 @@ print_usage() {
 Usage: send-to-stata.sh <mode> [options]
 
 Modes:
-  --statement   Send current statement to Stata GUI
-  --file-mode   Send entire file to Stata GUI
+  --statement      Send current statement to Stata GUI
+  --file-mode      Send entire file to Stata GUI
+  --cd-workspace   Change Stata's working directory to workspace root
+  --cd-file        Change Stata's working directory to file's directory
+  --upward         Execute lines from start of file to cursor row
+  --downward       Execute lines from cursor row to end of file
 
 Options:
-  --file <path>     Source file path (required)
-  --row <number>    Cursor row, 1-indexed (required for --statement without --text)
-  --text <string>   Selected text (if provided, used instead of file/row)
-  --stdin           Read text from stdin (mutually exclusive with --text)
-  --include         Use 'include' instead of 'do' (preserves local macro scope)
+  --file <path>       Source file path (required for most modes)
+  --row <number>      Cursor row, 1-indexed (required for --statement without --text, --upward, --downward)
+  --text <string>     Selected text (if provided, used instead of file/row)
+  --stdin             Read text from stdin (mutually exclusive with --text)
+  --include           Use 'include' instead of 'do' (preserves local macro scope)
+  --workspace <path>  Workspace root path (required for --cd-workspace)
 
 Environment Variables:
   STATA_APP              Stata application name (StataMP, StataSE, StataIC, Stata)
@@ -99,6 +110,38 @@ parse_arguments() {
                 MODE="file"
                 shift
                 ;;
+            --cd-workspace)
+                if [[ -n "$MODE" ]]; then
+                    echo "Error: Cannot specify multiple modes" >&2
+                    exit 1
+                fi
+                MODE="cd-workspace"
+                shift
+                ;;
+            --cd-file)
+                if [[ -n "$MODE" ]]; then
+                    echo "Error: Cannot specify multiple modes" >&2
+                    exit 1
+                fi
+                MODE="cd-file"
+                shift
+                ;;
+            --upward)
+                if [[ -n "$MODE" ]]; then
+                    echo "Error: Cannot specify multiple modes" >&2
+                    exit 1
+                fi
+                MODE="upward"
+                shift
+                ;;
+            --downward)
+                if [[ -n "$MODE" ]]; then
+                    echo "Error: Cannot specify multiple modes" >&2
+                    exit 1
+                fi
+                MODE="downward"
+                shift
+                ;;
             --file)
                 if [[ $# -lt 2 ]]; then
                     echo "Error: --file option requires a path argument" >&2
@@ -135,6 +178,15 @@ parse_arguments() {
                 STDIN_MODE=true
                 shift
                 ;;
+            --workspace)
+                if [[ $# -lt 2 ]]; then
+                    echo "Error: --workspace option requires a path argument" >&2
+                    exit 1
+                fi
+                shift
+                WORKSPACE_PATH="$1"
+                shift
+                ;;
             --include)
                 INCLUDE_MODE=true
                 shift
@@ -163,19 +215,18 @@ validate_arguments() {
 
     # Mode is required
     if [[ -z "$MODE" ]]; then
-        echo "Error: Mode is required (--statement or --file-mode)" >&2
-        exit 1
-    fi
-
-    # File path is always required
-    if [[ -z "$FILE_PATH" ]]; then
-        echo "Error: --file <path> is required" >&2
+        echo "Error: Mode is required (--statement, --file-mode, --cd-workspace, --cd-file, --upward, or --downward)" >&2
         exit 1
     fi
 
     # Mode-specific validation
     case "$MODE" in
         statement)
+            # File path is required for statement mode
+            if [[ -z "$FILE_PATH" ]]; then
+                echo "Error: --file <path> is required" >&2
+                exit 1
+            fi
             # For statement mode, need one of: --stdin, --text, or --row
             if [[ "$STDIN_MODE" != true && -z "$TEXT" && -z "$ROW" ]]; then
                 echo "Error: --statement mode requires --stdin, --text, or --row" >&2
@@ -183,7 +234,47 @@ validate_arguments() {
             fi
             ;;
         file)
-            # File mode only needs the file path, which we already validated
+            # File path is required for file mode
+            if [[ -z "$FILE_PATH" ]]; then
+                echo "Error: --file <path> is required" >&2
+                exit 1
+            fi
+            ;;
+        cd-workspace)
+            # Workspace path is required for cd-workspace mode
+            if [[ -z "$WORKSPACE_PATH" ]]; then
+                echo "Error: --workspace <path> is required for --cd-workspace mode" >&2
+                exit 1
+            fi
+            ;;
+        cd-file)
+            # File path is required for cd-file mode
+            if [[ -z "$FILE_PATH" ]]; then
+                echo "Error: --file <path> is required for --cd-file mode" >&2
+                exit 1
+            fi
+            ;;
+        upward)
+            # File path and row are required for upward mode
+            if [[ -z "$FILE_PATH" ]]; then
+                echo "Error: --file <path> is required for --upward mode" >&2
+                exit 1
+            fi
+            if [[ -z "$ROW" ]]; then
+                echo "Error: --row <number> is required for --upward mode" >&2
+                exit 1
+            fi
+            ;;
+        downward)
+            # File path and row are required for downward mode
+            if [[ -z "$FILE_PATH" ]]; then
+                echo "Error: --file <path> is required for --downward mode" >&2
+                exit 1
+            fi
+            if [[ -z "$ROW" ]]; then
+                echo "Error: --row <number> is required for --downward mode" >&2
+                exit 1
+            fi
             ;;
         *)
             echo "Error: Invalid mode: $MODE" >&2
@@ -231,6 +322,73 @@ read_stdin_to_file() {
 }
 
 # ============================================================================
+# Path Escaping for Stata CD Commands
+# ============================================================================
+
+# Escapes a path for use in Stata's cd command.
+# Doubles backslashes and detects if compound string syntax is needed.
+#
+# Arguments:
+#   $1 - path: The path to escape
+#
+# Output:
+#   Prints "escaped_path|use_compound" to stdout
+#   use_compound is "true" if path contains double quotes, "false" otherwise
+#
+# Example:
+#   escape_path_for_stata 'C:\Users\test"file'
+#   # Output: C:\\Users\\test"file|true
+escape_path_for_stata() {
+    local path="$1"
+    
+    # Double all backslashes for Stata compatibility
+    local escaped="${path//\\/\\\\}"
+    
+    # Check if path contains double quotes
+    local use_compound="false"
+    if [[ "$path" == *'"'* ]]; then
+        use_compound="true"
+    fi
+    
+    echo "${escaped}|${use_compound}"
+}
+
+# Formats a cd command for Stata with proper string syntax.
+# Uses compound string syntax (`"path"') when path contains double quotes,
+# otherwise uses regular string syntax ("path").
+#
+# Arguments:
+#   $1 - directory_path: The directory path to cd into
+#
+# Output:
+#   Prints the formatted cd command to stdout
+#
+# Example:
+#   format_cd_command '/Users/test'
+#   # Output: cd "/Users/test"
+#
+#   format_cd_command '/Users/test"dir'
+#   # Output: cd `"/Users/test"dir"'
+format_cd_command() {
+    local directory_path="$1"
+    
+    # Get escaped path and compound flag
+    local result
+    result=$(escape_path_for_stata "$directory_path")
+    
+    local escaped_path="${result%|*}"
+    local use_compound="${result#*|}"
+    
+    if [[ "$use_compound" == "true" ]]; then
+        # Use compound string syntax: cd `"path"'
+        printf 'cd `"%s"\047\n' "$escaped_path"
+    else
+        # Use regular string syntax: cd "path"
+        printf 'cd "%s"\n' "$escaped_path"
+    fi
+}
+
+# ============================================================================
 # Stata Application Detection
 # ============================================================================
 
@@ -275,6 +433,184 @@ ends_with_continuation() {
     local line="$1"
     # Check if line ends with /// followed by optional whitespace
     [[ "$line" =~ ///[[:space:]]*$ ]]
+}
+
+# ============================================================================
+# Line Extraction Functions
+# ============================================================================
+
+# Gets lines from the start of the file to the cursor row (inclusive).
+# If the cursor row ends with a continuation marker, extends to include the complete statement.
+#
+# Arguments:
+#   $1 - file_path: Path to the Stata file
+#   $2 - row: Cursor row (1-indexed)
+#
+# Output:
+#   Prints the extracted lines to stdout (preserving line breaks)
+#
+# Exit Codes:
+#   1 - Invalid arguments (row out of bounds)
+#   2 - File not found or unreadable
+#
+# Algorithm:
+#   1. Read file into array of lines
+#   2. Start at line 1
+#   3. End at cursor row, extending forward if line has continuation
+#   4. Extract and output lines from start to end
+get_upward_lines() {
+    local file_path="$1"
+    local row="$2"
+    
+    # Validate file exists and is readable
+    if [[ ! -f "$file_path" ]]; then
+        echo "Error: Cannot read file: $file_path" >&2
+        exit 2
+    fi
+    
+    if [[ ! -r "$file_path" ]]; then
+        echo "Error: Cannot read file: $file_path" >&2
+        exit 2
+    fi
+    
+    # Read file into array of lines
+    local -a lines=()
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        lines+=("$line")
+    done < "$file_path"
+    
+    local total_lines=${#lines[@]}
+    
+    # Handle empty file
+    if [[ $total_lines -eq 0 ]]; then
+        echo ""
+        return
+    fi
+    
+    # Validate row is within bounds
+    if [[ $row -lt 1 || $row -gt $total_lines ]]; then
+        echo "Error: Row $row is out of bounds (file has $total_lines lines)" >&2
+        exit 1
+    fi
+    
+    # Convert to 0-indexed for array access
+    local row_idx=$((row - 1))
+    
+    # Start is always line 1 (index 0)
+    local start_idx=0
+    
+    # End at cursor row, extending forward if line has continuation
+    local end_idx=$row_idx
+    while [[ $end_idx -lt $((total_lines - 1)) ]]; do
+        if ends_with_continuation "${lines[$end_idx]}"; then
+            end_idx=$((end_idx + 1))
+        else
+            break
+        fi
+    done
+    
+    # Extract and output the lines
+    local first=true
+    for ((i = start_idx; i <= end_idx; i++)); do
+        if [[ "$first" == true ]]; then
+            first=false
+        else
+            echo ""
+        fi
+        printf '%s' "${lines[$i]}"
+    done
+    # Add final newline
+    echo ""
+}
+
+# Gets lines from the cursor row to the end of the file (inclusive).
+# If the cursor is on a continuation line (previous line ends with ///),
+# extends backward to include the complete statement start.
+#
+# Arguments:
+#   $1 - file_path: Path to the Stata file
+#   $2 - row: Cursor row (1-indexed)
+#
+# Output:
+#   Prints the extracted lines to stdout (preserving line breaks)
+#
+# Exit Codes:
+#   1 - Invalid arguments (row out of bounds)
+#   2 - File not found or unreadable
+#
+# Algorithm:
+#   1. Read file into array of lines
+#   2. Start at cursor row, extending backward if on continuation line
+#   3. End at last line of file
+#   4. Extract and output lines from start to end
+get_downward_lines() {
+    local file_path="$1"
+    local row="$2"
+    
+    # Validate file exists and is readable
+    if [[ ! -f "$file_path" ]]; then
+        echo "Error: Cannot read file: $file_path" >&2
+        exit 2
+    fi
+    
+    if [[ ! -r "$file_path" ]]; then
+        echo "Error: Cannot read file: $file_path" >&2
+        exit 2
+    fi
+    
+    # Read file into array of lines
+    local -a lines=()
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        lines+=("$line")
+    done < "$file_path"
+    
+    local total_lines=${#lines[@]}
+    
+    # Handle empty file
+    if [[ $total_lines -eq 0 ]]; then
+        echo ""
+        return
+    fi
+    
+    # Validate row is within bounds
+    if [[ $row -lt 1 || $row -gt $total_lines ]]; then
+        echo "Error: Row $row is out of bounds (file has $total_lines lines)" >&2
+        exit 1
+    fi
+    
+    # Convert to 0-indexed for array access
+    local row_idx=$((row - 1))
+    
+    # Start at cursor row, extending backward if on continuation line
+    # A line is a continuation if the PREVIOUS line ends with ///
+    local start_idx=$row_idx
+    while [[ $start_idx -gt 0 ]]; do
+        local prev_idx=$((start_idx - 1))
+        # If the previous line ends with ///, then current line is a continuation
+        # So we need to include the previous line
+        if ends_with_continuation "${lines[$prev_idx]}"; then
+            start_idx=$prev_idx
+        else
+            # Previous line doesn't end with ///, so current line is the start
+            break
+        fi
+    done
+    
+    # End is always the last line
+    local end_idx=$((total_lines - 1))
+    
+    # Extract and output the lines
+    local first=true
+    for ((i = start_idx; i <= end_idx; i++)); do
+        if [[ "$first" == true ]]; then
+            first=false
+        else
+            echo ""
+        fi
+        printf '%s' "${lines[$i]}"
+    done
+    # Add final newline
+    echo ""
 }
 
 # Detects the statement at the given cursor position.
@@ -491,6 +827,39 @@ send_to_stata() {
     fi
 }
 
+# Sends a raw Stata command directly via AppleScript (no temp file).
+#
+# Arguments:
+#   $1 - stata_app: The Stata application name (e.g., StataMP)
+#   $2 - command: The Stata command to execute
+#
+# Exit Codes:
+#   5 - AppleScript execution failed
+send_command_to_stata() {
+    local stata_app="$1"
+    local command="$2"
+
+    # Validate stata_app to prevent command injection
+    case "$stata_app" in
+        StataMP|StataSE|StataIC|StataBE|Stata) ;;
+        *) echo "Error: Invalid Stata application: $stata_app" >&2; exit 1 ;;
+    esac
+
+    # Escape the command for AppleScript
+    local escaped_command
+    escaped_command=$(escape_for_applescript "$command")
+
+    # Build the AppleScript command
+    local applescript_cmd="tell application \"${stata_app}\" to DoCommandAsync \"${escaped_command}\""
+
+    # Execute via osascript
+    local error_output
+    if ! error_output=$(osascript -e "$applescript_cmd" 2>&1); then
+        echo "Error: AppleScript failed: $error_output" >&2
+        exit 5
+    fi
+}
+
 # ============================================================================
 # Main Entry Point
 # ============================================================================
@@ -500,7 +869,41 @@ main() {
     parse_arguments "$@"
     validate_arguments
 
-    # Validate file exists and is readable
+    # Detect Stata application
+    STATA_APP_NAME=$(detect_stata_app)
+
+    # Handle CD modes separately (no temp file needed)
+    case "$MODE" in
+        cd-workspace)
+            # Validate workspace path exists
+            if [[ ! -d "$WORKSPACE_PATH" ]]; then
+                echo "Error: Workspace directory does not exist: $WORKSPACE_PATH" >&2
+                exit 2
+            fi
+            # Generate and send cd command
+            local cd_cmd
+            cd_cmd=$(format_cd_command "$WORKSPACE_PATH")
+            send_command_to_stata "$STATA_APP_NAME" "$cd_cmd"
+            exit 0
+            ;;
+        cd-file)
+            # Validate file exists
+            if [[ ! -f "$FILE_PATH" ]]; then
+                echo "Error: Cannot read file: $FILE_PATH" >&2
+                exit 2
+            fi
+            # Extract parent directory
+            local parent_dir
+            parent_dir=$(dirname "$FILE_PATH")
+            # Generate and send cd command
+            local cd_cmd
+            cd_cmd=$(format_cd_command "$parent_dir")
+            send_command_to_stata "$STATA_APP_NAME" "$cd_cmd"
+            exit 0
+            ;;
+    esac
+
+    # For statement and file modes, validate file exists and is readable
     if [[ ! -f "$FILE_PATH" ]]; then
         echo "Error: Cannot read file: $FILE_PATH" >&2
         exit 2
@@ -510,9 +913,6 @@ main() {
         echo "Error: Cannot read file: $FILE_PATH" >&2
         exit 2
     fi
-
-    # Detect Stata application
-    STATA_APP_NAME=$(detect_stata_app)
 
     # Create temp file and write the code to send based on mode
     local temp_file
@@ -550,6 +950,14 @@ main() {
         file)
             # Copy entire file to temp file without losing trailing newlines
             cat "$FILE_PATH" > "$temp_file"
+            ;;
+        upward)
+            # Extract lines from start of file to cursor row
+            get_upward_lines "$FILE_PATH" "$ROW" > "$temp_file"
+            ;;
+        downward)
+            # Extract lines from cursor row to end of file
+            get_downward_lines "$FILE_PATH" "$ROW" > "$temp_file"
             ;;
     esac
 

@@ -254,6 +254,38 @@ generate_stata_tasks() {
     "allow_concurrent_runs": true,
     "reveal": "never",
     "hide": "on_success"
+  },
+  {
+    "label": "Stata: CD into Workspace Folder",
+    "command": "send-to-stata.sh --cd-workspace --workspace \"\$ZED_WORKTREE_ROOT\"${activate_suffix}",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": true,
+    "reveal": "never",
+    "hide": "on_success"
+  },
+  {
+    "label": "Stata: CD into File Folder",
+    "command": "send-to-stata.sh --cd-file --file \"\$ZED_FILE\"${activate_suffix}",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": true,
+    "reveal": "never",
+    "hide": "on_success"
+  },
+  {
+    "label": "Stata: Do Upward Lines",
+    "command": "send-to-stata.sh --upward --file \"\$ZED_FILE\" --row \"\$ZED_ROW\"${activate_suffix}",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": true,
+    "reveal": "never",
+    "hide": "on_success"
+  },
+  {
+    "label": "Stata: Do Downward Lines",
+    "command": "send-to-stata.sh --downward --file \"\$ZED_FILE\" --row \"\$ZED_ROW\"${activate_suffix}",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": true,
+    "reveal": "never",
+    "hide": "on_success"
   }
 ]
 EOF
@@ -301,6 +333,38 @@ STATA_TASKS=$(
   {
     "label": "Stata: Include File",
     "command": "send-to-stata.sh --file-mode --include --file \"$ZED_FILE\"",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": true,
+    "reveal": "never",
+    "hide": "on_success"
+  },
+  {
+    "label": "Stata: CD into Workspace Folder",
+    "command": "send-to-stata.sh --cd-workspace --workspace \"$ZED_WORKTREE_ROOT\"",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": true,
+    "reveal": "never",
+    "hide": "on_success"
+  },
+  {
+    "label": "Stata: CD into File Folder",
+    "command": "send-to-stata.sh --cd-file --file \"$ZED_FILE\"",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": true,
+    "reveal": "never",
+    "hide": "on_success"
+  },
+  {
+    "label": "Stata: Do Upward Lines",
+    "command": "send-to-stata.sh --upward --file \"$ZED_FILE\" --row \"$ZED_ROW\"",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": true,
+    "reveal": "never",
+    "hide": "on_success"
+  },
+  {
+    "label": "Stata: Do Downward Lines",
+    "command": "send-to-stata.sh --downward --file \"$ZED_FILE\" --row \"$ZED_ROW\"",
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
     "reveal": "never",
@@ -358,7 +422,11 @@ install_keybindings() {
       "alt-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include Statement"}]]],
       "alt-shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include File"}]]],
       "shift-enter": ["workspace::SendKeystrokes", "cmd-c ctrl-` cmd-v enter"],
-      "alt-enter": ["workspace::SendKeystrokes", "cmd-left shift-cmd-right cmd-c ctrl-` cmd-v enter"]
+      "alt-enter": ["workspace::SendKeystrokes", "cmd-left shift-cmd-right cmd-c ctrl-` cmd-v enter"],
+      "ctrl-shift-w": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: CD into Workspace Folder"}]]],
+      "ctrl-shift-f": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: CD into File Folder"}]]],
+      "ctrl-shift-up": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Do Upward Lines"}]]],
+      "ctrl-shift-down": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Do Downward Lines"}]]]
     }
   }
 ]
@@ -466,6 +534,10 @@ print_summary() {
     echo "  opt-shift-cmd-enter  Include file (preserves local macros)"
     echo "  shift-enter          Send selection to Stata terminal (quick paste)"
     echo "  opt-enter            Send current line to Stata terminal (quick paste)"
+    echo "  ctrl-shift-w         CD into workspace folder"
+    echo "  ctrl-shift-f         CD into file folder"
+    echo "  ctrl-shift-up        Do upward lines (from start to cursor)"
+    echo "  ctrl-shift-down      Do downward lines (from cursor to end)"
     echo ""
     echo "Configuration:"
     echo "  Set STATA_APP environment variable to override Stata variant detection"

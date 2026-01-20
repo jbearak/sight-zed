@@ -411,10 +411,12 @@ call_func() {
     ' bash "$SCRIPT"
     [ "$status" -eq 0 ]
     
-    # Count occurrences of activation command (should be 4, one per task)
+    # Count occurrences of activation command (should be 8, one per task)
+    # Tasks: Send Statement, Send File, Include Statement, Include File,
+    #        CD into Workspace Folder, CD into File Folder, Do Upward Lines, Do Downward Lines
     local count
     count=$(echo "$output" | grep -c "tell application" || true)
-    [ "$count" -eq 4 ]
+    [ "$count" -eq 8 ]
 }
 
 @test "task generation: generates valid JSON" {

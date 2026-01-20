@@ -171,7 +171,12 @@ internal static partial class Program
         public bool FileMode { get; set; }
         public bool Include { get; set; }
         public bool ActivateStata { get; set; }
+        public bool CDWorkspace { get; set; }
+        public bool CDFile { get; set; }
+        public bool Upward { get; set; }
+        public bool Downward { get; set; }
         public string? File { get; set; }
+        public string? Workspace { get; set; }
         public int Row { get; set; }
     }
 
@@ -190,6 +195,18 @@ internal static partial class Program
                 case "-filemode":
                     result.FileMode = true;
                     break;
+                case "-cdworkspace":
+                    result.CDWorkspace = true;
+                    break;
+                case "-cdfile":
+                    result.CDFile = true;
+                    break;
+                case "-upward":
+                    result.Upward = true;
+                    break;
+                case "-downward":
+                    result.Downward = true;
+                    break;
                 case "-include":
                     result.Include = true;
                     break;
@@ -202,6 +219,10 @@ internal static partial class Program
                 case "-file":
                     if (i + 1 < args.Length)
                         result.File = args[++i];
+                    break;
+                case "-workspace":
+                    if (i + 1 < args.Length)
+                        result.Workspace = args[++i];
                     break;
                 case "-row":
                     if (i + 1 < args.Length && int.TryParse(args[++i], out int r))
@@ -230,13 +251,149 @@ internal static partial class Program
     {
         var parsed = ParseArguments(args);
 
-        // Validate arguments
-        if (parsed.Statement && parsed.FileMode)
+        // Count how many modes are specified
+        int modeCount = (parsed.Statement ? 1 : 0) + 
+                        (parsed.FileMode ? 1 : 0) + 
+                        (parsed.CDWorkspace ? 1 : 0) + 
+                        (parsed.CDFile ? 1 : 0) +
+                        (parsed.Upward ? 1 : 0) +
+                        (parsed.Downward ? 1 : 0);
+
+        if (modeCount > 1)
         {
-            Console.Error.WriteLine("Error: Cannot specify both -Statement and -FileMode");
+            Console.Error.WriteLine("Error: Cannot specify multiple modes (-Statement, -FileMode, -CDWorkspace, -CDFile, -Upward, -Downward)");
             return EXIT_INVALID_ARGS;
         }
 
+        // Handle CD modes
+        if (parsed.CDWorkspace)
+        {
+            if (string.IsNullOrEmpty(parsed.Workspace))
+            {
+                Console.Error.WriteLine("Error: -Workspace parameter is required for -CDWorkspace mode");
+                return EXIT_INVALID_ARGS;
+            }
+
+            if (!Directory.Exists(parsed.Workspace))
+            {
+                Console.Error.WriteLine($"Error: Workspace directory does not exist: {parsed.Workspace}");
+                return EXIT_FILE_NOT_FOUND;
+            }
+
+            string cdCommand = FormatCdCommand(parsed.Workspace);
+            return SendCommandToStataWindow(cdCommand, !parsed.ActivateStata);
+        }
+
+        if (parsed.CDFile)
+        {
+            if (string.IsNullOrEmpty(parsed.File))
+            {
+                Console.Error.WriteLine("Error: -File parameter is required for -CDFile mode");
+                return EXIT_INVALID_ARGS;
+            }
+
+            if (!File.Exists(parsed.File))
+            {
+                Console.Error.WriteLine($"Error: Cannot read file: {parsed.File}");
+                return EXIT_FILE_NOT_FOUND;
+            }
+
+            string? parentDir = Path.GetDirectoryName(parsed.File);
+            if (string.IsNullOrEmpty(parentDir))
+            {
+                Console.Error.WriteLine($"Error: Cannot determine parent directory for: {parsed.File}");
+                return EXIT_INVALID_ARGS;
+            }
+
+            string cdCommand = FormatCdCommand(parentDir);
+            return SendCommandToStataWindow(cdCommand, !parsed.ActivateStata);
+        }
+
+        // Handle Upward mode
+        if (parsed.Upward)
+        {
+            if (string.IsNullOrEmpty(parsed.File))
+            {
+                Console.Error.WriteLine("Error: -File parameter is required for -Upward mode");
+                return EXIT_INVALID_ARGS;
+            }
+
+            if (!File.Exists(parsed.File))
+            {
+                Console.Error.WriteLine($"Error: Cannot read file: {parsed.File}");
+                return EXIT_FILE_NOT_FOUND;
+            }
+
+            if (parsed.Row <= 0)
+            {
+                Console.Error.WriteLine("Error: -Row parameter is required for -Upward mode");
+                return EXIT_INVALID_ARGS;
+            }
+
+            string upwardContent;
+            try
+            {
+                upwardContent = GetUpwardLines(parsed.File, parsed.Row);
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                Console.Error.WriteLine($"Error: {ex.Message}");
+                return EXIT_INVALID_ARGS;
+            }
+
+            string? upwardTempFile = CreateTempDoFile(upwardContent);
+            if (upwardTempFile == null)
+            {
+                Console.Error.WriteLine("Error: Cannot create temp file");
+                return EXIT_TEMP_FILE_FAIL;
+            }
+
+            return SendToStataWindow(upwardTempFile, parsed.Include, !parsed.ActivateStata);
+        }
+
+        // Handle Downward mode
+        if (parsed.Downward)
+        {
+            if (string.IsNullOrEmpty(parsed.File))
+            {
+                Console.Error.WriteLine("Error: -File parameter is required for -Downward mode");
+                return EXIT_INVALID_ARGS;
+            }
+
+            if (!File.Exists(parsed.File))
+            {
+                Console.Error.WriteLine($"Error: Cannot read file: {parsed.File}");
+                return EXIT_FILE_NOT_FOUND;
+            }
+
+            if (parsed.Row <= 0)
+            {
+                Console.Error.WriteLine("Error: -Row parameter is required for -Downward mode");
+                return EXIT_INVALID_ARGS;
+            }
+
+            string downwardContent;
+            try
+            {
+                downwardContent = GetDownwardLines(parsed.File, parsed.Row);
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                Console.Error.WriteLine($"Error: {ex.Message}");
+                return EXIT_INVALID_ARGS;
+            }
+
+            string? downwardTempFile = CreateTempDoFile(downwardContent);
+            if (downwardTempFile == null)
+            {
+                Console.Error.WriteLine("Error: Cannot create temp file");
+                return EXIT_TEMP_FILE_FAIL;
+            }
+
+            return SendToStataWindow(downwardTempFile, parsed.Include, !parsed.ActivateStata);
+        }
+
+        // Original statement/file mode logic
         if (string.IsNullOrEmpty(parsed.File))
         {
             Console.Error.WriteLine("Error: -File parameter is required");
@@ -325,6 +482,137 @@ internal static partial class Program
 
     [GeneratedRegex(@"///\s*$")]
     private static partial Regex ContinuationMarkerRegex();
+
+    /// <summary>
+    /// Gets lines from the start of the file to the cursor row (inclusive).
+    /// If the cursor row ends with a continuation marker, extends to include the complete statement.
+    /// </summary>
+    /// <param name="filePath">Path to the Stata file.</param>
+    /// <param name="row">Cursor row (1-indexed).</param>
+    /// <returns>The extracted lines as a string with preserved line breaks.</returns>
+    public static string GetUpwardLines(string filePath, int row)
+    {
+        string[] lines = File.ReadAllLines(filePath);
+        if (lines.Length == 0)
+            return string.Empty;
+
+        if (row < 1 || row > lines.Length)
+            throw new ArgumentOutOfRangeException(nameof(row), 
+                $"Row {row} is out of bounds (file has {lines.Length} lines)");
+
+        var continuationRegex = ContinuationMarkerRegex();
+
+        // Start is always line 1 (index 0)
+        int startIdx = 0;
+
+        // End at cursor row, extending forward if line has continuation
+        int endIdx = row - 1;  // Convert to 0-indexed
+        while (endIdx < lines.Length - 1 && continuationRegex.IsMatch(lines[endIdx]))
+        {
+            endIdx++;
+        }
+
+        // Join lines from start to end
+        var sb = new StringBuilder();
+        for (int i = startIdx; i <= endIdx; i++)
+        {
+            if (i > startIdx)
+                sb.AppendLine();
+            sb.Append(lines[i]);
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Gets lines from the cursor row to the end of the file (inclusive).
+    /// If the cursor is on a continuation line (previous line ends with ///),
+    /// extends backward to include the complete statement start.
+    /// </summary>
+    /// <param name="filePath">Path to the Stata file.</param>
+    /// <param name="row">Cursor row (1-indexed).</param>
+    /// <returns>The extracted lines as a string with preserved line breaks.</returns>
+    public static string GetDownwardLines(string filePath, int row)
+    {
+        string[] lines = File.ReadAllLines(filePath);
+        if (lines.Length == 0)
+            return string.Empty;
+
+        if (row < 1 || row > lines.Length)
+            throw new ArgumentOutOfRangeException(nameof(row), 
+                $"Row {row} is out of bounds (file has {lines.Length} lines)");
+
+        var continuationRegex = ContinuationMarkerRegex();
+
+        // Start at cursor row, extending backward if on continuation line
+        // A line is a continuation if the PREVIOUS line ends with ///
+        int startIdx = row - 1;  // Convert to 0-indexed
+        while (startIdx > 0 && continuationRegex.IsMatch(lines[startIdx - 1]))
+        {
+            startIdx--;
+        }
+
+        // End is always the last line
+        int endIdx = lines.Length - 1;
+
+        // Join lines from start to end
+        var sb = new StringBuilder();
+        for (int i = startIdx; i <= endIdx; i++)
+        {
+            if (i > startIdx)
+                sb.AppendLine();
+            sb.Append(lines[i]);
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Result of escaping a path for Stata's cd command.
+    /// </summary>
+    /// <param name="Escaped">The path with backslashes doubled.</param>
+    /// <param name="UseCompound">True if the path contains double quotes and requires compound string syntax.</param>
+    public record PathEscapeResult(string Escaped, bool UseCompound);
+
+    /// <summary>
+    /// Escapes a path for use in Stata's cd command.
+    /// Doubles backslashes and detects if compound string syntax is needed.
+    /// </summary>
+    /// <param name="path">The path to escape.</param>
+    /// <returns>A PathEscapeResult containing the escaped path and whether compound syntax is needed.</returns>
+    public static PathEscapeResult EscapePathForStata(string path)
+    {
+        // Double all backslashes for Stata compatibility
+        var escaped = path.Replace("\\", "\\\\");
+        
+        // Check if path contains double quotes
+        var useCompound = path.Contains('"');
+        
+        return new PathEscapeResult(escaped, useCompound);
+    }
+
+    /// <summary>
+    /// Formats a cd command for Stata with proper string syntax.
+    /// Uses compound string syntax (`"path"') when path contains double quotes,
+    /// otherwise uses regular string syntax ("path").
+    /// </summary>
+    /// <param name="directoryPath">The directory path to cd into.</param>
+    /// <returns>The formatted cd command.</returns>
+    public static string FormatCdCommand(string directoryPath)
+    {
+        var result = EscapePathForStata(directoryPath);
+        
+        if (result.UseCompound)
+        {
+            // Use compound string syntax: cd `"path"'
+            return $"cd `\"{result.Escaped}\"'";
+        }
+        else
+        {
+            // Use regular string syntax: cd "path"
+            return $"cd \"{result.Escaped}\"";
+        }
+    }
 
     /// <summary>
     /// Creates a temporary .do file with the specified content.
@@ -655,6 +943,95 @@ internal static partial class Program
             else
             {
                 Log($"SendToStataWindow: No viable window to return focus to. originalForeground={DescribeWindow(originalWindow)} stata={DescribeWindow(windowHandle)} zed=0x0");
+            }
+        }
+
+        return EXIT_SUCCESS;
+    }
+
+    /// <summary>
+    /// Sends a raw Stata command directly via clipboard and keystrokes (no temp file).
+    /// </summary>
+    private static int SendCommandToStataWindow(string command, bool returnFocus)
+    {
+        Log($"SendCommandToStataWindow: command=\"{command}\" returnFocus={returnFocus}");
+
+        // Remember the current foreground window so we can return focus if requested
+        IntPtr originalWindow = returnFocus ? GetForegroundWindow() : IntPtr.Zero;
+        if (returnFocus)
+        {
+            Log($"SendCommandToStataWindow: captured originalForeground={DescribeWindow(originalWindow)}");
+        }
+
+        // Find Stata window
+        using var stataProcess = FindStataWindow();
+        if (stataProcess == null)
+        {
+            Console.Error.WriteLine("Error: No running Stata instance found. Start Stata before sending code.");
+            Log("SendCommandToStataWindow: FindStataWindow returned null.");
+            return EXIT_STATA_NOT_FOUND;
+        }
+
+        IntPtr windowHandle = stataProcess.MainWindowHandle;
+        Log($"SendCommandToStataWindow: Stata PID={stataProcess.Id} MainWindowHandle={FormatHwnd(windowHandle)}");
+
+        // Acquire focus
+        if (!AcquireFocus(windowHandle))
+        {
+            Console.Error.WriteLine("Error: Failed to activate Stata window after 3 attempts. " +
+                "Focus-stealing prevention may be blocking SetForegroundWindow, or Stata may be running as Administrator.");
+            Log($"SendCommandToStataWindow: failed to focus Stata windowHandle={DescribeWindow(windowHandle)}");
+            return EXIT_SENDKEYS_FAIL;
+        }
+
+        // Copy to clipboard
+        if (!SetClipboardText(command))
+        {
+            Console.Error.WriteLine("Error: Failed to set clipboard");
+            return EXIT_SENDKEYS_FAIL;
+        }
+
+        Thread.Sleep(_clipPause);
+
+        // Send keystrokes: Ctrl+1 (focus command window), Ctrl+V (paste), Enter (execute)
+        try
+        {
+            SendCtrlKey(0x31);      // Ctrl+1 (0x31 = '1')
+            Thread.Sleep(_winPause);
+            SendCtrlKey(0x56);      // Ctrl+V (0x56 = 'V')
+            Thread.Sleep(_keyPause);
+            SendKey(VK_RETURN);     // Enter
+            SendKey(VK_RETURN, true);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error: Failed to send keystrokes: {ex.Message}");
+            return EXIT_SENDKEYS_FAIL;
+        }
+
+        // Return focus to original window if requested
+        if (returnFocus)
+        {
+            Thread.Sleep(_winPause * 5); // Give Stata time to process before switching back
+
+            // Try to find Zed window by process name
+            var zedWindow = FindZedWindow();
+            if (zedWindow != IntPtr.Zero)
+            {
+                Log($"SendCommandToStataWindow: attempting to return focus to Zed via FindZedWindow: {DescribeWindow(zedWindow)}");
+                var ok = AcquireFocus(zedWindow);
+                Log($"SendCommandToStataWindow: return focus to Zed result={ok} currentForeground={DescribeWindow(GetForegroundWindow())}");
+            }
+            else if (originalWindow != IntPtr.Zero && originalWindow != windowHandle)
+            {
+                // Fall back to original foreground window
+                Log($"SendCommandToStataWindow: FindZedWindow failed; attempting fallback to originalForeground={DescribeWindow(originalWindow)}");
+                var ok = AcquireFocus(originalWindow);
+                Log($"SendCommandToStataWindow: return focus to originalForeground result={ok} currentForeground={DescribeWindow(GetForegroundWindow())}");
+            }
+            else
+            {
+                Log($"SendCommandToStataWindow: No viable window to return focus to. originalForeground={DescribeWindow(originalWindow)} stata={DescribeWindow(windowHandle)} zed=0x0");
             }
         }
 

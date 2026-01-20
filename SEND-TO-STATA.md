@@ -67,10 +67,45 @@ In `.do` files:
 | `shift-cmd-enter`     | `shift-ctrl-enter`     | Send file to Stata app                 |
 | `opt-cmd-enter`       | `alt-ctrl-enter`       | Include statement (preserves locals)   |
 | `opt-shift-cmd-enter` | `alt-shift-ctrl-enter` | Include file (preserves locals)        |
+| `ctrl-shift-w`        | `ctrl-shift-w`         | CD into workspace folder               |
+| `ctrl-shift-f`        | `ctrl-shift-f`         | CD into file folder                    |
+| `ctrl-shift-up`       | `ctrl-shift-up`        | Do upward lines (line 1 to cursor)     |
+| `ctrl-shift-down`     | `ctrl-shift-down`      | Do downward lines (cursor to end)      |
 | `shift-enter`         | `shift-enter`          | Paste selection to terminal            |
 | `opt-enter`           | `alt-enter`            | Paste current line to terminal         |
 
-### Quick Terminal Shortcuts
+### Do vs Include
+
+The default keybindings use Stata's `do` command, which isolates local macros to the executed code. The `opt` variants use `include` instead, which preserves local macros in the calling context—useful for debugging when you need to inspect locals after running code.
+
+### Statement Detection
+
+When no text is selected, `cmd-enter` sends the current statement:
+- Single-line statements are sent as-is
+- Multi-line statements using `///` continuation markers are detected automatically
+- The cursor can be on any line of a multi-line statement
+
+### CD Commands
+
+Two shortcuts change Stata's working directory:
+
+- **`ctrl-shift-w`** (CD into Workspace Folder): Changes Stata's working directory to the workspace root (`$ZED_WORKTREE_ROOT`). Useful when your scripts use paths relative to the project root.
+
+- **`ctrl-shift-f`** (CD into File Folder): Changes Stata's working directory to the current file's parent directory. Useful when your scripts use paths relative to the script location.
+
+### Upward/Downward Line Execution
+
+Two shortcuts execute partial files:
+
+- **`ctrl-shift-up`** (Do Upward Lines): Executes all lines from the beginning of the file to the current cursor position. Useful for running setup code to reach a specific point in your script.
+
+- **`ctrl-shift-down`** (Do Downward Lines): Executes all lines from the current cursor position to the end of the file. Useful for running the remainder of your script from a specific point.
+
+Both commands respect `///` continuation markers:
+- **Upward**: If the cursor is on a line that ends with `///`, the selection extends forward to include the complete statement
+- **Downward**: If the cursor is on a continuation line (previous line ends with `///`), the selection extends backward to the statement start
+
+### Terminal Shortcuts
 
 The `shift-enter` and `opt-enter` shortcuts use Zed's `SendKeystrokes` to paste code into the active terminal panel:
 
@@ -89,17 +124,6 @@ Note that `opt-enter` sends only the current line—it doesn't detect multi-line
 **Important**: You cannot use `shift-enter` or `opt-enter` to send statements with `///` continuation lines. Stata's console does not accept continuation syntax when code is pasted directly—it will print an error. For multi-line statements with continuations, use `cmd-enter` instead, which writes the code to a temp file and executes it via `do`.
 
 There's no "send file to terminal" shortcut because Zed's SendKeystrokes doesn't have access to the file path. The application shortcuts can send files because they invoke tasks, which can run scripts with access to `$ZED_FILE`—but there's no way to get script output back into a SendKeystrokes sequence.
-
-### do vs include
-
-The default keybindings use Stata's `do` command, which isolates local macros to the executed code. The `opt` variants use `include` instead, which preserves local macros in the calling context—useful for debugging when you need to inspect locals after running code.
-
-### Statement Detection
-
-When no text is selected, `cmd-enter` sends the current statement:
-- Single-line statements are sent as-is
-- Multi-line statements using `///` continuation markers are detected automatically
-- The cursor can be on any line of a multi-line statement
 
 ## Configuration
 
@@ -177,6 +201,72 @@ Return focus to Zed after sending code to Stata? [Y/n]
 ```
 
 Press Enter (or `y`) to keep the default (return to Zed), or `n` to stay in Stata.
+
+## Command-Line Reference
+
+The `send-to-stata.sh` (macOS) and `send-to-stata.exe` (Windows) scripts support several modes for different operations.
+
+### macOS Modes
+
+| Mode | Description | Required Arguments |
+|------|-------------|-------------------|
+| `--statement` | Send current statement | `--file <path>`, `--row <n>` |
+| `--file-mode` | Send entire file | `--file <path>` |
+| `--cd-workspace` | CD to workspace root | `--workspace <path>` |
+| `--cd-file` | CD to file's directory | `--file <path>` |
+| `--upward` | Execute lines 1 to row | `--file <path>`, `--row <n>` |
+| `--downward` | Execute lines row to EOF | `--file <path>`, `--row <n>` |
+
+Optional flags:
+- `--include`: Use `include` instead of `do`
+- `--stdin`: Read code from stdin (for selections)
+
+> **Note**: Focus behavior on macOS is configured at install time, not via command-line flags. The installer embeds the activation command directly into the Zed task definitions. See [Focus Behavior](#focus-behavior) for details.
+
+Examples:
+```bash
+# CD to workspace root
+send-to-stata.sh --cd-workspace --workspace "/path/to/project"
+
+# CD to file's directory
+send-to-stata.sh --cd-file --file "/path/to/script.do"
+
+# Execute lines 1-50 (upward from cursor at line 50)
+send-to-stata.sh --upward --file "/path/to/script.do" --row 50
+
+# Execute lines 50-end (downward from cursor at line 50)
+send-to-stata.sh --downward --file "/path/to/script.do" --row 50
+```
+
+### Windows Parameters
+
+| Parameter | Description | Required With |
+|-----------|-------------|---------------|
+| `-Statement` | Send current statement | `-File <path>`, `-Row <n>` |
+| `-FileMode` | Send entire file | `-File <path>` |
+| `-CDWorkspace` | CD to workspace root | `-Workspace <path>` |
+| `-CDFile` | CD to file's directory | `-File <path>` |
+| `-Upward` | Execute lines 1 to row | `-File <path>`, `-Row <n>` |
+| `-Downward` | Execute lines row to EOF | `-File <path>`, `-Row <n>` |
+
+Optional parameters:
+- `-Include`: Use `include` instead of `do`
+- `-ActivateStata`: Switch focus to Stata after execution
+
+Examples:
+```powershell
+# CD to workspace root
+send-to-stata.exe -CDWorkspace -Workspace "C:\Projects\myproject"
+
+# CD to file's directory
+send-to-stata.exe -CDFile -File "C:\Projects\myproject\analysis.do"
+
+# Execute lines 1-50 (upward from cursor at line 50)
+send-to-stata.exe -Upward -File "C:\Projects\myproject\analysis.do" -Row 50
+
+# Execute lines 50-end (downward from cursor at line 50)
+send-to-stata.exe -Downward -File "C:\Projects\myproject\analysis.do" -Row 50
+```
 
 ### Non-Interactive Installation
 
@@ -263,6 +353,38 @@ If you prefer not to use the installer:
        "allow_concurrent_runs": true,
        "reveal": "never",
        "hide": "on_success"
+     },
+     {
+       "label": "Stata: CD into Workspace Folder",
+       "command": "send-to-stata.sh --cd-workspace --workspace \"$ZED_WORKTREE_ROOT\"",
+       "use_new_terminal": false,
+       "allow_concurrent_runs": true,
+       "reveal": "never",
+       "hide": "on_success"
+     },
+     {
+       "label": "Stata: CD into File Folder",
+       "command": "send-to-stata.sh --cd-file --file \"$ZED_FILE\"",
+       "use_new_terminal": false,
+       "allow_concurrent_runs": true,
+       "reveal": "never",
+       "hide": "on_success"
+     },
+     {
+       "label": "Stata: Do Upward Lines",
+       "command": "send-to-stata.sh --upward --file \"$ZED_FILE\" --row \"$ZED_ROW\"",
+       "use_new_terminal": false,
+       "allow_concurrent_runs": true,
+       "reveal": "never",
+       "hide": "on_success"
+     },
+     {
+       "label": "Stata: Do Downward Lines",
+       "command": "send-to-stata.sh --downward --file \"$ZED_FILE\" --row \"$ZED_ROW\"",
+       "use_new_terminal": false,
+       "allow_concurrent_runs": true,
+       "reveal": "never",
+       "hide": "on_success"
      }
    ]
    ```
@@ -278,6 +400,10 @@ If you prefer not to use the installer:
          "shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send File"}]]],
          "alt-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include Statement"}]]],
          "alt-shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include File"}]]],
+         "ctrl-shift-w": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: CD into Workspace Folder"}]]],
+         "ctrl-shift-f": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: CD into File Folder"}]]],
+         "ctrl-shift-up": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Do Upward Lines"}]]],
+         "ctrl-shift-down": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Do Downward Lines"}]]],
          "shift-enter": ["workspace::SendKeystrokes", "cmd-c ctrl-` cmd-v enter"],
          "alt-enter": ["workspace::SendKeystrokes", "cmd-left shift-cmd-right cmd-c ctrl-` cmd-v enter"]
        }

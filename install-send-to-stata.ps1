@@ -170,6 +170,38 @@ function Install-Tasks {
             allow_concurrent_runs = $true
             reveal = "never"
             hide = "on_success"
+        },
+        @{
+            label = "Stata: CD into Workspace Folder"
+            command = "& `"$exePath`" -CDWorkspace$activateStataArg -Workspace `"`$ZED_WORKTREE_ROOT`""
+            use_new_terminal = $false
+            allow_concurrent_runs = $true
+            reveal = "never"
+            hide = "on_success"
+        },
+        @{
+            label = "Stata: CD into File Folder"
+            command = "& `"$exePath`" -CDFile$activateStataArg -File `"`$ZED_FILE`""
+            use_new_terminal = $false
+            allow_concurrent_runs = $true
+            reveal = "never"
+            hide = "on_success"
+        },
+        @{
+            label = "Stata: Do Upward Lines"
+            command = "& `"$exePath`" -Upward$activateStataArg -File `"`$ZED_FILE`" -Row `$ZED_ROW"
+            use_new_terminal = $false
+            allow_concurrent_runs = $true
+            reveal = "never"
+            hide = "on_success"
+        },
+        @{
+            label = "Stata: Do Downward Lines"
+            command = "& `"$exePath`" -Downward$activateStataArg -File `"`$ZED_FILE`" -Row `$ZED_ROW"
+            use_new_terminal = $false
+            allow_concurrent_runs = $true
+            reveal = "never"
+            hide = "on_success"
         }
     )
 
@@ -211,6 +243,10 @@ function Install-Keybindings {
             # Use literal backtick (``) so it survives PowerShell parsing
             "shift-enter" = @("workspace::SendKeystrokes", "ctrl-c ctrl-`` ctrl-v enter")
             "alt-enter" = @("workspace::SendKeystrokes", "home shift-end ctrl-c ctrl-`` ctrl-v enter")
+            "ctrl-shift-w" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: CD into Workspace Folder" })))
+            "ctrl-shift-f" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: CD into File Folder" })))
+            "ctrl-shift-up" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Do Upward Lines" })))
+            "ctrl-shift-down" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Do Downward Lines" })))
         }
     }
 
