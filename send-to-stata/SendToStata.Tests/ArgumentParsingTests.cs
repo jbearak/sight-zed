@@ -69,3 +69,4 @@ public class ArgumentParsingTests
         Assert.False(result.ActivateStata);
     }
 }
+
