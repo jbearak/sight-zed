@@ -12,6 +12,55 @@ param(
     [switch]$SkipAutomationCheck
 )
 
+# ============================================================================
+# PowerShell 7+ Check
+# ============================================================================
+# This script requires PowerShell 7+ due to syntax and module compatibility.
+# If running in Windows PowerShell 5.1, attempt to re-launch with pwsh.
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    $scriptPath = $MyInvocation.MyCommand.Path
+    $pwshPath = Get-Command pwsh -ErrorAction SilentlyContinue
+    
+    if ($pwshPath) {
+        Write-Host "Re-launching with PowerShell 7..." -ForegroundColor Yellow
+        
+        if ($scriptPath) {
+            # Running from a file - re-invoke with pwsh
+            $scriptArgs = @()
+            if ($SkipBuild) { $scriptArgs += '-SkipBuild' }
+            if ($SkipExtensionInstall) { $scriptArgs += '-SkipExtensionInstall' }
+            if ($SkipSendToStata) { $scriptArgs += '-SkipSendToStata' }
+            if ($Uninstall) { $scriptArgs += '-Uninstall' }
+            if ($Yes) { $scriptArgs += '-Yes' }
+            if ($ZedExtensionsDir) { $scriptArgs += '-ZedExtensionsDir'; $scriptArgs += $ZedExtensionsDir }
+            if ($RegisterAutomation) { $scriptArgs += '-RegisterAutomation' }
+            if ($SkipAutomationCheck) { $scriptArgs += '-SkipAutomationCheck' }
+            & pwsh -File $scriptPath @scriptArgs
+            exit $LASTEXITCODE
+        } else {
+            # Piped execution - setup.ps1 shouldn't be run this way, guide user to clone
+            Write-Host "ERROR: setup.ps1 should be run from a cloned repository." -ForegroundColor Red
+            Write-Host ""
+            Write-Host "Clone the repo and run:" -ForegroundColor Cyan
+            Write-Host "  git clone https://github.com/jbearak/sight-zed"
+            Write-Host "  cd sight-zed"
+            Write-Host "  pwsh -File .\setup.ps1"
+            exit 1
+        }
+    }
+    
+    Write-Host "ERROR: This script requires PowerShell 7+." -ForegroundColor Red
+    Write-Host ""
+    Write-Host "You're running Windows PowerShell $($PSVersionTable.PSVersion)" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Install PowerShell 7:" -ForegroundColor Cyan
+    Write-Host "  winget install Microsoft.PowerShell"
+    Write-Host ""
+    Write-Host "Then run:" -ForegroundColor Cyan
+    Write-Host "  pwsh -File .\setup.ps1"
+    exit 1
+}
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
