@@ -8,8 +8,8 @@ A [Zed](https://zed.dev) extension providing support for the Stata statistical p
 - Diagnostics (e.g., detects syntax errors and undefined macros)
 - Syntax highlighting
 - Run Stata code from the editor (requires additional setup—see below)
-  - [Send to Stata]()
-  - [Jupyter REPL](#Send-)
+  - [Send to Stata](#send-to-stata-optional)
+  - [Jupyter REPL](#jupyter-repl)
 
 > **⚠️ Development Status:** This is an early-stage implementation. While functional, it requires substantial testing and code review. Contributions and feedback are welcome!
 
