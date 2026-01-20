@@ -68,6 +68,9 @@ internal static partial class Program
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool GlobalUnlock(IntPtr hMem);
 
+    [LibraryImport("kernel32.dll")]
+    private static partial IntPtr GlobalFree(IntPtr hMem);
+
     // Keyboard input
     [LibraryImport("user32.dll", SetLastError = true)]
     private static partial uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
@@ -279,6 +282,7 @@ internal static partial class Program
 
     /// <summary>
     /// Finds a running Stata window.
+    /// Returns a Process that the caller must dispose.
     /// </summary>
     private static Process? FindStataWindow()
     {
@@ -296,11 +300,26 @@ internal static partial class Program
                     var processes = Process.GetProcessesByName(pattern.Replace("Stata", $"Stata{prefix}"));
                     foreach (var proc in processes)
                     {
-                        if (!string.IsNullOrEmpty(proc.MainWindowTitle) &&
-                            titleRegex.IsMatch(proc.MainWindowTitle) &&
-                            !proc.MainWindowTitle.Contains("Viewer"))
+                        bool shouldDispose = true;
+                        try
                         {
-                            return proc;
+                            if (!string.IsNullOrEmpty(proc.MainWindowTitle) &&
+                                titleRegex.IsMatch(proc.MainWindowTitle) &&
+                                !proc.MainWindowTitle.Contains("Viewer"))
+                            {
+                                // Return this process - caller is responsible for disposal
+                                shouldDispose = false;
+                                return proc;
+                            }
+                        }
+                        catch
+                        {
+                            // Process may have exited, continue searching
+                        }
+                        finally
+                        {
+                            if (shouldDispose)
+                                proc.Dispose();
                         }
                     }
                 }
@@ -314,18 +333,32 @@ internal static partial class Program
         // Also try generic search for any Stata* process
         try
         {
-            var allProcesses = Process.GetProcesses();
-            foreach (var proc in allProcesses)
+            foreach (var proc in Process.GetProcesses())
             {
-                if (proc.ProcessName.StartsWith("Stata", StringComparison.OrdinalIgnoreCase) ||
-                    proc.ProcessName.StartsWith("StataNow", StringComparison.OrdinalIgnoreCase))
+                bool shouldDispose = true;
+                try
                 {
-                    if (!string.IsNullOrEmpty(proc.MainWindowTitle) &&
-                        titleRegex.IsMatch(proc.MainWindowTitle) &&
-                        !proc.MainWindowTitle.Contains("Viewer"))
+                    if (proc.ProcessName.StartsWith("Stata", StringComparison.OrdinalIgnoreCase) ||
+                        proc.ProcessName.StartsWith("StataNow", StringComparison.OrdinalIgnoreCase))
                     {
-                        return proc;
+                        if (!string.IsNullOrEmpty(proc.MainWindowTitle) &&
+                            titleRegex.IsMatch(proc.MainWindowTitle) &&
+                            !proc.MainWindowTitle.Contains("Viewer"))
+                        {
+                            // Return this process - caller is responsible for disposal
+                            shouldDispose = false;
+                            return proc;
+                        }
                     }
+                }
+                catch
+                {
+                    // Process may have exited, continue searching
+                }
+                finally
+                {
+                    if (shouldDispose)
+                        proc.Dispose();
                 }
             }
         }
@@ -350,9 +383,16 @@ internal static partial class Program
             var processes = Process.GetProcessesByName("Zed");
             foreach (var proc in processes)
             {
-                if (proc.MainWindowHandle != IntPtr.Zero)
+                try
                 {
-                    return proc.MainWindowHandle;
+                    if (proc.MainWindowHandle != IntPtr.Zero)
+                    {
+                        return proc.MainWindowHandle;
+                    }
+                }
+                finally
+                {
+                    proc.Dispose();
                 }
             }
         }
@@ -401,26 +441,35 @@ internal static partial class Program
         if (!OpenClipboard(IntPtr.Zero))
             return false;
 
+        IntPtr hGlobal = IntPtr.Zero;
         try
         {
             EmptyClipboard();
 
             // Allocate global memory for the text (Unicode)
             byte[] bytes = Encoding.Unicode.GetBytes(text + "\0");
-            IntPtr hGlobal = GlobalAlloc(GMEM_MOVEABLE, (UIntPtr)bytes.Length);
+            hGlobal = GlobalAlloc(GMEM_MOVEABLE, (UIntPtr)bytes.Length);
             if (hGlobal == IntPtr.Zero)
                 return false;
 
             IntPtr pGlobal = GlobalLock(hGlobal);
             if (pGlobal == IntPtr.Zero)
+            {
+                GlobalFree(hGlobal);
                 return false;
+            }
 
             Marshal.Copy(bytes, 0, pGlobal, bytes.Length);
             GlobalUnlock(hGlobal);
 
             if (SetClipboardData(CF_UNICODETEXT, hGlobal) == IntPtr.Zero)
+            {
+                GlobalFree(hGlobal);
                 return false;
+            }
 
+            // Clipboard now owns the memory, don't free it
+            hGlobal = IntPtr.Zero;
             return true;
         }
         finally
@@ -457,7 +506,7 @@ internal static partial class Program
         IntPtr originalWindow = returnFocus ? GetForegroundWindow() : IntPtr.Zero;
 
         // Find Stata window
-        var stataProcess = FindStataWindow();
+        using var stataProcess = FindStataWindow();
         if (stataProcess == null)
         {
             Console.Error.WriteLine("Error: No running Stata instance found. Start Stata before sending code.");

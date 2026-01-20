@@ -64,12 +64,12 @@ Describe "Checksum Verification" {
             $stream = [System.IO.MemoryStream]::new([System.Text.Encoding]::UTF8.GetBytes($content))
             $actualHash = (Get-FileHash -InputStream $stream -Algorithm SHA256).Hash
             
-            # Correct hash should pass
-            $actualHash | Should Be $actualHash
+            # Verify SHA256 hash format (64 hex characters)
+            $actualHash | Should -Match '^[A-F0-9]{64}$'
             
             # Wrong hash should differ
             $wrongHash = "0000000000000000000000000000000000000000000000000000000000000000"
-            ($actualHash -ne $wrongHash) | Should Be $true
+            ($actualHash -ne $wrongHash) | Should -Be $true
         }
     }
     
@@ -78,21 +78,9 @@ Describe "Checksum Verification" {
         try {
             # When SIGHT_GITHUB_REF is set, checksum verification should be skipped
             $skipVerification = $null -ne $env:SIGHT_GITHUB_REF
-            $skipVerification | Should Be $true
+            $skipVerification | Should -Be $true
         } finally {
             Remove-Item env:SIGHT_GITHUB_REF -ErrorAction SilentlyContinue
         }
-    }
-}
-
-Describe "Automation Registration" {
-    It "Property14: Registration is idempotent" {
-        if ($env:OS -ne "Windows_NT") { Set-ItResult -Skipped -Because "Windows-only test" }
-        # Windows-only test implementation
-    }
-    
-    It "Property15: Version mismatch detection" {
-        if ($env:OS -ne "Windows_NT") { Set-ItResult -Skipped -Because "Windows-only test" }
-        # Windows-only test implementation
     }
 }
