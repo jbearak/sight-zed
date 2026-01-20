@@ -432,18 +432,22 @@ prompt_focus_behavior() {
   echo ""
   
   local response
-  read -r -p "Switch to Stata after sending code? [y/N] " response
-  
-  case "$response" in
-    [yY]|[yY][eE][sS])
-      ACTIVATE_STATA=true
-      print_success "Focus will switch to Stata after sending code"
-      ;;
-    *)
-      ACTIVATE_STATA=false
-      print_success "Focus will stay in Zed after sending code"
-      ;;
-  esac
+  if read -r -p "Switch to Stata after sending code? [y/N] " response; then
+    case "$response" in
+      [yY]|[yY][eE][sS])
+        ACTIVATE_STATA=true
+        print_success "Focus will switch to Stata after sending code"
+        ;;
+      *)
+        ACTIVATE_STATA=false
+        print_success "Focus will stay in Zed after sending code"
+        ;;
+    esac
+  else
+    # EOF or read failure (non-interactive) - default to staying in Zed
+    ACTIVATE_STATA=false
+    print_success "Focus will stay in Zed after sending code (default)"
+  fi
 }
 
 # ============================================================================
