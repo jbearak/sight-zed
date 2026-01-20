@@ -71,7 +71,7 @@ irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-sta
 > [!TIP]
 > **Focus behavior:** The installer prompts whether to return focus to Zed after sending code to Stata. 
 
-## Jupyter REPL
+## Jupyter REPL (Optional)
 
 The installer creates two Jupyter kernels:
 
