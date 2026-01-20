@@ -299,13 +299,16 @@ internal static partial class Program
                     var processes = Process.GetProcessesByName(pattern.Replace("Stata", $"Stata{prefix}"));
                     foreach (var proc in processes)
                     {
+                        bool isMatch = false;
                         try
                         {
-                            if (!string.IsNullOrEmpty(proc.MainWindowTitle) &&
+                            isMatch = !string.IsNullOrEmpty(proc.MainWindowTitle) &&
                                 titleRegex.IsMatch(proc.MainWindowTitle) &&
-                                !proc.MainWindowTitle.Contains("Viewer"))
+                                !proc.MainWindowTitle.Contains("Viewer");
+                            
+                            if (isMatch)
                             {
-                                // Return a fresh reference to avoid returning disposed object
+                                // Get PID before any disposal
                                 int pid = proc.Id;
                                 proc.Dispose();
                                 return Process.GetProcessById(pid);
@@ -313,7 +316,8 @@ internal static partial class Program
                         }
                         finally
                         {
-                            proc.Dispose();
+                            if (!isMatch)
+                                proc.Dispose();
                         }
                     }
                 }
@@ -329,16 +333,19 @@ internal static partial class Program
         {
             foreach (var proc in Process.GetProcesses())
             {
+                bool isMatch = false;
                 try
                 {
                     if (proc.ProcessName.StartsWith("Stata", StringComparison.OrdinalIgnoreCase) ||
                         proc.ProcessName.StartsWith("StataNow", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (!string.IsNullOrEmpty(proc.MainWindowTitle) &&
+                        isMatch = !string.IsNullOrEmpty(proc.MainWindowTitle) &&
                             titleRegex.IsMatch(proc.MainWindowTitle) &&
-                            !proc.MainWindowTitle.Contains("Viewer"))
+                            !proc.MainWindowTitle.Contains("Viewer");
+                        
+                        if (isMatch)
                         {
-                            // Return a fresh reference to avoid returning disposed object
+                            // Get PID before any disposal
                             int pid = proc.Id;
                             proc.Dispose();
                             return Process.GetProcessById(pid);
@@ -347,7 +354,8 @@ internal static partial class Program
                 }
                 finally
                 {
-                    proc.Dispose();
+                    if (!isMatch)
+                        proc.Dispose();
                 }
             }
         }
