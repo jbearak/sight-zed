@@ -82,7 +82,7 @@ This implementation adds consistent focus behavior to send-to-stata across macOS
     - Document new `--activate-stata` and `--stay-in-zed` flags for macOS
     - _Requirements: 7.4_
 
-- [ ] 7. Final checkpoint
+- [x] 7. Final checkpoint
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
