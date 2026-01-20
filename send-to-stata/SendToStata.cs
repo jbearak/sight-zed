@@ -252,9 +252,9 @@ internal static partial class Program
         var parsed = ParseArguments(args);
 
         // Count how many modes are specified
-        int modeCount = (parsed.Statement ? 1 : 0) + 
-                        (parsed.FileMode ? 1 : 0) + 
-                        (parsed.CDWorkspace ? 1 : 0) + 
+        int modeCount = (parsed.Statement ? 1 : 0) +
+                        (parsed.FileMode ? 1 : 0) +
+                        (parsed.CDWorkspace ? 1 : 0) +
                         (parsed.CDFile ? 1 : 0) +
                         (parsed.Upward ? 1 : 0) +
                         (parsed.Downward ? 1 : 0);
@@ -497,7 +497,7 @@ internal static partial class Program
             return string.Empty;
 
         if (row < 1 || row > lines.Length)
-            throw new ArgumentOutOfRangeException(nameof(row), 
+            throw new ArgumentOutOfRangeException(nameof(row),
                 $"Row {row} is out of bounds (file has {lines.Length} lines)");
 
         var continuationRegex = ContinuationMarkerRegex();
@@ -539,7 +539,7 @@ internal static partial class Program
             return string.Empty;
 
         if (row < 1 || row > lines.Length)
-            throw new ArgumentOutOfRangeException(nameof(row), 
+            throw new ArgumentOutOfRangeException(nameof(row),
                 $"Row {row} is out of bounds (file has {lines.Length} lines)");
 
         var continuationRegex = ContinuationMarkerRegex();
@@ -584,10 +584,10 @@ internal static partial class Program
     {
         // Double all backslashes for Stata compatibility
         var escaped = path.Replace("\\", "\\\\");
-        
+
         // Check if path contains double quotes
         var useCompound = path.Contains('"');
-        
+
         return new PathEscapeResult(escaped, useCompound);
     }
 
@@ -601,7 +601,7 @@ internal static partial class Program
     public static string FormatCdCommand(string directoryPath)
     {
         var result = EscapePathForStata(directoryPath);
-        
+
         if (result.UseCompound)
         {
             // Use compound string syntax: cd `"path"'
@@ -703,7 +703,7 @@ internal static partial class Program
         return null;
     }
 
-    [GeneratedRegex(@"^(Stata|StataNow)/(MP|SE|BE|IC)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"(Stata|StataNow)/(MP|SE|BE|IC)", RegexOptions.IgnoreCase)]
     private static partial Regex StataTitleRegex();
 
     /// <summary>

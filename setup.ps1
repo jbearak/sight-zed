@@ -20,10 +20,10 @@ param(
 if ($PSVersionTable.PSVersion.Major -lt 7) {
     $scriptPath = $MyInvocation.MyCommand.Path
     $pwshPath = Get-Command pwsh -ErrorAction SilentlyContinue
-    
+
     if ($pwshPath) {
         Write-Host "Re-launching with PowerShell 7..." -ForegroundColor Yellow
-        
+
         if ($scriptPath) {
             # Running from a file - re-invoke with pwsh
             $scriptArgs = @()
@@ -48,7 +48,7 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
             exit 1
         }
     }
-    
+
     Write-Host "ERROR: This script requires PowerShell 7+." -ForegroundColor Red
     Write-Host ""
     Write-Host "You're running Windows PowerShell $($PSVersionTable.PSVersion)" -ForegroundColor Yellow
@@ -71,10 +71,10 @@ $ErrorActionPreference = 'Stop'
 $script:Checksums = @{
     # WASI SDK 24 - x86_64 Windows (ARM64 Windows not available in this release)
     WasiSdkX64 = "0f934c6e7e171b5627c81b697a9e57e96d65cd889f56ce6077350de48978afd3"
-    
+
     # Tree-sitter-stata grammar WASM v0.1.0
     TreeSitterGrammar = "357d74471e1c8e316805f882c4b942438ee1c54b5f23687ac001d710b826a237"
-    
+
     # Sight language server v0.1.11
     SightServer = "0c36e13b5c85447fb64d2b1ac3dbeff733911e6b96bfc0afb182a75f5467f38f"
 }
@@ -85,18 +85,18 @@ function Test-FileChecksum {
         [Parameter(Mandatory=$true)][string]$ExpectedHash,
         [string]$Description = "file"
     )
-    
+
     if (-not (Test-Path $Path)) {
         throw "File not found for checksum verification: $Path"
     }
-    
+
     $actualHash = (Get-FileHash -Path $Path -Algorithm SHA256).Hash.ToLower()
     $expectedLower = $ExpectedHash.ToLower()
-    
+
     if ($actualHash -ne $expectedLower) {
         throw "Checksum verification failed for $Description`nExpected: $expectedLower`nActual:   $actualHash`nThis may indicate a corrupted download. Delete the file and try again."
     }
-    
+
     Write-Host "Checksum verified for $Description" -ForegroundColor Green
 }
 
@@ -376,13 +376,13 @@ function Install-MSVCBuildToolsViaChocolatey {
 function Install-WasiSdk {
     $wasiSdkVersion = "24"
     $hostArch = Get-HostArch
-    
+
     # Note: WASI SDK 24 does not have an ARM64 Windows build.
     # ARM64 Windows users will need to use x86_64 build under emulation.
     if ($hostArch -eq "Arm64") {
         Write-Host "Note: WASI SDK does not provide ARM64 Windows builds. Using x86_64 build." -ForegroundColor Yellow
     }
-    
+
     $wasiSdkUrl = "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${wasiSdkVersion}/wasi-sdk-${wasiSdkVersion}.0-x86_64-windows.tar.gz"
     $wasiSdkPath = "C:\wasi-sdk"
 
@@ -651,10 +651,10 @@ function Download-LanguageServerForDev {
         Write-Host "Copying language server from Zed work directory..."
         New-Item -ItemType Directory -Path $serverDir -Force | Out-Null
         Copy-Item -Path $zedServerScript -Destination $serverScript -Force
-        
+
         # Verify checksum of copied file
         Test-FileChecksum -Path $serverScript -ExpectedHash $script:Checksums.SightServer -Description "Sight language server"
-        
+
         Write-Host "Copied language server for dev testing: $serverScript" -ForegroundColor Green
         return
     }
@@ -735,7 +735,69 @@ function Uninstall-ZedExtension {
     }
 }
 
+function Build-SendToStataExecutables {
+    Write-Host "Building send-to-stata executables from source..."
+
+    $projectPath = Join-Path $PSScriptRoot 'send-to-stata\SendToStata.csproj'
+    if (-not (Test-Path $projectPath)) {
+        Write-Warning "SendToStata.csproj not found; skipping build (will download from GitHub)"
+        return
+    }
+
+    # Check for dotnet command
+    if (-not (Test-CommandExists 'dotnet')) {
+        Write-Warning ".NET SDK not found; skipping build (will download from GitHub)"
+        return
+    }
+
+    try {
+        # Build ARM64 version
+        Write-Host "  Building ARM64 executable..."
+        $outputPath = Join-Path $PSScriptRoot ''
+        & dotnet publish $projectPath -c Release -r win-arm64 --self-contained -o $outputPath 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "ARM64 build failed; skipping"
+        } else {
+            $builtExe = Join-Path $PSScriptRoot 'send-to-stata.exe'
+            $targetExe = Join-Path $PSScriptRoot 'send-to-stata-arm64.exe'
+            if (Test-Path $builtExe) {
+                Move-Item $builtExe $targetExe -Force
+                Write-Host "  Built send-to-stata-arm64.exe" -ForegroundColor Green
+            }
+        }
+
+        # Build x64 version
+        Write-Host "  Building x64 executable..."
+        & dotnet publish $projectPath -c Release -r win-x64 --self-contained -o $outputPath 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "x64 build failed; skipping"
+        } else {
+            $builtExe = Join-Path $PSScriptRoot 'send-to-stata.exe'
+            $targetExe = Join-Path $PSScriptRoot 'send-to-stata-x64.exe'
+            if (Test-Path $builtExe) {
+                Move-Item $builtExe $targetExe -Force
+                Write-Host "  Built send-to-stata-x64.exe" -ForegroundColor Green
+            }
+        }
+
+        # Clean up PDB file if it exists
+        $pdbFile = Join-Path $PSScriptRoot 'send-to-stata.pdb'
+        if (Test-Path $pdbFile) {
+            Remove-Item $pdbFile -Force -ErrorAction SilentlyContinue
+        }
+    }
+    catch {
+        Write-Warning "Failed to build send-to-stata executables: $_"
+        Write-Warning "Will attempt to use existing files or download from GitHub"
+    }
+}
+
 function Install-SendToStata {
+    # Build executables from source first
+    if (-not $SkipBuild) {
+        Build-SendToStataExecutables
+    }
+
     $installer = Join-Path $PSScriptRoot 'install-send-to-stata.ps1'
     if (-not (Test-Path $installer)) {
         throw "Installer not found: $installer"
