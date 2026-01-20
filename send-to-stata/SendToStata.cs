@@ -286,35 +286,32 @@ internal static partial class Program
     /// </summary>
     private static Process? FindStataWindow()
     {
-        // Look for Stata processes
-        string[] processPatterns = ["StataMP", "StataSE", "StataBE", "StataIC", "Stata"];
+        // All possible Stata process names (regular and Now variants)
+        string[] processNames = ["StataMP", "StataSE", "StataBE", "StataIC", "Stata",
+                                 "StataNowMP", "StataNowSE", "StataNowBE", "StataNowIC", "StataNow"];
         var titleRegex = StataTitleRegex();
 
-        foreach (var pattern in processPatterns)
+        foreach (var name in processNames)
         {
             try
             {
-                // Try both regular Stata and StataNow variants
-                foreach (var prefix in new[] { "", "Now" })
+                var processes = Process.GetProcessesByName(name);
+                foreach (var proc in processes)
                 {
-                    var processes = Process.GetProcessesByName(pattern.Replace("Stata", $"Stata{prefix}"));
-                    foreach (var proc in processes)
+                    try
                     {
-                        try
+                        if (!string.IsNullOrEmpty(proc.MainWindowTitle) &&
+                            titleRegex.IsMatch(proc.MainWindowTitle) &&
+                            !proc.MainWindowTitle.Contains("Viewer"))
                         {
-                            if (!string.IsNullOrEmpty(proc.MainWindowTitle) &&
-                                titleRegex.IsMatch(proc.MainWindowTitle) &&
-                                !proc.MainWindowTitle.Contains("Viewer"))
-                            {
-                                return proc; // Caller is responsible for disposal
-                            }
+                            return proc; // Caller is responsible for disposal
                         }
-                        catch
-                        {
-                            // Process may have exited, continue searching
-                        }
-                        proc.Dispose();
                     }
+                    catch
+                    {
+                        // Process may have exited, continue searching
+                    }
+                    proc.Dispose();
                 }
             }
             catch
