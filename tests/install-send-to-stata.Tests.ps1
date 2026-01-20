@@ -69,7 +69,7 @@ Describe "Checksum Verification" {
             
             # Wrong hash should differ
             $wrongHash = "0000000000000000000000000000000000000000000000000000000000000000"
-            ($actualHash -ne $wrongHash) | Should Be $true
+            ($actualHash -ne $wrongHash) | Should -Be $true
         }
     }
     
@@ -78,27 +78,9 @@ Describe "Checksum Verification" {
         try {
             # When SIGHT_GITHUB_REF is set, checksum verification should be skipped
             $skipVerification = $null -ne $env:SIGHT_GITHUB_REF
-            $skipVerification | Should Be $true
+            $skipVerification | Should -Be $true
         } finally {
             Remove-Item env:SIGHT_GITHUB_REF -ErrorAction SilentlyContinue
-        }
-    }
-}
-
-Describe "Automation Registration" {
-    It "Property14: Registration is idempotent" {
-        if ($env:OS -ne "Windows_NT") { 
-            Set-ItResult -Skipped -Because "Windows-only test" 
-        } else {
-            Set-ItResult -Pending -Because "Test not yet implemented"
-        }
-    }
-    
-    It "Property15: Version mismatch detection" {
-        if ($env:OS -ne "Windows_NT") { 
-            Set-ItResult -Skipped -Because "Windows-only test" 
-        } else {
-            Set-ItResult -Pending -Because "Test not yet implemented"
         }
     }
 }
