@@ -20,7 +20,7 @@ This implementation adds consistent focus behavior to send-to-stata across macOS
     - Test flag precedence when both flags provided
     - _Requirements: 4.3, 4.4_
 
-- [ ] 2. Checkpoint - Rebuild Windows executable
+- [X] 2. Checkpoint - Rebuild Windows executable
   - Rebuild send-to-stata.exe with `dotnet publish`
   - Update checksums in install-send-to-stata.ps1 using update-checksum.ps1
   - Ensure all tests pass, ask the user if questions arise.
