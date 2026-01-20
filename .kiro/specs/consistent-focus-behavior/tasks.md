@@ -68,15 +68,15 @@ This implementation adds consistent focus behavior to send-to-stata across macOS
   - Verify generated tasks.json on both platforms
   - Ensure all tests pass, ask the user if questions arise.
 
-- [-] 6. Update documentation
-  - [-] 6.1 Update SEND-TO-STATA.md
+- [x] 6. Update documentation
+  - [x] 6.1 Update SEND-TO-STATA.md
     - Document default focus behavior (stay in Zed)
     - Document how to change focus behavior during installation
     - Document how to change focus behavior after installation (re-run installer)
     - Update installer parameter documentation
     - _Requirements: 7.1, 7.2, 7.3_
 
-  - [~] 6.2 Update AGENTS.md
+  - [x] 6.2 Update AGENTS.md
     - Update installer parameters section for both platforms
     - Document new `-ActivateStata` parameter for Windows
     - Document new `--activate-stata` and `--stay-in-zed` flags for macOS
