@@ -750,45 +750,81 @@ function Build-SendToStataExecutables {
         return
     }
 
+    # Clear MSVC environment variables that conflict with cross-platform .NET builds
+    # vcvarsall.bat sets VSCMD_ARG_TGT_ARCH which causes NETSDK1032 errors
+    $savedVars = @{}
+    $varsToSave = @('VSCMD_ARG_TGT_ARCH', 'Platform', 'PreferredToolArchitecture')
+    foreach ($var in $varsToSave) {
+        if (Test-Path "env:$var") {
+            $savedVars[$var] = (Get-Item "env:$var").Value
+            Remove-Item "env:$var" -ErrorAction SilentlyContinue
+        }
+    }
+
+    $outputPath = $PSScriptRoot
+    $builtCount = 0
+
+    # Build ARM64 version
+    Write-Host "  Building ARM64 executable..." -NoNewline
     try {
-        # Build ARM64 version
-        Write-Host "  Building ARM64 executable..."
-        $outputPath = Join-Path $PSScriptRoot ''
-        & dotnet publish $projectPath -c Release -r win-arm64 --self-contained -o $outputPath 2>&1 | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "ARM64 build failed; skipping"
-        } else {
+        & dotnet publish $projectPath -c Release -r win-arm64 --self-contained -o $outputPath -v quiet | Out-Null
+        $exitCode = $LASTEXITCODE
+        if ($exitCode -eq 0) {
             $builtExe = Join-Path $PSScriptRoot 'send-to-stata.exe'
             $targetExe = Join-Path $PSScriptRoot 'send-to-stata-arm64.exe'
             if (Test-Path $builtExe) {
                 Move-Item $builtExe $targetExe -Force
-                Write-Host "  Built send-to-stata-arm64.exe" -ForegroundColor Green
+                Write-Host " Done" -ForegroundColor Green
+                $builtCount++
+            } else {
+                Write-Host " Warning: build succeeded but exe not found" -ForegroundColor Yellow
             }
-        }
-
-        # Build x64 version
-        Write-Host "  Building x64 executable..."
-        & dotnet publish $projectPath -c Release -r win-x64 --self-contained -o $outputPath 2>&1 | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "x64 build failed; skipping"
         } else {
+            Write-Host " Failed (exit code: $exitCode)" -ForegroundColor Yellow
+        }
+    }
+    catch {
+        Write-Host " Error: $_" -ForegroundColor Yellow
+    }
+
+    # Build x64 version
+    Write-Host "  Building x64 executable..." -NoNewline
+    try {
+        & dotnet publish $projectPath -c Release -r win-x64 --self-contained -o $outputPath -v quiet | Out-Null
+        $exitCode = $LASTEXITCODE
+        if ($exitCode -eq 0) {
             $builtExe = Join-Path $PSScriptRoot 'send-to-stata.exe'
             $targetExe = Join-Path $PSScriptRoot 'send-to-stata-x64.exe'
             if (Test-Path $builtExe) {
                 Move-Item $builtExe $targetExe -Force
-                Write-Host "  Built send-to-stata-x64.exe" -ForegroundColor Green
+                Write-Host " Done" -ForegroundColor Green
+                $builtCount++
+            } else {
+                Write-Host " Warning: build succeeded but exe not found" -ForegroundColor Yellow
             }
-        }
-
-        # Clean up PDB file if it exists
-        $pdbFile = Join-Path $PSScriptRoot 'send-to-stata.pdb'
-        if (Test-Path $pdbFile) {
-            Remove-Item $pdbFile -Force -ErrorAction SilentlyContinue
+        } else {
+            Write-Host " Failed (exit code: $exitCode)" -ForegroundColor Yellow
         }
     }
     catch {
-        Write-Warning "Failed to build send-to-stata executables: $_"
-        Write-Warning "Will attempt to use existing files or download from GitHub"
+        Write-Host " Error: $_" -ForegroundColor Yellow
+    }
+
+    # Restore MSVC environment variables
+    foreach ($var in $savedVars.Keys) {
+        [System.Environment]::SetEnvironmentVariable($var, $savedVars[$var], 'Process')
+    }
+
+    # Clean up PDB file if it exists
+    $pdbFile = Join-Path $PSScriptRoot 'send-to-stata.pdb'
+    if (Test-Path $pdbFile) {
+        Remove-Item $pdbFile -Force -ErrorAction SilentlyContinue
+    }
+
+    if ($builtCount -gt 0) {
+        Write-Host "  Successfully built $builtCount executable(s)" -ForegroundColor Green
+    } else {
+        Write-Warning "No executables built; installer will download from GitHub"
     }
 }
 
