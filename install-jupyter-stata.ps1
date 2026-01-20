@@ -648,6 +648,13 @@ function Install-Packages {
 
         # Install runtime deps that stata_kernel imports, plus minimal Jupyter components.
         # Avoid the full `jupyter` meta-package (notebook/jupyterlab) to prevent pulling in pywinpty.
+        #
+        # IMPORTANT: stata_kernel tries to copy a CodeMirror mode file into the `notebook` package at
+        # runtime (see StataKernel.__init__). Installing `notebook` on Windows can pull in `pywinpty`
+        # and trigger native builds (NuGet/Rust) that frequently fail on Windows/ARM64.
+        #
+        # Strategy: do NOT install `notebook`; instead, patch stata_kernel in the venv to skip the
+        # `files('notebook')...` copy on Windows.
         Write-InfoMessage "Installing pinned minimal Jupyter/runtime dependencies (Python $pyVersion)..."
         $depsOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade `
             "ipykernel==$IPYKERNEL_VERSION" `
@@ -661,13 +668,86 @@ function Install-Packages {
             numpy `
             pandas `
             matplotlib `
-            packaging 2>&1
+            packaging `
+            pywin32 `
+            fake-useragent `
+            beautifulsoup4 `
+            nbclient `
+            nbformat 2>&1
         if ($LASTEXITCODE -ne 0) {
             Write-ErrorMessage "Failed to install pinned minimal Jupyter/runtime dependencies"
             Write-Host $depsOutput
             exit 3
         } else {
             Write-SuccessMessage "Installed pinned minimal Jupyter/runtime dependencies"
+
+            # Patch stata_kernel to avoid importing `notebook` at runtime on Windows.
+            # stata_kernel's StataKernel.__init__ copies:
+            #   files('stata_kernel')/... -> files('notebook')/static/components/codemirror/mode/stata/stata.js
+            # which hard-requires the `notebook` package. We skip that copy on Windows to avoid the
+            # notebook/pywinpty dependency chain.
+            Write-InfoMessage "Patching stata_kernel to avoid notebook/pywinpty dependency on Windows..."
+            try {
+                # Locate site-packages in a venv reliably.
+                # `site.getsitepackages()` can vary across platforms and virtualenv implementations,
+                # so prefer an explicit query from Python.
+                $sitePackages = & "$VENV_DIR\Scripts\python.exe" -c "import site; print(site.getsitepackages()[0])" 2>$null
+                if (-not $sitePackages) {
+                    Write-ErrorMessage "Failed to locate site-packages for venv"
+                    exit 3
+                }
+
+                # On Windows venvs this should typically be:
+                #   $VENV_DIR\Lib\site-packages
+                # But verify and fall back if needed.
+                if (-not (Test-Path -Path $sitePackages)) {
+                    $fallbackSitePackages = Join-Path $VENV_DIR "Lib\site-packages"
+                    if (Test-Path -Path $fallbackSitePackages) {
+                        $sitePackages = $fallbackSitePackages
+                    }
+                }
+
+                $kernelPy = Join-Path $sitePackages "stata_kernel\kernel.py"
+                if (-not (Test-Path -Path $kernelPy)) {
+                    # Final fallback: ask Python for the module file location
+                    $kernelPy = & "$VENV_DIR\Scripts\python.exe" -c "import stata_kernel.kernel as k; import os; print(os.path.abspath(k.__file__))" 2>$null
+                }
+
+                if (-not $kernelPy -or -not (Test-Path -Path $kernelPy)) {
+                    Write-ErrorMessage "stata_kernel kernel.py not found at: $kernelPy"
+                    exit 3
+                }
+
+                $kernelContent = Get-Content -Path $kernelPy -Raw
+
+                # Only patch if the notebook copy target exists and hasn't been patched yet.
+                if ($kernelContent -match "files\\('notebook'\\)" -and -not ($kernelContent -match "SIGHT_ZED_PATCH_SKIP_NOTEBOOK")) {
+                    # 1) Replace the notebook destination Path(...) entry in to_paths with a dummy Path().
+                    $patternToPath = "Path\\(\\s*files\\('notebook'\\)\\s*\\.joinpath\\(\\s*'static/components/codemirror/mode/stata/stata\\.js'\\s*\\)\\s*\\)"
+                    $patched = $kernelContent -replace $patternToPath, "Path()  # SIGHT_ZED_PATCH_SKIP_NOTEBOOK"
+
+                    # 2) Skip copy attempts when to_path is the dummy Path().
+                    $patternFor = "for from_path, to_path in zip\\(from_paths, to_paths\\):"
+                    $replacementFor = @"
+for from_path, to_path in zip(from_paths, to_paths):
+            # SIGHT_ZED_PATCH_SKIP_NOTEBOOK: skip notebook codemirror copy target
+            try:
+                if not getattr(to_path, "name", None):
+                    continue
+            except Exception:
+                continue
+"@
+                    $patched = $patched -replace $patternFor, $replacementFor
+
+                    $patched | Out-File -FilePath $kernelPy -Encoding utf8
+                    Write-SuccessMessage "Patched stata_kernel to skip notebook CodeMirror copy"
+                } else {
+                    Write-InfoMessage "stata_kernel patch not needed (already patched or notebook reference not present)"
+                }
+            } catch {
+                Write-ErrorMessage "Failed to patch stata_kernel: $($_.Exception.Message)"
+                exit 3
+            }
         }
     } else {
         # Python 3.10 and below: normal installation is generally fine.
@@ -775,23 +855,62 @@ function Register-Kernel {
         New-Item -ItemType Directory -Path $forcedKernelDir -Force | Out-Null
 
         # Write wrapper script that launches stata_kernel via ipykernel.
-        # This avoids relying on stata_kernel.install (which has produced incomplete kernelspecs on some Windows setups).
-        $wrapperScript = Join-Path $forcedKernelDir "stata_kernel.py"
+        # IMPORTANT: Do not name this file `stata_kernel.py` — that can shadow the real `stata_kernel`
+        # package on sys.path and cause circular import errors.
+        $wrapperScript = Join-Path $forcedKernelDir "sight_stata_kernel_wrapper.py"
         @'
 #!/usr/bin/env python3
 """
-Deterministic wrapper kernel for stata_kernel.
+Deterministic wrapper kernel for stata_kernel (Windows-friendly).
 
-This wrapper exists because `stata_kernel.install` can fail to write a complete kernelspec
-(e.g. missing kernel.json) on some Windows Python/Jupyter setups.
+Why this exists:
+- `stata_kernel.install` has produced incomplete kernelspecs on some Windows setups.
+- `stata_kernel` also hard-requires the `notebook` package at runtime by calling:
+    importlib.resources.files("notebook").joinpath("static/components/codemirror/mode/stata/stata.js")
+  Installing `notebook` on Windows can pull in `pywinpty` and trigger native builds (NuGet/Rust),
+  which frequently fail on Windows/ARM64.
 
-It simply imports stata_kernel and launches the kernel via IPKernelApp.
+What we do instead:
+- Monkey-patch `importlib.resources.files` so that requests for the `notebook` package resolve
+  to a small, local stub directory. This keeps `stata_kernel` happy without needing `notebook`.
 """
 
-from stata_kernel import kernel
+import importlib
+import importlib.resources as resources
+from pathlib import Path
+
 from ipykernel.kernelapp import IPKernelApp
 
-IPKernelApp.launch_instance(kernel_class=kernel.StataKernel)
+
+def _ensure_notebook_stub_dir() -> Path:
+    """
+    Create a minimal directory structure that matches what stata_kernel expects inside `notebook`:
+      static/components/codemirror/mode/stata/
+    """
+    # Place stub next to this wrapper for determinism.
+    root = Path(__file__).resolve().parent / "_notebook_stub"
+    target_dir = root / "static" / "components" / "codemirror" / "mode" / "stata"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+_original_files = resources.files
+
+
+def _patched_files(package):
+    # Handle both string module names and module objects.
+    name = package if isinstance(package, str) else getattr(package, "__name__", "")
+    if name == "notebook":
+        return _ensure_notebook_stub_dir()
+    return _original_files(package)
+
+
+# Patch only within this kernel process.
+resources.files = _patched_files
+
+
+kernel_mod = importlib.import_module("stata_kernel.kernel")
+IPKernelApp.launch_instance(kernel_class=kernel_mod.StataKernel)
 '@ | Out-File -FilePath $wrapperScript -Encoding utf8
 
         # Create kernel.json
