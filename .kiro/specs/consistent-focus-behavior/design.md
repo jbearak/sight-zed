@@ -173,6 +173,7 @@ command = "& `"$exePath`" -Statement$activateArg -File `"`$ZED_FILE`" -Row `$ZED
 ### Command-Line Arguments
 
 **macOS Script Arguments** (unchanged):
+
 | Argument | Type | Default | Description |
 |----------|------|---------|-------------|
 | `--statement` | flag | - | Send current statement mode |
@@ -184,6 +185,7 @@ command = "& `"$exePath`" -Statement$activateArg -File `"`$ZED_FILE`" -Row `$ZED
 | `--text` | string | - | Selected text |
 
 **Windows Executable Arguments**:
+
 | Argument | Type | Default | Description |
 |----------|------|---------|-------------|
 | `-ActivateStata` | flag | false | Switch focus to Stata (skip return focus) |
@@ -197,6 +199,7 @@ command = "& `"$exePath`" -Statement$activateArg -File `"`$ZED_FILE`" -Row `$ZED
 ### Installer Parameters
 
 **macOS Installer**:
+
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `--activate-stata` | flag | Configure tasks to switch focus to Stata |
@@ -205,6 +208,7 @@ command = "& `"$exePath`" -Statement$activateArg -File `"`$ZED_FILE`" -Row `$ZED
 | `--quiet` | flag | Suppress output |
 
 **Windows Installer**:
+
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `-ActivateStata` | string | `true`/`false` - Configure focus behavior |
@@ -223,31 +227,41 @@ command = "& `"$exePath`" -Statement$activateArg -File `"`$ZED_FILE`" -Row `$ZED
 
 *For any* macOS installer execution with a focus preference, the generated task commands in `tasks.json` SHALL include `&& osascript -e 'tell application "StataXX" to activate'` if and only if the user selected "switch to Stata" behavior.
 
-**Validates: Requirements 1.1, 2.1, 5.4, 5.5, 6.1, 6.2**
+#### Validates
+
+Requirements 1.1, 2.1, 5.4, 5.5, 6.1, 6.2
 
 ### Property 2: Windows Flag Precedence
 
 *For any* invocation of `send-to-stata.exe` where both `-ActivateStata` and `-ReturnFocus` flags are provided, the behavior SHALL be equivalent to providing only `-ActivateStata` (focus stays in Stata).
 
-**Validates: Requirements 4.4**
+#### Validates
+
+Requirements 4.4
 
 ### Property 3: Windows Backward Compatibility
 
 *For any* invocation of `send-to-stata.exe` with the `-ReturnFocus` flag (without `-ActivateStata`), the executable SHALL not produce an error and SHALL behave as if no focus-related flags were provided (default behavior: return focus to Zed).
 
-**Validates: Requirements 4.3**
+#### Validates
+
+Requirements 4.3
 
 ### Property 4: Windows Task Command Generation
 
 *For any* Windows installer execution with a focus preference, the generated task commands in `tasks.json` SHALL include `-ActivateStata` if and only if the user selected "switch to Stata" behavior.
 
-**Validates: Requirements 5.4, 5.5, 6.3, 6.4**
+#### Validates
+
+Requirements 5.4, 5.5, 6.3, 6.4
 
 ### Property 5: Installer Stata Variant Detection
 
 *For any* macOS installer execution with "switch to Stata" preference, the generated activation command SHALL use the correct Stata application name as detected by the installer (StataMP, StataSE, StataIC, or Stata).
 
-**Validates: Requirements 2.1, 3.3**
+#### Validates
+
+Requirements 2.1, 3.3
 
 ## Error Handling
 
