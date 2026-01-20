@@ -55,10 +55,10 @@ irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-sta
 
 ```powershell
 # Return focus to Zed (recommended for iterative coding)
-irm .../install-send-to-stata.ps1 -OutFile i.ps1; .\i.ps1 -ReturnFocus true
+irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.ps1 -OutFile i.ps1; .\i.ps1 -ReturnFocus true
 
 # Stay in Stata (useful for inspecting output)
-irm .../install-send-to-stata.ps1 -OutFile i.ps1; .\i.ps1 -ReturnFocus false
+irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.ps1 -OutFile i.ps1; .\i.ps1 -ReturnFocus false
 ```
 
 > **Why a separate install?** Zed extensions can't register custom keybindings or tasks—those must live in user config files. The send-to-stata functionality requires both, so it can't be bundled into the extension itself.
