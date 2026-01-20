@@ -89,23 +89,28 @@ try {
     if ($content -notmatch $pattern) {
         throw "WasiSdkX64 checksum not found in setup.ps1"
     }
-    $content = [regex]::Replace($content, $pattern, "`${1}$wasiSdkHash`${2}")
+    $updated = [regex]::Replace($content, $pattern, "`${1}$wasiSdkHash`${2}")
 
     # Update grammar checksum
     $pattern = '(TreeSitterGrammar\s*=\s*")[a-f0-9]{64}(")'
-    if ($content -notmatch $pattern) {
+    if ($updated -notmatch $pattern) {
         throw "TreeSitterGrammar checksum not found in setup.ps1"
     }
-    $content = [regex]::Replace($content, $pattern, "`${1}$grammarHash`${2}")
+    $updated = [regex]::Replace($updated, $pattern, "`${1}$grammarHash`${2}")
 
     # Update server checksum
     $pattern = '(SightServer\s*=\s*")[a-f0-9]{64}(")'
-    if ($content -notmatch $pattern) {
+    if ($updated -notmatch $pattern) {
         throw "SightServer checksum not found in setup.ps1"
     }
-    $content = [regex]::Replace($content, $pattern, "`${1}$serverHash`${2}")
+    $updated = [regex]::Replace($updated, $pattern, "`${1}$serverHash`${2}")
 
-    Set-Content -Path $setupPath -Value $content -Encoding UTF8
+    if ($content -eq $updated) {
+        Write-Host "No changes, skipping update." -ForegroundColor Cyan
+        return
+    }
+
+    Set-Content -Path $setupPath -Value $updated -Encoding UTF8
 
     Write-Host "Updated checksums in setup.ps1" -ForegroundColor Green
 
