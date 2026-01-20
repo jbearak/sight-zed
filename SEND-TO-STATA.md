@@ -13,7 +13,7 @@ Send Stata code from Zed editor to Stata for execution. Supports two modes:
 - **Zed** editor
 
 ### Windows
-- **PowerShell 5.0+** (included with Windows 10/11)
+- **PowerShell 7+** (`pwsh`) — install with `winget install Microsoft.PowerShell` if needed
 - **Stata** installed in standard location (auto-detected)
 - **Zed** editor
 
@@ -44,8 +44,11 @@ Or install from a local clone:
 ```powershell
 git clone https://github.com/jbearak/sight-zed
 cd sight-zed
-.\install-send-to-stata.ps1
+pwsh -File .\install-send-to-stata.ps1
 ```
+
+> [TIP]
+> The installer prompts whether to return focus to Zed after sending code to Stata. For non-interactive installs, pass `-ReturnFocus true` or `-ReturnFocus false`.
 
 The installer will:
 1. Copy the send-to-stata script to the appropriate location
@@ -58,27 +61,14 @@ The installer will:
 
 In `.do` files:
 
-### macOS
-
-| Shortcut | Action |
-|----------|--------|
-| `cmd-enter` | Send current statement (or selection) to Stata |
-| `shift-cmd-enter` | Send entire file to Stata |
-| `opt-cmd-enter` | Include statement (preserves local macros) |
-| `opt-shift-cmd-enter` | Include file (preserves local macros) |
-| `shift-enter` | Send selection to Stata terminal (quick paste) |
-| `opt-enter` | Send current line to Stata terminal (quick paste) |
-
-### Windows
-
-| Shortcut | Action |
-|----------|--------|
-| `ctrl-enter` | Send current statement (or selection) to Stata |
-| `shift-ctrl-enter` | Send entire file to Stata |
-| `alt-ctrl-enter` | Include statement (preserves local macros) |
-| `alt-shift-ctrl-enter` | Include file (preserves local macros) |
-| `shift-enter` | Send selection to Stata terminal (quick paste) |
-| `alt-enter` | Send current line to Stata terminal (quick paste) |
+| Mac                   | Windows                | Action                                 |
+|-----------------------|------------------------|----------------------------------------|
+| `cmd-enter`           | `ctrl-enter`           | Send statement to Stata app            |
+| `shift-cmd-enter`     | `shift-ctrl-enter`     | Send file to Stata app                 |
+| `opt-cmd-enter`       | `alt-ctrl-enter`       | Include statement (preserves locals)   |
+| `opt-shift-cmd-enter` | `alt-shift-ctrl-enter` | Include file (preserves locals)        |
+| `shift-enter`         | `shift-enter`          | Paste selection to terminal            |
+| `opt-enter`           | `alt-enter`            | Paste current line to terminal         |
 
 ### Quick Terminal Shortcuts
 
