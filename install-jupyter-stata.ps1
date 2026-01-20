@@ -1127,9 +1127,12 @@ function Uninstall-WorkspaceKernel {
             return
         }
 
-        $kernelListOutput = & $jupyterPath kernelspec list --json 2>&1
+        $kernelListOutputRaw = & $jupyterPath kernelspec list --json 2>&1
         if ($LASTEXITCODE -eq 0) {
-            $kernelList = $kernelListOutput | ConvertFrom-Json
+            $kernelListOutput = ($kernelListOutputRaw | Out-String)
+            $jsonStart = $kernelListOutput.IndexOf('{')
+            if ($jsonStart -lt 0) { return }
+            $kernelList = $kernelListOutput.Substring($jsonStart) | ConvertFrom-Json
             if ($kernelList.kernelspecs.stata_workspace) {
                 $workspaceKernelPath = $kernelList.kernelspecs.stata_workspace.resource_dir
                 if (Test-Path -Path $workspaceKernelPath) {
@@ -1218,9 +1221,15 @@ function Uninstall {
     try {
         $jupyterPath = "$VENV_DIR\Scripts\jupyter.exe"
         if (Test-Path -Path $jupyterPath) {
-            $kernelListOutput = & $jupyterPath kernelspec list --json 2>&1
+            $kernelListOutputRaw = & $jupyterPath kernelspec list --json 2>&1
             if ($LASTEXITCODE -eq 0) {
-                $kernelList = $kernelListOutput | ConvertFrom-Json
+                $kernelListOutput = ($kernelListOutputRaw | Out-String)
+                $jsonStart = $kernelListOutput.IndexOf('{')
+                if ($jsonStart -lt 0) {
+                    Write-InfoMessage "Could not parse kernel list (no JSON found)"
+                    return
+                }
+                $kernelList = $kernelListOutput.Substring($jsonStart) | ConvertFrom-Json
                 if ($kernelList.kernelspecs.stata) {
                     $kernelPath = $kernelList.kernelspecs.stata.resource_dir
                     if (Test-Path -Path $kernelPath) {
