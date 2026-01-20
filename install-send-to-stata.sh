@@ -3,8 +3,10 @@
 # install-send-to-stata.sh - Install send-to-stata for Zed editor
 #
 # Usage:
-#   ./install-send-to-stata.sh           Install components
-#   ./install-send-to-stata.sh --uninstall   Remove components
+#   ./install-send-to-stata.sh                    Install components (prompts for focus behavior)
+#   ./install-send-to-stata.sh --activate-stata   Install with focus switch to Stata
+#   ./install-send-to-stata.sh --stay-in-zed      Install with focus staying in Zed (default)
+#   ./install-send-to-stata.sh --uninstall        Remove components
 
 set -euo pipefail
 
@@ -24,6 +26,11 @@ GITHUB_REF="${SIGHT_GITHUB_REF:-main}"
 
 # Expected SHA-256 checksum of send-to-stata.sh (updated by update-checksum.sh)
 SEND_TO_STATA_SHA256="139a7687e49d80ac87ccaf5faa358296678419aa40f61e8ce99dc756fc8ac998"
+
+# Focus behavior configuration (set by command-line flags or interactive prompt)
+# true = switch focus to Stata after sending code
+# false = stay in Zed (default)
+ACTIVATE_STATA=false
 
 # Colors for output
 RED='\033[0;31m'
@@ -196,7 +203,63 @@ install_script() {
 # Zed Tasks Installation
 # ============================================================================
 
-# Task definitions to install
+# Generates task definitions based on focus behavior setting.
+# When ACTIVATE_STATA is true, appends osascript activation command.
+generate_stata_tasks() {
+  local activate_suffix=""
+  
+  if [[ "$ACTIVATE_STATA" == "true" ]]; then
+    # Detect Stata variant for activation command
+    local stata_app
+    stata_app=$(detect_stata_app) || stata_app="Stata"
+    
+    # Use STATA_APP environment variable if set, otherwise use detected app
+    stata_app="${STATA_APP:-$stata_app}"
+    
+    # Build activation suffix - will be appended to command strings
+    activate_suffix=" && osascript -e 'tell application \\\"${stata_app}\\\" to activate'"
+  fi
+  
+  # Generate tasks JSON directly with the suffix embedded
+  cat <<EOF
+[
+  {
+    "label": "Stata: Send Statement",
+    "command": "python3 -c 'import os,sys; sys.exit(0 if os.environ.get(\"ZED_SELECTED_TEXT\", \"\") else 1)' && python3 -c 'import os,sys; sys.stdout.write(os.environ.get(\"ZED_SELECTED_TEXT\", \"\"))' | send-to-stata.sh --statement --stdin --file \"\$ZED_FILE\" || send-to-stata.sh --statement --file \"\$ZED_FILE\" --row \"\$ZED_ROW\"${activate_suffix}",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": true,
+    "reveal": "never",
+    "hide": "on_success"
+  },
+  {
+    "label": "Stata: Send File",
+    "command": "send-to-stata.sh --file-mode --file \"\$ZED_FILE\"${activate_suffix}",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": true,
+    "reveal": "never",
+    "hide": "on_success"
+  },
+  {
+    "label": "Stata: Include Statement",
+    "command": "python3 -c 'import os,sys; sys.exit(0 if os.environ.get(\"ZED_SELECTED_TEXT\", \"\") else 1)' && python3 -c 'import os,sys; sys.stdout.write(os.environ.get(\"ZED_SELECTED_TEXT\", \"\"))' | send-to-stata.sh --statement --include --stdin --file \"\$ZED_FILE\" || send-to-stata.sh --statement --include --file \"\$ZED_FILE\" --row \"\$ZED_ROW\"${activate_suffix}",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": true,
+    "reveal": "never",
+    "hide": "on_success"
+  },
+  {
+    "label": "Stata: Include File",
+    "command": "send-to-stata.sh --file-mode --include --file \"\$ZED_FILE\"${activate_suffix}",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": true,
+    "reveal": "never",
+    "hide": "on_success"
+  }
+]
+EOF
+}
+
+# Task definitions to install (legacy, kept for backward compatibility in tests)
 # Note: Args must be in command string, not args array (Zed doesn't pass args array correctly)
 # Note: Zed uses ${VAR:default} syntax (no dash), not shell's ${VAR:-default}
 # Note: Send Statement uses stdin mode for robust compound string handling.
@@ -254,12 +317,16 @@ install_tasks() {
   # Create config dir if needed
   mkdir -p "$ZED_CONFIG_DIR"
 
+  # Generate tasks based on current ACTIVATE_STATA setting
+  local stata_tasks
+  stata_tasks=$(generate_stata_tasks)
+
   # Create or update tasks.json
   if [[ ! -f "$tasks_file" ]]; then
-    echo "$STATA_TASKS" >"$tasks_file"
+    echo "$stata_tasks" >"$tasks_file"
   else
     # Remove existing Stata tasks, then add new ones
-    jq --argjson new "$STATA_TASKS" '
+    jq --argjson new "$stata_tasks" '
             [.[] | select(.label | startswith("Stata:") | not)] + $new
         ' "$tasks_file" >"${tasks_file}.tmp" && mv "${tasks_file}.tmp" "$tasks_file"
   fi
@@ -325,15 +392,23 @@ EOF
 # Stata Detection
 # ============================================================================
 
-# Detects installed Stata variant in /Applications/Stata/.
-detect_stata() {
-  local found=""
+# Detects installed Stata variant and returns the app name.
+# Returns: StataMP, StataSE, StataIC, Stata, or empty string if not found.
+detect_stata_app() {
   for app in StataMP StataSE StataIC Stata; do
     if [[ -d "/Applications/Stata/${app}.app" ]]; then
-      found="$app"
-      break
+      echo "$app"
+      return 0
     fi
   done
+  echo ""
+  return 1
+}
+
+# Detects installed Stata variant in /Applications/Stata/.
+detect_stata() {
+  local found
+  found=$(detect_stata_app) || true
 
   if [[ -n "$found" ]]; then
     print_success "Detected Stata: $found"
@@ -341,6 +416,34 @@ detect_stata() {
     print_warning "No Stata installation found in /Applications/Stata/"
     echo "  Set STATA_APP environment variable if Stata is installed elsewhere"
   fi
+}
+
+# ============================================================================
+# Focus Behavior Configuration
+# ============================================================================
+
+# Prompts user for focus behavior preference.
+# Sets ACTIVATE_STATA global variable based on user input.
+prompt_focus_behavior() {
+  echo ""
+  echo "Focus behavior after sending code to Stata:"
+  echo "  [Y] Switch to Stata (see output immediately)"
+  echo "  [N] Stay in Zed (keep typing without switching windows)"
+  echo ""
+  
+  local response
+  read -r -p "Switch to Stata after sending code? [y/N] " response
+  
+  case "$response" in
+    [yY]|[yY][eE][sS])
+      ACTIVATE_STATA=true
+      print_success "Focus will switch to Stata after sending code"
+      ;;
+    *)
+      ACTIVATE_STATA=false
+      print_success "Focus will stay in Zed after sending code"
+      ;;
+  esac
 }
 
 # ============================================================================
@@ -432,6 +535,8 @@ uninstall() {
 # Main entry point. Handles --uninstall flag or runs installation.
 main() {
   local quiet=false
+  local activate_stata_flag=""
+  local stay_in_zed_flag=""
   
   for arg in "$@"; do
     case "$arg" in
@@ -442,8 +547,27 @@ main() {
       --quiet)
         quiet=true
         ;;
+      --activate-stata)
+        activate_stata_flag=true
+        ;;
+      --stay-in-zed)
+        stay_in_zed_flag=true
+        ;;
     esac
   done
+
+  # Validate mutual exclusivity of focus flags
+  if [[ "$activate_stata_flag" == "true" && "$stay_in_zed_flag" == "true" ]]; then
+    print_error "Cannot specify both --activate-stata and --stay-in-zed"
+    exit 1
+  fi
+
+  # Set focus behavior from flags or prompt
+  if [[ "$activate_stata_flag" == "true" ]]; then
+    ACTIVATE_STATA=true
+  elif [[ "$stay_in_zed_flag" == "true" ]]; then
+    ACTIVATE_STATA=false
+  fi
 
   if [[ "$quiet" == "false" ]]; then
     echo "Installing send-to-stata for Zed..."
@@ -452,6 +576,12 @@ main() {
 
   check_prerequisites
   install_script
+  
+  # Prompt for focus behavior if not specified via flags (and not quiet mode)
+  if [[ "$activate_stata_flag" != "true" && "$stay_in_zed_flag" != "true" && "$quiet" == "false" ]]; then
+    prompt_focus_behavior
+  fi
+  
   install_tasks
   install_keybindings
   detect_stata
