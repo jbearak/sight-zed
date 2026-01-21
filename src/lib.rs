@@ -111,8 +111,20 @@ impl SightExtension {
             .map_err(|e| format!("Failed to download sight-server.js: {}", e))?;
         }
 
-        self.cached_node_package_path = Some(server_script.clone());
-        Ok(server_script)
+        // Make path absolute to avoid resolution issues when Node is run from different working directories
+        // Use current_dir() instead of canonicalize() since the latter doesn't work in WASM
+        let absolute_path = if let Ok(current_dir) = std::env::current_dir() {
+            current_dir
+                .join(&server_script)
+                .to_string_lossy()
+                .to_string()
+        } else {
+            // Fallback to relative path if current_dir fails
+            server_script.clone()
+        };
+
+        self.cached_node_package_path = Some(absolute_path.clone());
+        Ok(absolute_path)
     }
 }
 
