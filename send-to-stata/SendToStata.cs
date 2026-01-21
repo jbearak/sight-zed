@@ -703,47 +703,8 @@ internal static partial class Program
         return null;
     }
 
-[GeneratedRegex(@"^(Stata|StataNow)/(MP|SE|BE|IC)", RegexOptions.IgnoreCase)]
+[GeneratedRegex(@"^(\d+\s*-\s*)?(Stata|StataNow)/(MP|SE|BE|IC)", RegexOptions.IgnoreCase)]
     private static partial Regex StataTitleRegex();
-
-    /// <summary>
-    /// Finds the Zed editor window.
-    /// </summary>
-    private static IntPtr FindZedWindow()
-    {
-        try
-        {
-            var processes = Process.GetProcessesByName("Zed");
-            foreach (var proc in processes)
-            {
-                try
-                {
-                    if (proc.MainWindowHandle != IntPtr.Zero)
-                    {
-                        Log($"FindZedWindow: Found Zed process (PID={proc.Id}) MainWindowHandle={FormatHwnd(proc.MainWindowHandle)}");
-                        return proc.MainWindowHandle;
-                    }
-                    else
-                    {
-                        Log($"FindZedWindow: Zed process (PID={proc.Id}) has MainWindowHandle=0x0 (no main window yet?)");
-                    }
-                }
-                finally
-                {
-                    proc.Dispose();
-                }
-            }
-
-            Log("FindZedWindow: No Zed processes with a non-zero MainWindowHandle found.");
-        }
-        catch (Exception ex)
-        {
-            Log($"FindZedWindow: Exception: {ex.GetType().Name}: {ex.Message}");
-            // Ignore errors
-        }
-
-        return IntPtr.Zero;
-    }
 
     /// <summary>
     /// Attempts to bring the specified window to the foreground.
@@ -921,29 +882,12 @@ internal static partial class Program
         }
 
         // Return focus to original window if requested
-        if (returnFocus)
+        if (returnFocus && originalWindow != IntPtr.Zero && originalWindow != windowHandle)
         {
             Thread.Sleep(_winPause * 5); // Give Stata time to process before switching back
-
-            // Try to find Zed window by process name
-            var zedWindow = FindZedWindow();
-            if (zedWindow != IntPtr.Zero)
-            {
-                Log($"SendToStataWindow: attempting to return focus to Zed via FindZedWindow: {DescribeWindow(zedWindow)}");
-                var ok = AcquireFocus(zedWindow);
-                Log($"SendToStataWindow: return focus to Zed result={ok} currentForeground={DescribeWindow(GetForegroundWindow())}");
-            }
-            else if (originalWindow != IntPtr.Zero && originalWindow != windowHandle)
-            {
-                // Fall back to original foreground window
-                Log($"SendToStataWindow: FindZedWindow failed; attempting fallback to originalForeground={DescribeWindow(originalWindow)}");
-                var ok = AcquireFocus(originalWindow);
-                Log($"SendToStataWindow: return focus to originalForeground result={ok} currentForeground={DescribeWindow(GetForegroundWindow())}");
-            }
-            else
-            {
-                Log($"SendToStataWindow: No viable window to return focus to. originalForeground={DescribeWindow(originalWindow)} stata={DescribeWindow(windowHandle)} zed=0x0");
-            }
+            Log($"SendToStataWindow: attempting to return focus to originalForeground={DescribeWindow(originalWindow)}");
+            var ok = AcquireFocus(originalWindow);
+            Log($"SendToStataWindow: return focus result={ok} currentForeground={DescribeWindow(GetForegroundWindow())}");
         }
 
         return EXIT_SUCCESS;
@@ -1010,29 +954,12 @@ internal static partial class Program
         }
 
         // Return focus to original window if requested
-        if (returnFocus)
+        if (returnFocus && originalWindow != IntPtr.Zero && originalWindow != windowHandle)
         {
             Thread.Sleep(_winPause * 5); // Give Stata time to process before switching back
-
-            // Try to find Zed window by process name
-            var zedWindow = FindZedWindow();
-            if (zedWindow != IntPtr.Zero)
-            {
-                Log($"SendCommandToStataWindow: attempting to return focus to Zed via FindZedWindow: {DescribeWindow(zedWindow)}");
-                var ok = AcquireFocus(zedWindow);
-                Log($"SendCommandToStataWindow: return focus to Zed result={ok} currentForeground={DescribeWindow(GetForegroundWindow())}");
-            }
-            else if (originalWindow != IntPtr.Zero && originalWindow != windowHandle)
-            {
-                // Fall back to original foreground window
-                Log($"SendCommandToStataWindow: FindZedWindow failed; attempting fallback to originalForeground={DescribeWindow(originalWindow)}");
-                var ok = AcquireFocus(originalWindow);
-                Log($"SendCommandToStataWindow: return focus to originalForeground result={ok} currentForeground={DescribeWindow(GetForegroundWindow())}");
-            }
-            else
-            {
-                Log($"SendCommandToStataWindow: No viable window to return focus to. originalForeground={DescribeWindow(originalWindow)} stata={DescribeWindow(windowHandle)} zed=0x0");
-            }
+            Log($"SendCommandToStataWindow: attempting to return focus to originalForeground={DescribeWindow(originalWindow)}");
+            var ok = AcquireFocus(originalWindow);
+            Log($"SendCommandToStataWindow: return focus result={ok} currentForeground={DescribeWindow(GetForegroundWindow())}");
         }
 
         return EXIT_SUCCESS;
