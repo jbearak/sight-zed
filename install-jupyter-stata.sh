@@ -105,10 +105,9 @@ check_prerequisites() {
 # Preserve STATA_PATH if set by user as environment variable
 STATA_PATH="${STATA_PATH:-}"
 STATA_EDITION=""
-EXECUTION_MODE=""
 
-# Detects Stata installation and determines edition/execution mode.
-# Sets: STATA_PATH, STATA_EDITION, EXECUTION_MODE
+# Detects Stata installation and determines edition.
+# Sets: STATA_PATH, STATA_EDITION
 detect_stata_app() {
   # Check environment variable override first
   if [[ -n "${STATA_PATH:-}" ]]; then
@@ -148,15 +147,10 @@ detect_stata_app() {
     fi
   fi
 
-  # Determine execution mode (allow override)
-  if [[ -n "${STATA_EXECUTION_MODE:-}" ]]; then
-    EXECUTION_MODE="$STATA_EXECUTION_MODE"
-  else
-    case "$STATA_EDITION" in
-      MP|SE) EXECUTION_MODE="console" ;;
-      *)     EXECUTION_MODE="automation" ;;
-    esac
-  fi
+  # Always use automation mode - this allows stata_kernel to connect to an
+  # already-running Stata instance. This is the only mode supported for Zed's
+  # Jupyter integration. Console mode launches a new Stata process which
+  # conflicts with the running Stata GUI.
 }
 
 # ============================================================================
@@ -167,13 +161,13 @@ detect_stata_app() {
 # Recreates if Python version mismatch detected.
 create_venv() {
   local needs_recreate=false
-  
+
   if [[ -x "$VENV_DIR/bin/python" ]]; then
     # Check if venv Python version matches system Python
     local venv_version system_version
     venv_version=$("$VENV_DIR/bin/python" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo "unknown")
     system_version=$("$PYTHON_CMD" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-    
+
     if [[ "$venv_version" != "$system_version" ]]; then
       print_warning "Python version mismatch: venv=$venv_version, system=$system_version"
       print_info "Recreating virtual environment..."
@@ -186,7 +180,7 @@ create_venv() {
   else
     needs_recreate=true
   fi
-  
+
   if [[ "$needs_recreate" == true ]]; then
     print_info "Creating virtual environment..."
     mkdir -p "$(dirname "$VENV_DIR")"
@@ -243,9 +237,9 @@ get_config_template() {
 # stata_path: Full path to your Stata executable
 stata_path = STATA_PATH_PLACEHOLDER
 
-# execution_mode: How stata_kernel communicates with Stata (macOS only)
-# Values: console (MP/SE), automation (IC/BE)
-execution_mode = EXECUTION_MODE_PLACEHOLDER
+# execution_mode: How stata_kernel communicates with Stata
+# Always set to 'automation' to connect to your running Stata instance.
+execution_mode = automation
 
 # cache_directory: Directory for temporary log files and graphs
 # cache_directory = ~/.stata_kernel_cache
@@ -304,18 +298,16 @@ ${key} = ${escaped_value}" "$CONFIG_FILE" > "$tmp_file"
 write_config() {
   if [[ ! -f "$CONFIG_FILE" ]]; then
     # Create new config from template
-    local escaped_stata_path escaped_execution_mode
+    local escaped_stata_path
     escaped_stata_path=$(escape_sed_replacement "$STATA_PATH")
-    escaped_execution_mode=$(escape_sed_replacement "$EXECUTION_MODE")
     get_config_template | \
-      sed "s|STATA_PATH_PLACEHOLDER|$escaped_stata_path|" | \
-      sed "s|EXECUTION_MODE_PLACEHOLDER|$escaped_execution_mode|" > "$CONFIG_FILE"
+      sed "s|STATA_PATH_PLACEHOLDER|$escaped_stata_path|" > "$CONFIG_FILE"
     chmod 600 "$CONFIG_FILE"
     print_success "Created configuration at $CONFIG_FILE"
   else
     # Update existing config - preserve user settings
     update_config_setting "stata_path" "$STATA_PATH"
-    update_config_setting "execution_mode" "$EXECUTION_MODE"
+    update_config_setting "execution_mode" "automation"
     chmod 600 "$CONFIG_FILE"
     print_success "Updated configuration at $CONFIG_FILE"
   fi
@@ -517,7 +509,7 @@ print_summary() {
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
   echo "  Stata Edition:    $STATA_EDITION"
-  echo "  Execution Mode:   $EXECUTION_MODE"
+  echo "  Execution Mode:   automation"
   echo "  Configuration:    $CONFIG_FILE"
   echo ""
   echo "  Two kernels are installed:"
@@ -552,7 +544,7 @@ main() {
   local do_uninstall=false
   local remove_config=false
   local quiet=false
-  
+
   # Parse arguments
   for arg in "$@"; do
     case "$arg" in
@@ -575,26 +567,26 @@ main() {
     uninstall "$remove_config"
     exit 0
   fi
-  
+
   if [[ "$quiet" == "false" ]]; then
     echo "Installing stata_kernel for Zed Jupyter integration..."
     echo ""
   fi
-  
+
   check_prerequisites
   detect_stata_app
-  
+
   if [[ "$quiet" == "false" ]]; then
     print_info "Detected Stata $STATA_EDITION at $STATA_PATH"
   fi
-  
+
   create_venv
   install_packages
   write_config
   register_kernel
   verify_kernel_spec
   install_workspace_kernel
-  
+
   if [[ "$quiet" == "false" ]]; then
     print_summary
   fi
