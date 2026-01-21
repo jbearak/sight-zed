@@ -143,6 +143,24 @@ When the tree-sitter-stata grammar is updated:
 2. Update the `rev` field under `[grammars.stata]` to the new commit SHA
 3. The grammar is fetched from `https://github.com/jbearak/tree-sitter-stata`
 
+## Language Server Configuration Gotcha
+
+**CRITICAL**: The `extension.toml` must use `languages` (plural, array) not `language` (singular, string):
+
+```toml
+# CORRECT - LSP will load
+[language_servers.sight]
+name = "Sight"
+languages = ["Stata"]
+
+# WRONG - LSP silently fails to load
+[language_servers.sight]
+name = "Sight"
+language = "Stata"
+```
+
+Zed does not warn about this misconfiguration - the extension loads but the LSP never starts.
+
 ## Building the Extension
 
 ### macOS / Linux
