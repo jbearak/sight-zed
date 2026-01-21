@@ -152,10 +152,16 @@ detect_stata_app() {
   if [[ -n "${STATA_EXECUTION_MODE:-}" ]]; then
     EXECUTION_MODE="$STATA_EXECUTION_MODE"
   else
-    case "$STATA_EDITION" in
-      MP|SE) EXECUTION_MODE="console" ;;
-      *)     EXECUTION_MODE="automation" ;;
-    esac
+    # Default to console mode for all editions to avoid Stata quitting issue
+    # Automation mode has a critical limitation: when the Jupyter kernel process
+    # terminates, it causes Stata to quit unexpectedly. Console mode is more stable.
+    EXECUTION_MODE="console"
+    
+    # Only use automation mode for IC/BE if explicitly requested via STATA_EXECUTION_MODE
+    # Users experiencing issues can override with: export STATA_EXECUTION_MODE=automation
+    if [[ "$STATA_EDITION" == "IC" || "$STATA_EDITION" == "BE" ]]; then
+      print_warning "Using console mode for Stata $STATA_EDITION. If kernel fails to start, try: export STATA_EXECUTION_MODE=automation"
+    fi
   fi
 }
 
@@ -243,7 +249,15 @@ get_config_template() {
 # stata_path: Full path to your Stata executable
 stata_path = STATA_PATH_PLACEHOLDER
 
-# execution_mode: How stata_kernel communicates with Stata (macOS only)
+# Values: console, automation
+# 
+# IMPORTANT: automation mode has a critical limitation - when the Jupyter kernel
+# process terminates, it causes Stata to quit unexpectedly. This installer now
+# defaults to console mode for all editions to prevent this issue.
+#
+# If you experience kernel startup failures with console mode, you can try:
+#   export STATA_EXECUTION_MODE=automation
+# before running the installer, but be aware Stata may quit when kernels restart.
 # Values: console (MP/SE), automation (IC/BE)
 execution_mode = EXECUTION_MODE_PLACEHOLDER
 
@@ -519,6 +533,13 @@ print_summary() {
   echo "  Stata Edition:    $STATA_EDITION"
   echo "  Execution Mode:   $EXECUTION_MODE"
   echo "  Configuration:    $CONFIG_FILE"
+  echo ""
+  if [[ "$EXECUTION_MODE" == "automation" ]]; then
+    echo "  ⚠️  WARNING: Automation mode may cause Stata to quit when kernels restart."
+    echo "     If you experience this issue, try console mode:"
+    echo "       export STATA_EXECUTION_MODE=console"
+    echo "       ./install-jupyter-stata.sh"
+  fi
   echo ""
   echo "  Two kernels are installed:"
   echo ""

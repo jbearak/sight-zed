@@ -134,6 +134,24 @@ irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-sta
 
 > [!TIP]
 > The installer creates `~/.stata_kernel.conf` (or `%USERPROFILE%\.stata_kernel.conf` on Windows) with auto-detected settings. Edit this file to customize graph format, cache directory, and other options.
+### Troubleshooting: Stata Quits When Starting Kernel
+
+If Stata unexpectedly quits when you start a Jupyter kernel, this is likely due to the execution mode configuration. The installers now default to `console` mode for all Stata editions to prevent this issue.
+
+**If you experience kernel startup failures with console mode:**
+
+```bash
+# macOS
+export STATA_EXECUTION_MODE=automation
+./install-jupyter-stata.sh
+
+# Windows
+$env:STATA_EXECUTION_MODE = "automation"
+.\install-jupyter-stata.ps1
+```
+
+**Note:** Automation mode may cause Stata to quit when kernels restart, but it's sometimes necessary for certain Stata editions (IC/BE) that don't support console mode.
+
 
 ## Building from Source
 

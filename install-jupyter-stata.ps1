@@ -554,10 +554,15 @@ function Detect-StataApp {
     if (-not [string]::IsNullOrEmpty($env:STATA_EXECUTION_MODE)) {
         $script:EXECUTION_MODE = $env:STATA_EXECUTION_MODE
     } else {
-        switch ($script:STATA_EDITION) {
-            "MP" { $script:EXECUTION_MODE = "console" }
-            "SE" { $script:EXECUTION_MODE = "console" }
-            default { $script:EXECUTION_MODE = "automation" }
+        # Default to console mode for all editions to avoid Stata quitting issue
+        # Automation mode has a critical limitation: when the Jupyter kernel process
+        # terminates, it causes Stata to quit unexpectedly. Console mode is more stable.
+        $script:EXECUTION_MODE = "console"
+        
+        # Only use automation mode for IC/BE if explicitly requested via STATA_EXECUTION_MODE
+        # Users experiencing issues can override with: $env:STATA_EXECUTION_MODE = "automation"
+        if ($script:STATA_EDITION -eq "IC" -or $script:STATA_EDITION -eq "BE") {
+            Write-WarningMessage "Using console mode for Stata $($script:STATA_EDITION). If kernel fails to start, try: `$env:STATA_EXECUTION_MODE = 'automation'"
         }
     }
 }
@@ -836,7 +841,15 @@ function Get-ConfigTemplate {
 # stata_path: Full path to your Stata executable
 stata_path = STATA_PATH_PLACEHOLDER
 
-# execution_mode: How stata_kernel communicates with Stata (Windows only)
+# Values: console, automation
+# 
+# IMPORTANT: automation mode has a critical limitation - when the Jupyter kernel
+# process terminates, it causes Stata to quit unexpectedly. This installer now
+# defaults to console mode for all editions to prevent this issue.
+#
+# If you experience kernel startup failures with console mode, you can try:
+#   $env:STATA_EXECUTION_MODE = "automation"
+# before running the installer, but be aware Stata may quit when kernels restart.
 # Values: console (MP/SE), automation (IC/BE)
 execution_mode = EXECUTION_MODE_PLACEHOLDER
 
@@ -1330,6 +1343,13 @@ function Print-Summary {
     Write-Host "  Stata Edition:    $($script:STATA_EDITION)"
     Write-Host "  Execution Mode:   $($script:EXECUTION_MODE)"
     Write-Host "  Configuration:    $CONFIG_FILE"
+    Write-Host ""
+    if ($script:EXECUTION_MODE -eq "automation") {
+        Write-Host "  ⚠️  WARNING: Automation mode may cause Stata to quit when kernels restart." -ForegroundColor Yellow
+        Write-Host "     If you experience this issue, try console mode:" -ForegroundColor Yellow
+        Write-Host "       `$env:STATA_EXECUTION_MODE = 'console'" -ForegroundColor Yellow
+        Write-Host "       .\install-jupyter-stata.ps1" -ForegroundColor Yellow
+    }
     Write-Host ""
     Write-Host ""
     Write-Host "  Two kernels are installed:"
