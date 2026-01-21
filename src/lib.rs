@@ -111,8 +111,14 @@ impl SightExtension {
             .map_err(|e| format!("Failed to download sight-server.js: {}", e))?;
         }
 
-        self.cached_node_package_path = Some(server_script.clone());
-        Ok(server_script)
+        // Make path absolute to avoid resolution issues when Node is run from different working directories
+        let absolute_path = std::fs::canonicalize(&server_script)
+            .map_err(|e| format!("Failed to canonicalize path {}: {}", server_script, e))?
+            .to_string_lossy()
+            .to_string();
+
+        self.cached_node_package_path = Some(absolute_path.clone());
+        Ok(absolute_path)
     }
 }
 
