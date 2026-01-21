@@ -121,6 +121,9 @@ irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-sta
 > - **Installs only minimal Jupyter components** (`jupyter-core`, `jupyter-client`, and a pinned `ipykernel`) instead of the full `jupyter` meta-package to avoid pulling in `notebook`/`jupyterlab` and native build dependencies (e.g. `pywinpty`).
 > - **Writes kernelspecs deterministically** into `%APPDATA%\jupyter\kernels\...` (including `kernel.json`) so Zed can discover them.
 
+> [!WARNING]
+> **Start the kernel before opening Stata.** On Windows, if Stata is already running when you launch a Jupyter kernel, the kernel will close your Stata application. This is a fundamental limitation of Stata's Windows architecture. Start the kernel first, then open Stata if needed. This issue does not affect macOS.
+
 ## Choosing Between Send-to-Stata and Jupyter REPL
 
 | Scenario | Recommended | Why |
