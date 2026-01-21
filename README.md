@@ -9,7 +9,7 @@ A [Zed](https://zed.dev) extension providing support for the Stata statistical p
 - Syntax highlighting
 - Run Stata code from the editor (requires additional setup—see below)
   - [Send to Stata](#send-to-stata-optional)
-  - [Jupyter REPL](#jupyter-repl)
+  - [Jupyter REPL](#jupyter-repl-optional)
 
 > **⚠️ Development Status:** This is an early-stage implementation. While functional, it requires substantial testing and code review. Contributions and feedback are welcome!
 
