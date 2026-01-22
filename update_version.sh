@@ -78,4 +78,15 @@ if command -v cargo &> /dev/null; then
     echo "Rebuilt extension.wasm"
 else
     echo "Warning: cargo not found, skipping WASM rebuild. You must rebuild manually before committing."
+    exit 1
 fi
+
+# Commit the changes
+FILES_TO_COMMIT="Cargo.toml extension.toml extension.wasm"
+if [ -n "$SIGHT_VERSION" ]; then
+    FILES_TO_COMMIT="$FILES_TO_COMMIT src/lib.rs"
+fi
+
+git add $FILES_TO_COMMIT
+git commit -m "Bump version to $NEW_VERSION"
+echo "Committed version bump to $NEW_VERSION"
