@@ -56,18 +56,43 @@ jobs:
             # NOTE: If the repo is private, github.token won't have access and GitHub returns 404.
             tmp_out=$(mktemp)
             tmp_err=$(mktemp)
+
+            # Try GitHub Releases first.
+            # If the repo has no Releases, this endpoint returns 404 even when the repo is public.
             if gh api repos/jbearak/sight/releases/latest --jq '.tag_name' >"$tmp_out" 2>"$tmp_err"; then
               LATEST_VERSION=$(cat "$tmp_out")
             else
-              echo "::error::Failed to fetch latest release tag from jbearak/sight."
-              echo "::error::gh stderr: $(tail -n 1 "$tmp_err" | tr -d '\n' | tr -d '\r')"
-              rm -f "$tmp_out" "$tmp_err"
-              exit 1
+              err_line=$(tail -n 1 "$tmp_err" | tr -d '\n' | tr -d '\r')
+
+              if printf '%s' "$err_line" | grep -q 'HTTP 404'; then
+                # `/releases/latest` returns 404 when there are no *stable* releases.
+                # (Common case: only prereleases exist.)
+                # Fallback order:
+                #  1) most recent release (including prereleases)
+                #  2) most recent tag
+
+                if gh api 'repos/jbearak/sight/releases?per_page=1' --jq '.[0].tag_name' >"$tmp_out" 2>"$tmp_err"; then
+                  LATEST_VERSION=$(cat "$tmp_out")
+                elif gh api 'repos/jbearak/sight/tags?per_page=1' --jq '.[0].name' >"$tmp_out" 2>"$tmp_err"; then
+                  LATEST_VERSION=$(cat "$tmp_out")
+                else
+                  echo "::error::Failed to fetch latest release or tag from jbearak/sight."
+                  echo "::error::gh stderr: $(tail -n 1 "$tmp_err" | tr -d '\n' | tr -d '\r')"
+                  rm -f "$tmp_out" "$tmp_err"
+                  exit 1
+                fi
+              else
+                echo "::error::Failed to fetch latest release tag from jbearak/sight."
+                echo "::error::gh stderr: $err_line"
+                rm -f "$tmp_out" "$tmp_err"
+                exit 1
+              fi
             fi
+
             rm -f "$tmp_out" "$tmp_err"
 
             if [ -z "$LATEST_VERSION" ] || [ "$LATEST_VERSION" = "null" ]; then
-              echo "::error::Latest release tag was empty/null (no releases?)"
+              echo "::error::Latest version was empty/null (no releases and no tags?)"
               exit 1
             fi
 
