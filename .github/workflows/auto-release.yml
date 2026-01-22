@@ -17,14 +17,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
 
       - name: Extract version and create tag
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           # Extract version from extension.toml
-          VERSION=$(grep -oP '^version = "\K[^"]+' extension.toml)
+          VERSION=$(grep -oP '^version = "\K[^"]+' extension.toml) || true
+          if [ -z "$VERSION" ]; then
+            echo "::error::Failed to extract version from extension.toml"
+            exit 1
+          fi
           TAG="v$VERSION"
 
           echo "Extension version: $VERSION"
