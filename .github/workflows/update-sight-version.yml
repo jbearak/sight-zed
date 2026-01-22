@@ -39,7 +39,7 @@ jobs:
             echo "::error::Failed to extract SERVER_VERSION from src/lib.rs"
             exit 1
           fi
-          echo "current_version=\"$CURRENT_VERSION\"" >> $GITHUB_OUTPUT
+          echo "current_version=\"$CURRENT_VERSION\"" >> "$GITHUB_OUTPUT"
           echo "Current SERVER_VERSION: $CURRENT_VERSION"
 
           # Determine target version (manual input or latest release)
@@ -55,12 +55,12 @@ jobs:
             fi
             echo "Latest sight release: $LATEST_VERSION"
           fi
-          echo "latest_version=\"$LATEST_VERSION\"" >> $GITHUB_OUTPUT
+          echo "latest_version=\"$LATEST_VERSION\"" >> "$GITHUB_OUTPUT"
 
           # Skip if already up to date
           if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
             echo "Already up to date"
-            echo "needs_update=false" >> $GITHUB_OUTPUT
+            echo "needs_update=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -68,12 +68,12 @@ jobs:
           EXISTING_PR=$(gh pr list --search "Update sight to $LATEST_VERSION" --state open --json number --jq '.[0].number')
           if [ -n "$EXISTING_PR" ]; then
             echo "PR #$EXISTING_PR already exists for version $LATEST_VERSION"
-            echo "needs_update=false" >> $GITHUB_OUTPUT
+            echo "needs_update=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           echo "Update needed: $CURRENT_VERSION -> $LATEST_VERSION"
-          echo "needs_update=true" >> $GITHUB_OUTPUT
+          echo "needs_update=true" >> "$GITHUB_OUTPUT"
 
   # Second job: Update files, rebuild WASM, and create PR
   update-and-build:
@@ -105,7 +105,7 @@ jobs:
              echo "::error::Failed to extract version from extension.toml"
              exit 1
           fi
-          echo "current_ext_version=\"$CURRENT_EXT_VERSION\"" >> $GITHUB_OUTPUT
+          echo "current_ext_version=\"$CURRENT_EXT_VERSION\"" >> "$GITHUB_OUTPUT"
 
           # Run update script (updates src/lib.rs, Cargo.toml, extension.toml, rebuilds WASM, commits)
           chmod +x update_version.sh
@@ -113,7 +113,7 @@ jobs:
 
           # Capture new extension version for PR description
           NEW_EXT_VERSION=$(grep -oP '^version = "\K[^"]+' extension.toml)
-          echo "new_ext_version=\"$NEW_EXT_VERSION\"" >> $GITHUB_OUTPUT
+          echo "new_ext_version=\"$NEW_EXT_VERSION\"" >> "$GITHUB_OUTPUT"
 
       - name: Verify WASM file
         run: |
