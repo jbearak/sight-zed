@@ -25,6 +25,10 @@ SIGHT_VERSION=""
 while [[ $# -gt 0 ]]; do
   case $1 in
     --sight-version)
+      if [ -z "$2" ] || [[ "$2" == --* ]]; then
+        echo "Error: --sight-version requires a non-empty value" >&2
+        exit 1
+      fi
       SIGHT_VERSION="$2"
       shift 2
       ;;
