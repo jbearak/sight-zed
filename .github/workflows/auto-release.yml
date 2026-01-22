@@ -47,7 +47,7 @@ jobs:
           # Create and push tag
           git tag -a "$TAG" -m "Release $TAG
 
-          Automated release from PR #${{ github.event.pull_request.number }}"
+Automated release from PR #${{ github.event.pull_request.number }}"
           git push origin "$TAG"
 
           echo "Successfully created and pushed tag $TAG"
