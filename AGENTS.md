@@ -593,3 +593,13 @@ Users can set a default kernel in `~/.config/zed/settings.json`:
 Zed's REPL starts kernels in the file's directory, not the workspace root. This breaks Stata code that uses relative paths expecting to run from the project root (e.g., `use "data/mydata.dta"`). The workspace kernel solves this by changing to the project root before starting Stata.
 
 The standard kernel is kept for scripts that intentionally use paths relative to the script's location.
+
+## GitHub Actions Workflow Validation
+
+When editing `.github/workflows/*.yml` files, always validate with yamllint:
+
+```bash
+yamllint .github/workflows/your-workflow.yml
+```
+
+Syntax errors must be fixed. Line-length warnings are acceptable for workflow files.
