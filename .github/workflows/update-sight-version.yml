@@ -95,6 +95,10 @@ jobs:
         run: |
           LATEST_VERSION="${{ needs.check-for-update.outputs.latest_version }}"
 
+          # Configure git identity for commits (needed by update_version.sh)
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
           # Capture current extension version for PR description
           CURRENT_EXT_VERSION=$(grep -oP '^version = "\K[^"]+' extension.toml) || true
           if [ -z "$CURRENT_EXT_VERSION" ]; then
@@ -103,17 +107,13 @@ jobs:
           fi
           echo "current_ext_version=\"$CURRENT_EXT_VERSION\"" >> $GITHUB_OUTPUT
 
-          # Run update script (updates src/lib.rs, Cargo.toml, extension.toml, rebuilds WASM)
+          # Run update script (updates src/lib.rs, Cargo.toml, extension.toml, rebuilds WASM, commits)
           chmod +x update_version.sh
           ./update_version.sh --sight-version "$LATEST_VERSION"
 
           # Capture new extension version for PR description
           NEW_EXT_VERSION=$(grep -oP '^version = "\K[^"]+' extension.toml)
           echo "new_ext_version=\"$NEW_EXT_VERSION\"" >> $GITHUB_OUTPUT
-
-          # Show what changed
-          echo "--- Changes ---"
-          git diff
 
       - name: Verify WASM file
         run: |
@@ -138,18 +138,8 @@ jobs:
           NEW_EXT_VERSION="${{ steps.update.outputs.new_ext_version }}"
           BRANCH_NAME="update-sight-$(echo "$LATEST_VERSION" | tr '/' '-')"
 
-          # Configure git identity for commits
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Create branch and commit changes
+          # Create branch (update_version.sh already committed the changes)
           git checkout -b "$BRANCH_NAME"
-          git add src/lib.rs Cargo.toml extension.toml extension.wasm
-          git commit -m "Update sight to $LATEST_VERSION
-
-          - Update SERVER_VERSION: $CURRENT_VERSION -> $LATEST_VERSION
-          - Bump extension version to $NEW_EXT_VERSION
-          - Rebuild extension.wasm"
 
           # Push branch to origin
           git push origin "$BRANCH_NAME"
