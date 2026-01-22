@@ -1,3 +1,6 @@
+# yamllint disable rule:document-start
+# yamllint disable rule:truthy
+# yamllint disable rule:line-length
 # Automatically checks for new Sight LSP releases and creates PRs to update the extension
 name: Update Sight Version
 
@@ -48,25 +51,38 @@ jobs:
             echo "Using manually specified version: $LATEST_VERSION"
           else
             # Fetch latest release tag from jbearak/sight repo.
+            # IMPORTANT: on 404/permission failures, GitHub APIs may return a JSON error body.
+            # Avoid capturing that JSON into LATEST_VERSION by only reading stdout on success.
             # NOTE: If the repo is private, github.token won't have access and GitHub returns 404.
-            # Also ensure we never write raw JSON (with quotes) into $GITHUB_OUTPUT.
-            LATEST_VERSION=$(gh api repos/jbearak/sight/releases/latest --jq '.tag_name' 2>/dev/null || true)
+            tmp_out=$(mktemp)
+            tmp_err=$(mktemp)
+            if gh api repos/jbearak/sight/releases/latest --jq '.tag_name' >"$tmp_out" 2>"$tmp_err"; then
+              LATEST_VERSION=$(cat "$tmp_out")
+            else
+              echo "::error::Failed to fetch latest release tag from jbearak/sight."
+              echo "::error::gh stderr: $(tail -n 1 "$tmp_err" | tr -d '\n' | tr -d '\r')"
+              rm -f "$tmp_out" "$tmp_err"
+              exit 1
+            fi
+            rm -f "$tmp_out" "$tmp_err"
 
             if [ -z "$LATEST_VERSION" ] || [ "$LATEST_VERSION" = "null" ]; then
-              echo "::error::Failed to fetch latest release tag from jbearak/sight (is the repo private or renamed?)"
+              echo "::error::Latest release tag was empty/null (no releases?)"
               exit 1
             fi
 
             # Basic sanity check: release tags should not look like JSON
-            if echo "$LATEST_VERSION" | grep -q '^{'; then
-              echo "::error::Expected a tag_name string but got JSON; refusing to continue"
+            if printf '%s' "$LATEST_VERSION" | grep -q '^[[:space:]]*{'; then
+              echo "::error::Expected a tag name string but got JSON; refusing to continue"
               exit 1
             fi
 
             echo "Latest sight release: $LATEST_VERSION"
           fi
 
-          echo "latest_version=$LATEST_VERSION" >> "$GITHUB_OUTPUT"
+          # Write output safely (no newlines)
+          LATEST_VERSION_ONELINE=$(printf '%s' "$LATEST_VERSION" | tr -d '\n' | tr -d '\r')
+          echo "latest_version=$LATEST_VERSION_ONELINE" >> "$GITHUB_OUTPUT"
 
           # Skip if already up to date
           if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
@@ -105,6 +121,13 @@ jobs:
         id: update
         run: |
           LATEST_VERSION="${{ needs.check-for-update.outputs.latest_version }}"
+
+          # Defensive check: if the previous job accidentally produced JSON/error text, fail early
+          if printf '%s' "$LATEST_VERSION" | grep -q '^[[:space:]]*{'; then
+            echo "::error::Invalid latest_version output (looks like JSON). Check repo access / GitHub token permissions."
+            echo "::error::latest_version was: $LATEST_VERSION"
+            exit 1
+          fi
 
           # Configure git identity for commits (needed by update_version.sh)
           git config user.name "github-actions[bot]"
