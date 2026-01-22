@@ -106,6 +106,7 @@ jobs:
           NEW_PATCH=$((PATCH + 1))
           NEW_EXT_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
           echo "New extension version: $NEW_EXT_VERSION"
+          echo "current_ext_version=$CURRENT_EXT_VERSION" >> $GITHUB_OUTPUT
           echo "new_ext_version=$NEW_EXT_VERSION" >> $GITHUB_OUTPUT
 
           # Update Cargo.toml
@@ -148,6 +149,7 @@ jobs:
         run: |
           LATEST_VERSION="${{ needs.check-for-update.outputs.latest_version }}"
           CURRENT_VERSION="${{ needs.check-for-update.outputs.current_version }}"
+          CURRENT_EXT_VERSION="${{ steps.update.outputs.current_ext_version }}"
           NEW_EXT_VERSION="${{ steps.update.outputs.new_ext_version }}"
           BRANCH_NAME="update-sight-${LATEST_VERSION}"
 
@@ -168,25 +170,28 @@ jobs:
           git push origin "$BRANCH_NAME"
 
           # Create PR
+          cat > /tmp/pr-body.md << EOF
+## Summary
+
+This PR updates the sight language server to **$LATEST_VERSION**.
+
+### Changes
+- \`SERVER_VERSION\` in \`src/lib.rs\`: \`$CURRENT_VERSION\` -> \`$LATEST_VERSION\`
+- Extension version: \`$CURRENT_EXT_VERSION\` -> \`$NEW_EXT_VERSION\`
+- Rebuilt \`extension.wasm\`
+
+### Testing Checklist
+- [ ] Install extension in Zed
+- [ ] Open a \`.do\` file and verify LSP starts
+- [ ] Check hover documentation works
+- [ ] Verify go-to-definition functions
+- [ ] Test on macOS / Linux / Windows (if possible)
+
+---
+*This PR was automatically created by the update-sight-version workflow.*
+EOF
+
           gh pr create \
             --title "Update sight to $LATEST_VERSION" \
             --label "automated" \
-            --body "## Summary
-
-          This PR updates the sight language server to **$LATEST_VERSION**.
-
-          ### Changes
-          - \`SERVER_VERSION\` in \`src/lib.rs\`: \`$CURRENT_VERSION\` -> \`$LATEST_VERSION\`
-          - Extension version: -> \`$NEW_EXT_VERSION\`
-          - Rebuilt \`extension.wasm\`
-
-          ### Testing Checklist
-          - [ ] Install extension in Zed
-          - [ ] Open a \`.do\` file and verify LSP starts
-          - [ ] Check hover documentation works
-          - [ ] Verify go-to-definition functions
-          - [ ] Test on macOS / Linux / Windows (if possible)
-
-          ---
-          *This PR was automatically created by the update-sight-version workflow.*
-          "
+            --body-file /tmp/pr-body.md
