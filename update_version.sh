@@ -11,6 +11,13 @@ if [ ! -f "extension.toml" ]; then
 fi
 
 CURRENT_VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' extension.toml | head -n 1)
+
+if [ -z "$CURRENT_VERSION" ]; then
+    echo "Error: Failed to extract version from extension.toml" >&2
+    echo "Expected a line like: version = \"0.1.0\"" >&2
+    exit 1
+fi
+
 NEW_VERSION=""
 SIGHT_VERSION=""
 
@@ -34,6 +41,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ -z "$NEW_VERSION" ]; then
+    # Validate semantic version format
+    if ! [[ "$CURRENT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        echo "Error: Current version '$CURRENT_VERSION' is not in MAJOR.MINOR.PATCH format" >&2
+        exit 1
+    fi
+    
     # Auto-increment patch
     IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
     NEW_PATCH=$((PATCH + 1))
@@ -54,7 +67,7 @@ echo "Updated extension.toml to $NEW_VERSION"
 
 if [ -n "$SIGHT_VERSION" ]; then
     echo "Updating SERVER_VERSION to $SIGHT_VERSION"
-    sed "s/const SERVER_VERSION: &str = \"[^\"]*\"/const SERVER_VERSION: \&str = \"$SIGHT_VERSION\"/" src/lib.rs > src/lib.rs.tmp && mv src/lib.rs.tmp src/lib.rs
+    sed "s/const SERVER_VERSION: &str = \"[^\"]*\"/const SERVER_VERSION: \\\\&str = \"$SIGHT_VERSION\"/" src/lib.rs > src/lib.rs.tmp && mv src/lib.rs.tmp src/lib.rs
 fi
 
 # Rebuild WASM extension if cargo is available

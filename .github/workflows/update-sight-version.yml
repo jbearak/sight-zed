@@ -37,7 +37,7 @@ jobs:
             echo "::error::Failed to extract SERVER_VERSION from src/lib.rs"
             exit 1
           fi
-          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "current_version=\"$CURRENT_VERSION\"" >> $GITHUB_OUTPUT
           echo "Current SERVER_VERSION: $CURRENT_VERSION"
 
           # Get target version (from input or latest release)
@@ -52,7 +52,7 @@ jobs:
             fi
             echo "Latest sight release: $LATEST_VERSION"
           fi
-          echo "latest_version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+          echo "latest_version=\"$LATEST_VERSION\"" >> $GITHUB_OUTPUT
 
           # Check if update is needed
           if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
@@ -80,6 +80,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip1
+
       - name: Update version files
         id: update
         run: |
@@ -91,7 +96,7 @@ jobs:
              echo "::error::Failed to extract version from extension.toml"
              exit 1
           fi
-          echo "current_ext_version=$CURRENT_EXT_VERSION" >> $GITHUB_OUTPUT
+          echo "current_ext_version=\"$CURRENT_EXT_VERSION\"" >> $GITHUB_OUTPUT
 
           # Run the update script (which handles rebuilding WASM)
           chmod +x update_version.sh
@@ -99,16 +104,11 @@ jobs:
 
           # Get new version
           NEW_EXT_VERSION=$(grep -oP '^version = "\K[^"]+' extension.toml)
-          echo "new_ext_version=$NEW_EXT_VERSION" >> $GITHUB_OUTPUT
+          echo "new_ext_version=\"$NEW_EXT_VERSION\"" >> $GITHUB_OUTPUT
 
           # Show changes
           echo "--- Changes ---"
           git diff
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-wasip1
 
       - name: Verify WASM file
         run: |
@@ -150,25 +150,25 @@ jobs:
 
           # Create PR
           cat > /tmp/pr-body.md <<PREOF
-          ## Summary
+## Summary
 
-          This PR updates the sight language server to **$LATEST_VERSION**.
+This PR updates the sight language server to **$LATEST_VERSION**.
 
-          ### Changes
-          - \`SERVER_VERSION\` in \`src/lib.rs\`: \`$CURRENT_VERSION\` -> \`$LATEST_VERSION\`
-          - Extension version: \`$CURRENT_EXT_VERSION\` -> \`$NEW_EXT_VERSION\`
-          - Rebuilt \`extension.wasm\`
+### Changes
+- \`SERVER_VERSION\` in \`src/lib.rs\`: \`$CURRENT_VERSION\` -> \`$LATEST_VERSION\`
+- Extension version: \`$CURRENT_EXT_VERSION\` -> \`$NEW_EXT_VERSION\`
+- Rebuilt \`extension.wasm\`
 
-          ### Testing Checklist
-          - [ ] Install extension in Zed
-          - [ ] Open a \`.do\` file and verify LSP starts
-          - [ ] Check hover documentation works
-          - [ ] Verify go-to-definition functions
-          - [ ] Test on macOS / Linux / Windows (if possible)
+### Testing Checklist
+- [ ] Install extension in Zed
+- [ ] Open a \`.do\` file and verify LSP starts
+- [ ] Check hover documentation works
+- [ ] Verify go-to-definition functions
+- [ ] Test on macOS / Linux / Windows (if possible)
 
-          ---
-          *This PR was automatically created by the update-sight-version workflow.*
-          PREOF
+---
+*This PR was automatically created by the update-sight-version workflow.*
+PREOF
 
           gh pr create \
             --title "Update sight to $LATEST_VERSION" \
