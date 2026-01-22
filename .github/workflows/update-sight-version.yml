@@ -47,16 +47,25 @@ jobs:
             LATEST_VERSION="${{ inputs.version }}"
             echo "Using manually specified version: $LATEST_VERSION"
           else
-            # Fetch latest release tag from jbearak/sight repo
-            if ! LATEST_VERSION=$(gh api repos/jbearak/sight/releases/latest --jq '.tag_name' 2>/dev/null); then
-              LATEST_VERSION=""
-            fi
+            # Fetch latest release tag from jbearak/sight repo.
+            # NOTE: If the repo is private, github.token won't have access and GitHub returns 404.
+            # Also ensure we never write raw JSON (with quotes) into $GITHUB_OUTPUT.
+            LATEST_VERSION=$(gh api repos/jbearak/sight/releases/latest --jq '.tag_name' 2>/dev/null || true)
+
             if [ -z "$LATEST_VERSION" ] || [ "$LATEST_VERSION" = "null" ]; then
-              echo "::error::Failed to fetch latest release from jbearak/sight"
+              echo "::error::Failed to fetch latest release tag from jbearak/sight (is the repo private or renamed?)"
               exit 1
             fi
+
+            # Basic sanity check: release tags should not look like JSON
+            if echo "$LATEST_VERSION" | grep -q '^{'; then
+              echo "::error::Expected a tag_name string but got JSON; refusing to continue"
+              exit 1
+            fi
+
             echo "Latest sight release: $LATEST_VERSION"
           fi
+
           echo "latest_version=$LATEST_VERSION" >> "$GITHUB_OUTPUT"
 
           # Skip if already up to date
