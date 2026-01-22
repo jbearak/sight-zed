@@ -40,6 +40,35 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Run validation checks before making changes
+echo "Running pre-release validation..."
+
+# Validate grammar revision exists
+if ! ./validate.sh --grammar-rev; then
+    echo "Error: Grammar revision validation failed." >&2
+    exit 1
+fi
+
+# Validate LSP version (use new version if provided, otherwise current)
+if [ -n "$SIGHT_VERSION" ]; then
+    # Check if the new sight version release exists
+    echo "Checking if sight release $SIGHT_VERSION exists..."
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "https://api.github.com/repos/jbearak/sight/releases/tags/$SIGHT_VERSION")
+    if [ "$HTTP_CODE" != "200" ]; then
+        echo "Error: Sight release $SIGHT_VERSION not found (HTTP $HTTP_CODE)" >&2
+        exit 1
+    fi
+    echo "Sight release $SIGHT_VERSION exists."
+else
+    if ! ./validate.sh --lsp; then
+        echo "Error: LSP validation failed." >&2
+        exit 1
+    fi
+fi
+
+echo "Validation passed."
+echo ""
+
 if [ -z "$NEW_VERSION" ]; then
     # Validate semantic version format
     if ! [[ "$CURRENT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
