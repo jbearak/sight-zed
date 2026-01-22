@@ -122,7 +122,7 @@ jobs:
           git diff
 
       - name: Setup Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-wasip1
 
@@ -170,7 +170,7 @@ jobs:
           git push origin "$BRANCH_NAME"
 
           # Create PR
-          cat > /tmp/pr-body.md << EOF
+          cat > /tmp/pr-body.md <<EOF
 ## Summary
 
 This PR updates the sight language server to **$LATEST_VERSION**.
