@@ -53,6 +53,7 @@ zed-stata/
 ├── update-setup-checksums.ps1 # Update setup.ps1 dependency checksums
 │
 ├── AGENTS.md                  # AI agent instructions
+├── DEVELOPMENT.md             # Development guide (this file)
 ├── LICENSE                    # GPLv3 license
 ├── README.md                  # User-facing documentation
 └── SEND-TO-STATA.md           # Send-to-Stata documentation

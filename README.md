@@ -143,13 +143,7 @@ irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-sta
 
 ## Building from Source
 
-### Zed Extension
-
-```bash
-cargo build --release --target wasm32-wasip1
-
-# The extension.wasm will be in target/wasm32-wasip1/release/
-```
+See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development setup, directory structure, and workflows.
 
 ### Send-to-Stata
 
