@@ -85,37 +85,21 @@ jobs:
         run: |
           LATEST_VERSION="${{ needs.check-for-update.outputs.latest_version }}"
 
-          # Update SERVER_VERSION in src/lib.rs
-          sed -i "s/const SERVER_VERSION: &str = \"[^\"]*\"/const SERVER_VERSION: \&str = \"$LATEST_VERSION\"/" src/lib.rs
-          echo "Updated src/lib.rs"
-
-          # Get current extension version and bump patch
-          CURRENT_EXT_VERSION=$(grep -oP '^version = "\K[^"]+' Cargo.toml) || true
+          # Get current version before update (for PR description)
+          CURRENT_EXT_VERSION=$(grep -oP '^version = "\K[^"]+' extension.toml) || true
           if [ -z "$CURRENT_EXT_VERSION" ]; then
-            echo "::error::Failed to extract version from Cargo.toml"
-            exit 1
+             echo "::error::Failed to extract version from extension.toml"
+             exit 1
           fi
-          echo "Current extension version: $CURRENT_EXT_VERSION"
-
-          # Validate and parse semver (MAJOR.MINOR.PATCH)
-          if [[ ! "$CURRENT_EXT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Invalid version format '$CURRENT_EXT_VERSION'. Expected MAJOR.MINOR.PATCH"
-            exit 1
-          fi
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_EXT_VERSION"
-          NEW_PATCH=$((PATCH + 1))
-          NEW_EXT_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
-          echo "New extension version: $NEW_EXT_VERSION"
           echo "current_ext_version=$CURRENT_EXT_VERSION" >> $GITHUB_OUTPUT
+
+          # Run the update script (which handles rebuilding WASM)
+          chmod +x update_version.sh
+          ./update_version.sh --sight-version "$LATEST_VERSION"
+
+          # Get new version
+          NEW_EXT_VERSION=$(grep -oP '^version = "\K[^"]+' extension.toml)
           echo "new_ext_version=$NEW_EXT_VERSION" >> $GITHUB_OUTPUT
-
-          # Update Cargo.toml
-          sed -i "s/^version = \"$CURRENT_EXT_VERSION\"/version = \"$NEW_EXT_VERSION\"/" Cargo.toml
-          echo "Updated Cargo.toml"
-
-          # Update extension.toml
-          sed -i "s/^version = \"$CURRENT_EXT_VERSION\"/version = \"$NEW_EXT_VERSION\"/" extension.toml
-          echo "Updated extension.toml"
 
           # Show changes
           echo "--- Changes ---"
@@ -125,11 +109,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-wasip1
-
-      - name: Build WASM extension
-        run: |
-          cargo build --release --target wasm32-wasip1
-          cp target/wasm32-wasip1/release/sight_extension.wasm extension.wasm
 
       - name: Verify WASM file
         run: |
@@ -171,25 +150,25 @@ jobs:
 
           # Create PR
           cat > /tmp/pr-body.md <<PREOF
-## Summary
+          ## Summary
 
-This PR updates the sight language server to **$LATEST_VERSION**.
+          This PR updates the sight language server to **$LATEST_VERSION**.
 
-### Changes
-- \`SERVER_VERSION\` in \`src/lib.rs\`: \`$CURRENT_VERSION\` -> \`$LATEST_VERSION\`
-- Extension version: \`$CURRENT_EXT_VERSION\` -> \`$NEW_EXT_VERSION\`
-- Rebuilt \`extension.wasm\`
+          ### Changes
+          - \`SERVER_VERSION\` in \`src/lib.rs\`: \`$CURRENT_VERSION\` -> \`$LATEST_VERSION\`
+          - Extension version: \`$CURRENT_EXT_VERSION\` -> \`$NEW_EXT_VERSION\`
+          - Rebuilt \`extension.wasm\`
 
-### Testing Checklist
-- [ ] Install extension in Zed
-- [ ] Open a \`.do\` file and verify LSP starts
-- [ ] Check hover documentation works
-- [ ] Verify go-to-definition functions
-- [ ] Test on macOS / Linux / Windows (if possible)
+          ### Testing Checklist
+          - [ ] Install extension in Zed
+          - [ ] Open a \`.do\` file and verify LSP starts
+          - [ ] Check hover documentation works
+          - [ ] Verify go-to-definition functions
+          - [ ] Test on macOS / Linux / Windows (if possible)
 
----
-*This PR was automatically created by the update-sight-version workflow.*
-PREOF
+          ---
+          *This PR was automatically created by the update-sight-version workflow.*
+          PREOF
 
           gh pr create \
             --title "Update sight to $LATEST_VERSION" \
