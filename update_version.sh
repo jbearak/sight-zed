@@ -1,0 +1,68 @@
+#!/bin/bash
+set -e
+
+# Usage: ./update_version.sh [new_version] [--sight-version <version>]
+# If new_version is not provided, it bumps the patch version.
+
+# Ensure we're in the project root
+if [ ! -f "extension.toml" ]; then
+    echo "Error: extension.toml not found. Run this script from the project root."
+    exit 1
+fi
+
+CURRENT_VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' extension.toml | head -n 1)
+NEW_VERSION=""
+SIGHT_VERSION=""
+
+# Parse args
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --sight-version)
+      SIGHT_VERSION="$2"
+      shift 2
+      ;;
+    *)
+      if [ -z "$NEW_VERSION" ]; then
+        NEW_VERSION="$1"
+      else
+        echo "Unknown argument: $1"
+        exit 1
+      fi
+      shift
+      ;;
+  esac
+done
+
+if [ -z "$NEW_VERSION" ]; then
+    # Auto-increment patch
+    IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+    NEW_PATCH=$((PATCH + 1))
+    NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+    echo "Auto-bumping patch version: $CURRENT_VERSION -> $NEW_VERSION"
+else
+    echo "Setting version to: $NEW_VERSION"
+fi
+
+# Update Cargo.toml
+# Use a temporary file for sed compatibility on both macOS and Linux
+sed "s/^version = \"[^\"]*\"/version = \"$NEW_VERSION\"/" Cargo.toml > Cargo.toml.tmp && mv Cargo.toml.tmp Cargo.toml
+echo "Updated Cargo.toml to $NEW_VERSION"
+
+# Update extension.toml
+sed "s/^version = \"[^\"]*\"/version = \"$NEW_VERSION\"/" extension.toml > extension.toml.tmp && mv extension.toml.tmp extension.toml
+echo "Updated extension.toml to $NEW_VERSION"
+
+if [ -n "$SIGHT_VERSION" ]; then
+    echo "Updating SERVER_VERSION to $SIGHT_VERSION"
+    sed "s/const SERVER_VERSION: &str = \"[^\"]*\"/const SERVER_VERSION: \&str = \"$SIGHT_VERSION\"/" src/lib.rs > src/lib.rs.tmp && mv src/lib.rs.tmp src/lib.rs
+fi
+
+# Rebuild WASM extension if cargo is available
+if command -v cargo &> /dev/null; then
+    echo "Rebuilding WASM extension..."
+    cargo build --release --target wasm32-wasip1
+    cp target/wasm32-wasip1/release/sight_extension.wasm extension.wasm
+    echo "Rebuilt extension.wasm"
+else
+    echo "Warning: cargo not found, skipping WASM rebuild. You must rebuild manually before committing."
+fi
