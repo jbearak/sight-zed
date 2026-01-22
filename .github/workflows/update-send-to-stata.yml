@@ -29,13 +29,8 @@ jobs:
           fi
           echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
           
-          # Get current checksum
-          CURRENT_X64=""
-          if [ -f send-to-stata-x64.exe.sha256 ]; then
-            CURRENT_X64=$(cat send-to-stata-x64.exe.sha256 | tr -d '[:space:]')
-          elif [ -f send-to-stata-x64.exe ]; then
-            CURRENT_X64=$(sha256sum send-to-stata-x64.exe | cut -d' ' -f1)
-          fi
+          # Get current checksum from installer script
+          CURRENT_X64=$(grep '^\$expectedChecksumX64 = ' install-send-to-stata.ps1 | sed 's/.*"\(.*\)".*/\1/')
           
           # Get new checksum from release
           NEW_X64=$(gh api repos/jbearak/send-to-stata/releases/latest --jq '.assets[] | select(.name=="send-to-stata-x64.exe.sha256") | .browser_download_url' | xargs curl -sL | tr -d '[:space:]')
