@@ -53,10 +53,26 @@ check_wasm_target() {
   fi
 }
 
+check_tree_sitter() {
+  if ! command -v tree-sitter &>/dev/null; then
+    echo "tree-sitter CLI not found, installing via Homebrew..."
+    if ! command -v brew &>/dev/null; then
+      print_error "Homebrew is required to install tree-sitter"
+      echo ""
+      echo "Install Homebrew first:"
+      echo "  /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+      exit 1
+    fi
+    brew install tree-sitter
+    print_success "Installed tree-sitter"
+  fi
+}
+
 check_prerequisites() {
   check_macos
   check_rust
   check_wasm_target
+  check_tree_sitter
 }
 
 # ============================================================================
