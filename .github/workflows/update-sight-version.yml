@@ -32,7 +32,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # Get current SERVER_VERSION from src/lib.rs
-          CURRENT_VERSION=$(grep -oP 'const SERVER_VERSION: &str = "\K[^"]+' src/lib.rs)
+          CURRENT_VERSION=$(grep -oP 'const SERVER_VERSION: &str = "\K[^"]+' src/lib.rs) || true
+          if [ -z "$CURRENT_VERSION" ]; then
+            echo "::error::Failed to extract SERVER_VERSION from src/lib.rs"
+            exit 1
+          fi
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "Current SERVER_VERSION: $CURRENT_VERSION"
 
