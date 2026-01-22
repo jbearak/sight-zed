@@ -34,3 +34,6 @@ caller.do
 /sight-v*/
 scratch1.do
 /sight
+
+# send-to-stata source lives in jbearak/send-to-stata repo
+/send-to-stata/

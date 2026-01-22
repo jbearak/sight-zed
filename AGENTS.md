@@ -452,12 +452,13 @@ If you forget to update the checksum, curl-pipe installations will fail with a c
 
 ## Updating send-to-stata executables checksum on Windows
 
-Use `update-checksum.ps1` (PowerShell 7+):
+The `update-send-to-stata.yml` GitHub Action automatically downloads new releases from [jbearak/send-to-stata](https://github.com/jbearak/send-to-stata) and updates the checksums. Manual updates are rarely needed.
 
-1. Rebuild the executables (see "Building the Native Executable" below)
-2. Run `pwsh -File update-checksum.ps1` from repo root
-3. It recalculates SHA-256 for both `send-to-stata-arm64.exe` and `send-to-stata-x64.exe`, updates `install-send-to-stata.ps1`, and auto-commits
-4. Use `-DryRun` to see the new hashes without modifying files
+If you need to manually update checksums (e.g., after downloading executables locally):
+
+1. Run `pwsh -File update-checksum.ps1` from repo root
+2. It recalculates SHA-256 for both `send-to-stata-arm64.exe` and `send-to-stata-x64.exe`, updates `install-send-to-stata.ps1`, and auto-commits
+3. Use `-DryRun` to see the new hashes without modifying files
 
 The installer verifies checksums when downloading from GitHub. Verification is skipped when users specify a custom `SIGHT_GITHUB_REF` for testing branches.
 
@@ -477,23 +478,7 @@ The checksums are verified during `setup.ps1` execution to detect corrupted down
 
 On Windows, Send-to-Stata uses a native C# executable (`send-to-stata.exe`) instead of PowerShell for fast startup (~10x faster than PowerShell).
 
-### Building the Native Executable
-
-The source is in `send-to-stata/`. To rebuild:
-
-```powershell
-cd send-to-stata
-dotnet publish -c Release -r win-x64    # For Intel/AMD
-dotnet publish -c Release -r win-arm64  # For ARM64
-
-# Copy to repo root
-cp bin/Release/net8.0-windows/win-x64/publish/send-to-stata.exe ../send-to-stata-x64.exe
-cp bin/Release/net8.0-windows/win-arm64/publish/send-to-stata.exe ../send-to-stata-arm64.exe
-```
-
-Both binaries are committed to the repo. The installer detects architecture and copies the correct one.
-
-After rebuilding, run `pwsh -File update-checksum.ps1` to update the checksums in `install-send-to-stata.ps1`.
+The source code lives in the [jbearak/send-to-stata](https://github.com/jbearak/send-to-stata) repository. Pre-built binaries are downloaded from that repo's releases by the `update-send-to-stata.yml` GitHub Action.
 
 ### Executable Parameters
 
