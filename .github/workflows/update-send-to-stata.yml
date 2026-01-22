@@ -83,5 +83,4 @@ jobs:
           
           gh pr create \
             --title "Update send-to-stata to $LATEST" \
-            --label "automated" \
             --body "Updates send-to-stata binaries to $LATEST from [jbearak/send-to-stata](https://github.com/jbearak/send-to-stata/releases/tag/$LATEST)."
