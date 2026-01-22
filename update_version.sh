@@ -131,7 +131,7 @@ echo "Updated extension.toml to $NEW_VERSION"
 
 if [ -n "$SIGHT_VERSION" ]; then
     echo "Updating SERVER_VERSION to $SIGHT_VERSION"
-    sed "s/const SERVER_VERSION: &str = \"[^\"]*\"/const SERVER_VERSION: \\\\&str = \"$SIGHT_VERSION\"/" src/lib.rs > src/lib.rs.tmp && mv src/lib.rs.tmp src/lib.rs
+    sed "s/const SERVER_VERSION: \&str = \"[^\"]*\"/const SERVER_VERSION: \\&str = \"$SIGHT_VERSION\"/" src/lib.rs > src/lib.rs.tmp && mv src/lib.rs.tmp src/lib.rs
 fi
 
 # Rebuild WASM extension if cargo is available
