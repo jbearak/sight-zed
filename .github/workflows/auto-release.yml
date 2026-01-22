@@ -1,0 +1,49 @@
+name: Auto Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  create-tag:
+    # Only run when PR is merged (not just closed) and has "automated" label
+    if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'automated')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Extract version and create tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Extract version from extension.toml
+          VERSION=$(grep -oP '^version = "\K[^"]+' extension.toml)
+          TAG="v$VERSION"
+
+          echo "Extension version: $VERSION"
+          echo "Creating tag: $TAG"
+
+          # Check if tag already exists
+          if git ls-remote --tags origin | grep -q "refs/tags/$TAG"; then
+            echo "Tag $TAG already exists, skipping"
+            exit 0
+          fi
+
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Create and push tag
+          git tag -a "$TAG" -m "Release $TAG
+
+          Automated release from PR #${{ github.event.pull_request.number }}"
+          git push origin "$TAG"
+
+          echo "Successfully created and pushed tag $TAG"
