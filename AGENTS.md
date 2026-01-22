@@ -452,13 +452,7 @@ If you forget to update the checksum, curl-pipe installations will fail with a c
 
 ## Updating send-to-stata executables checksum on Windows
 
-The `update-send-to-stata.yml` GitHub Action automatically downloads new releases from [jbearak/send-to-stata](https://github.com/jbearak/send-to-stata) and updates the checksums. Manual updates are rarely needed.
-
-If you need to manually update checksums (e.g., after downloading executables locally):
-
-1. Run `pwsh -File update-checksum.ps1` from repo root
-2. It recalculates SHA-256 for both `send-to-stata-arm64.exe` and `send-to-stata-x64.exe`, updates `install-send-to-stata.ps1`, and auto-commits
-3. Use `-DryRun` to see the new hashes without modifying files
+The `update-send-to-stata.yml` GitHub Action automatically downloads new releases from [jbearak/send-to-stata](https://github.com/jbearak/send-to-stata) and updates the checksums in `install-send-to-stata.ps1`. No manual intervention is needed.
 
 The installer verifies checksums when downloading from GitHub. Verification is skipped when users specify a custom `SIGHT_GITHUB_REF` for testing branches.
 

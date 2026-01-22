@@ -49,7 +49,6 @@ zed-stata/
 ├── validate.sh                # Build and dependency validation
 │
 ├── update_version.sh          # Version bump automation
-├── update-checksum.ps1        # Update Windows exe checksums
 ├── update-checksum.sh         # Update macOS script checksums
 ├── update-setup-checksums.ps1 # Update setup.ps1 dependency checksums
 │
@@ -161,14 +160,11 @@ After building, commit the updated `extension.wasm` for users to receive the new
 
 ## Checksum Updates
 
-After modifying scripts or executables, update their checksums:
+After modifying scripts, update their checksums:
 
 ```bash
 # macOS send-to-stata.sh checksum
 ./update-checksum.sh
-
-# Windows executables checksums
-pwsh -File update-checksum.ps1
 
 # Windows setup.ps1 dependency checksums
 pwsh -File update-setup-checksums.ps1
