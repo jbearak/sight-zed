@@ -85,7 +85,11 @@ jobs:
           CURRENT_EXT_VERSION=$(grep -oP '^version = "\K[^"]+' Cargo.toml)
           echo "Current extension version: $CURRENT_EXT_VERSION"
 
-          # Parse and bump patch version
+          # Validate and parse semver (MAJOR.MINOR.PATCH)
+          if [[ ! "$CURRENT_EXT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid version format '$CURRENT_EXT_VERSION'. Expected MAJOR.MINOR.PATCH"
+            exit 1
+          fi
           IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_EXT_VERSION"
           NEW_PATCH=$((PATCH + 1))
           NEW_EXT_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
