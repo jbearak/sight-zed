@@ -145,19 +145,19 @@ jobs:
           git push origin "$BRANCH_NAME"
 
           # Create PR with detailed description
-          cat > /tmp/pr-body.md <<PREOF
+          cat > /tmp/pr-body.md <<'PREOF'
 ## Summary
 
 This PR updates the sight language server to **$LATEST_VERSION**.
 
 ### Changes
-- \`SERVER_VERSION\` in \`src/lib.rs\`: \`$CURRENT_VERSION\` -> \`$LATEST_VERSION\`
-- Extension version: \`$CURRENT_EXT_VERSION\` -> \`$NEW_EXT_VERSION\`
-- Rebuilt \`extension.wasm\`
+- `SERVER_VERSION` in `src/lib.rs`: `$CURRENT_VERSION` -> `$LATEST_VERSION`
+- Extension version: `$CURRENT_EXT_VERSION` -> `$NEW_EXT_VERSION`
+- Rebuilt `extension.wasm`
 
 ### Testing Checklist
 - [ ] Install extension in Zed
-- [ ] Open a \`.do\` file and verify LSP starts
+- [ ] Open a `.do` file and verify LSP starts
 - [ ] Check hover documentation works
 - [ ] Verify go-to-definition functions
 - [ ] Test on macOS / Linux / Windows (if possible)
@@ -165,6 +165,12 @@ This PR updates the sight language server to **$LATEST_VERSION**.
 ---
 *This PR was automatically created by the update-sight-version workflow.*
 PREOF
+
+          # Substitute variables in the PR body
+          sed -i "s/\$LATEST_VERSION/$LATEST_VERSION/g" /tmp/pr-body.md
+          sed -i "s/\$CURRENT_VERSION/$CURRENT_VERSION/g" /tmp/pr-body.md
+          sed -i "s/\$CURRENT_EXT_VERSION/$CURRENT_EXT_VERSION/g" /tmp/pr-body.md
+          sed -i "s/\$NEW_EXT_VERSION/$NEW_EXT_VERSION/g" /tmp/pr-body.md
 
           gh pr create \
             --title "Update sight to $LATEST_VERSION" \
