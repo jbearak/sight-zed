@@ -3,6 +3,7 @@
 *.wasm
 !extension.wasm
 *.pdb
+*.exe
 
 # Cargo
 Cargo.lock
