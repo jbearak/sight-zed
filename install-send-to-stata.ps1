@@ -471,5 +471,3 @@ Write-Host "  Alt+Ctrl+Enter: Include statement"
 Write-Host "  Alt+Shift+Ctrl+Enter: Include file"
 Write-Host "  Shift+Enter: Paste selection to terminal"
 Write-Host "  Alt+Enter: Paste current line to terminal"
-
-

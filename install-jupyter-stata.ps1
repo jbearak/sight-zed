@@ -19,32 +19,44 @@ param (
 # ============================================================================
 # This script requires PowerShell 7+ due to syntax and module compatibility.
 # If running in Windows PowerShell 5.1, attempt to re-launch with pwsh.
-if ($PSVersionTable.PSVersion.Major -lt 7) {
+if ($PSVersionTable.PSVersion.Major -lt 7)
+{
     $scriptPath = $MyInvocation.MyCommand.Path
     $pwshPath = Get-Command pwsh -ErrorAction SilentlyContinue
-    
-    if ($pwshPath) {
+
+    if ($pwshPath)
+    {
         Write-Host "Re-launching with PowerShell 7..." -ForegroundColor Yellow
-        
-        if ($scriptPath) {
+
+        if ($scriptPath)
+        {
             # Running from a file - re-invoke with pwsh
             $scriptArgs = @()
-            if ($uninstall) { $scriptArgs += '-Uninstall' }
-            if ($removeConfig) { $scriptArgs += '-RemoveConfig' }
+            if ($uninstall)
+            { $scriptArgs += '-Uninstall' 
+            }
+            if ($removeConfig)
+            { $scriptArgs += '-RemoveConfig' 
+            }
             & pwsh -File $scriptPath @scriptArgs
             exit $LASTEXITCODE
-        } else {
+        } else
+        {
             # Piped via irm | iex - re-fetch and invoke as scriptblock with args
             $scriptArgs = @()
-            if ($uninstall) { $scriptArgs += '-Uninstall' }
-            if ($removeConfig) { $scriptArgs += '-RemoveConfig' }
+            if ($uninstall)
+            { $scriptArgs += '-Uninstall' 
+            }
+            if ($removeConfig)
+            { $scriptArgs += '-RemoveConfig' 
+            }
             $url = "https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-stata.ps1"
             $argsStr = ($scriptArgs | ForEach-Object { "'$_'" }) -join ','
             & pwsh -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm '$url'))) $argsStr"
             exit $LASTEXITCODE
         }
     }
-    
+
     Write-Host "ERROR: This script requires PowerShell 7+." -ForegroundColor Red
     Write-Host ""
     Write-Host "You're running Windows PowerShell $($PSVersionTable.PSVersion)" -ForegroundColor Yellow
@@ -88,22 +100,26 @@ $IPYKERNEL_VERSION = "6.28.0"
 # Output Helpers
 # ============================================================================
 
-function Write-ErrorMessage {
+function Write-ErrorMessage
+{
     param ([string]$message)
     Write-Host "Error: $message" -ForegroundColor Red
 }
 
-function Write-SuccessMessage {
+function Write-SuccessMessage
+{
     param ([string]$message)
     Write-Host "✓ $message" -ForegroundColor Green
 }
 
-function Write-WarningMessage {
+function Write-WarningMessage
+{
     param ([string]$message)
     Write-Host "Warning: $message" -ForegroundColor Yellow
 }
 
-function Write-InfoMessage {
+function Write-InfoMessage
+{
     param ([string]$message)
     Write-Host $message
 }
@@ -112,79 +128,115 @@ function Write-InfoMessage {
 # Prerequisite Checks
 # ============================================================================
 
-function Check-Windows {
-    if (-not ([System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT)) {
+function Check-Windows
+{
+    if (-not ([System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT))
+    {
         Write-ErrorMessage "This script requires Windows"
         exit 1
     }
 }
 
-function Check-Python3 {
+function Check-Python3
+{
     $pythonPath = $null
 
-    function Get-PythonVersion {
+    function Get-PythonVersion
+    {
         param([string]$path)
-        try {
+        try
+        {
             $v = & $path -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')" 2>$null
-            if (-not $v) { return $null }
+            if (-not $v)
+            { return $null 
+            }
             $parts = $v.Trim().Split('.')
-            if ($parts.Count -lt 2) { return $null }
+            if ($parts.Count -lt 2)
+            { return $null 
+            }
             return @{
                 Major = [int]$parts[0]
                 Minor = [int]$parts[1]
-                Micro = if ($parts.Count -ge 3) { [int]$parts[2] } else { 0 }
+                Micro = if ($parts.Count -ge 3)
+                { [int]$parts[2] 
+                } else
+                { 0 
+                }
                 Raw = $v.Trim()
             }
-        } catch {
+        } catch
+        {
             return $null
         }
     }
 
-    function Is-MicrosoftStorePython {
+    function Is-MicrosoftStorePython
+    {
         param([string]$path)
-        if (-not $path) { return $false }
+        if (-not $path)
+        { return $false 
+        }
         return ($path -match "\\WindowsApps\\") -or ($path -match "\\Program Files\\WindowsApps\\") -or ($path -match "\\Local\\Microsoft\\WindowsApps\\")
     }
 
-    function Is-PreferredPython {
+    function Is-PreferredPython
+    {
         param($ver)
-        if (-not $ver) { return $false }
+        if (-not $ver)
+        { return $false 
+        }
         return ($ver.Major -eq $PREFERRED_PYTHON_MAJOR -and $ver.Minor -eq $PREFERRED_PYTHON_MINOR)
     }
 
-    function Find-PreferredPythonPath {
+    function Find-PreferredPythonPath
+    {
         # Try common python.org install locations first (per-user install)
         $candidates = @()
 
-        if ($env:LOCALAPPDATA) {
+        if ($env:LOCALAPPDATA)
+        {
             $candidates += Join-Path $env:LOCALAPPDATA "Programs\Python\Python311\python.exe"
             $candidates += Join-Path $env:LOCALAPPDATA "Programs\Python\Python311-64\python.exe"
+            $candidates += Join-Path $env:LOCALAPPDATA "Programs\Python\Python311-arm64\python.exe"
         }
 
         # Try py launcher if present
-        try {
+        try
+        {
             $py = (Get-Command py -ErrorAction Stop).Source
-            if ($py) {
+            if ($py)
+            {
                 $candidates += $py
             }
-        } catch {}
+        } catch
+        {
+        }
 
-        foreach ($c in $candidates) {
-            if (-not (Test-Path -Path $c)) { continue }
+        foreach ($c in $candidates)
+        {
+            if (-not (Test-Path -Path $c))
+            { continue 
+            }
 
-            if ($c -like "*\py.exe") {
+            if ($c -like "*\py.exe")
+            {
                 # Use py launcher to resolve 3.11
-                try {
+                try
+                {
                     $ver = & $c -3.11 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')" 2>$null
-                    if ($ver -match "^3\.11\.\d+$") {
+                    if ($ver -match "^3\.11\.\d+$")
+                    {
                         return "$c -3.11"
                     }
-                } catch {}
+                } catch
+                {
+                }
                 continue
             }
 
             $verInfo = Get-PythonVersion $c
-            if (Is-PreferredPython $verInfo) {
+            if (Is-PreferredPython $verInfo)
+            {
                 return $c
             }
         }
@@ -194,32 +246,41 @@ function Check-Python3 {
 
     # Prefer Python 3.11 when possible
     $preferred = Find-PreferredPythonPath
-    if ($preferred) {
-        if ($preferred -like "*\py.exe -3.11") {
+    if ($preferred)
+    {
+        if ($preferred -like "*\py.exe -3.11")
+        {
             Write-InfoMessage "Found preferred Python via py launcher: $preferred"
             return $preferred
         }
 
         Write-InfoMessage "Found preferred Python at: $preferred"
         $pythonPath = $preferred
-    } else {
+    } else
+    {
         # Fall back to whatever `python` / `python3` resolves to, but avoid Microsoft Store Python if possible.
-        try {
+        try
+        {
             $pythonPath = (Get-Command python -ErrorAction Stop).Source
             Write-InfoMessage "Found Python at: $pythonPath"
-        } catch {
-            try {
+        } catch
+        {
+            try
+            {
                 $pythonPath = (Get-Command python3 -ErrorAction Stop).Source
                 Write-InfoMessage "Found Python3 at: $pythonPath"
-            } catch {
+            } catch
+            {
                 $pythonPath = $null
             }
         }
 
-        if (-not $pythonPath -or (Is-MicrosoftStorePython $pythonPath)) {
+        if (-not $pythonPath -or (Is-MicrosoftStorePython $pythonPath))
+        {
             Write-WarningMessage "Python not found or Microsoft Store Python detected. Attempting to install Python $PREFERRED_PYTHON_MAJOR.$PREFERRED_PYTHON_MINOR automatically..."
             $pythonPath = Install-PythonAutomatically
-            if (-not $pythonPath) {
+            if (-not $pythonPath)
+            {
                 Write-ErrorMessage "Python installation failed"
                 Write-Host ""
                 Write-Host "Please install Python manually from: https://www.python.org/downloads/"
@@ -234,25 +295,30 @@ function Check-Python3 {
     }
 
     # If we got "py -3.11" as a command string, skip venv probe here (handled later by Create-Venv).
-    if ($pythonPath -like "*\py.exe -3.11") {
+    if ($pythonPath -like "*\py.exe -3.11")
+    {
         Write-InfoMessage "Using Python $PREFERRED_PYTHON_MAJOR.$PREFERRED_PYTHON_MINOR via py launcher for venv creation"
         return $pythonPath
     }
 
     # Now check if venv module is available
-    if (-not $pythonPath) {
+    if (-not $pythonPath)
+    {
         Write-ErrorMessage "No valid Python installation found"
         exit 1
     }
 
-    try {
+    try
+    {
         $venvCheck = & $pythonPath -c "import venv; print('venv available')"
-        if (-not ($venvCheck -like "*venv available*")) {
+        if (-not ($venvCheck -like "*venv available*"))
+        {
             Write-ErrorMessage "python venv module is required but not available"
             exit 1
         }
         Write-InfoMessage "venv module is available"
-    } catch {
+    } catch
+    {
         Write-ErrorMessage "python venv module is required but not available: $_"
         exit 1
     }
@@ -263,28 +329,34 @@ function Check-Python3 {
     $pyMinor = [int]$pyVersion.Split('.')[1]
     Write-InfoMessage "Python version: $pyVersion"
 
-    if ($pyMajor -ne $PREFERRED_PYTHON_MAJOR -or $pyMinor -ne $PREFERRED_PYTHON_MINOR) {
+    if ($pyMajor -ne $PREFERRED_PYTHON_MAJOR -or $pyMinor -ne $PREFERRED_PYTHON_MINOR)
+    {
         Write-WarningMessage "Non-preferred Python detected ($pyVersion). For best results, install Python $PREFERRED_PYTHON_MAJOR.$PREFERRED_PYTHON_MINOR."
     }
 
     return $pythonPath
 }
 
-function Install-PythonAutomatically {
+function Install-PythonAutomatically
+{
     Write-Host "Attempting to install Python automatically..."
     Write-Host ""
 
     # Prefer installing Python 3.11 specifically (stata_kernel stability).
     # Try to install Python using winget if available
-    try {
+    try
+    {
         Write-InfoMessage "Checking for winget (Windows Package Manager)..."
         $wingetPath = Get-Command winget -ErrorAction SilentlyContinue
-        if ($wingetPath) {
+        if ($wingetPath)
+        {
             Write-InfoMessage "Installing Python $PREFERRED_PYTHON_MAJOR.$PREFERRED_PYTHON_MINOR using winget..."
-            try {
+            try
+            {
                 # Test winget first to make sure it's working
                 $wingetTest = & winget --version 2>&1
-                if (-not ($wingetTest -match "\d+\.\d+")) {
+                if (-not ($wingetTest -match "\d+\.\d+"))
+                {
                     Write-WarningMessage "winget not working properly: $wingetTest"
                     return $null
                 }
@@ -299,52 +371,64 @@ function Install-PythonAutomatically {
                 )
 
                 $installedSomething = $false
-                foreach ($pkg in $pythonPackages) {
+                foreach ($pkg in $pythonPackages)
+                {
                     Write-InfoMessage "Attempting to install Python package: $pkg"
                     $installResult = & winget install --accept-package-agreements --accept-source-agreements $pkg 2>&1
 
-                    if ($installResult -match "Successfully installed") {
+                    if ($installResult -match "Successfully installed")
+                    {
                         Write-SuccessMessage "Python installed successfully via winget ($pkg)"
                         $installedSomething = $true
                         break
-                    } elseif ($installResult -match "No package found") {
+                    } elseif ($installResult -match "No package found")
+                    {
                         Write-InfoMessage "Package $pkg not found, trying next..."
                         continue
-                    } else {
+                    } else
+                    {
                         Write-WarningMessage "winget installation failed for $pkg"
                         continue
                     }
                 }
 
-                if (-not $installedSomething) {
+                if (-not $installedSomething)
+                {
                     Write-WarningMessage "winget did not report a successful Python installation"
                 }
 
                 # IMPORTANT: Do NOT verify by calling `python` / `python3`, since that may resolve
                 # to Microsoft Store Python shims (WindowsApps) even after installation.
                 # Instead, prefer returning the Python Launcher command which can target 3.11 explicitly.
-                try {
+                try
+                {
                     $pyLauncher = (Get-Command py -ErrorAction Stop).Source
                     $ver = & $pyLauncher -3.11 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>$null
-                    if ($ver -match "^3\.11$") {
+                    if ($ver -match "^3\.11$")
+                    {
                         Write-InfoMessage "Verified Python 3.11 via py launcher"
                         return "$pyLauncher -3.11"
                     }
-                } catch {
+                } catch
+                {
                     # Ignore and fall through
                 }
 
                 # Fall back: try common python.org install locations for 3.11
                 $candidate = $null
-                if ($env:LOCALAPPDATA) {
+                if ($env:LOCALAPPDATA)
+                {
                     $candidate = Join-Path $env:LOCALAPPDATA "Programs\Python\Python311\python.exe"
-                    if (-not (Test-Path -Path $candidate)) {
+                    if (-not (Test-Path -Path $candidate))
+                    {
                         $candidate = Join-Path $env:LOCALAPPDATA "Programs\Python\Python311-64\python.exe"
                     }
                 }
-                if ($candidate -and (Test-Path -Path $candidate)) {
+                if ($candidate -and (Test-Path -Path $candidate))
+                {
                     $testOutput = & $candidate --version 2>&1
-                    if ($testOutput -match "^Python 3\.11") {
+                    if ($testOutput -match "^Python 3\.11")
+                    {
                         Write-InfoMessage "Verified Python installation at: $candidate ($testOutput)"
                         return $candidate
                     }
@@ -352,90 +436,117 @@ function Install-PythonAutomatically {
 
                 Write-WarningMessage "Could not verify Python 3.11 after installation; you may need to restart the terminal or disable Microsoft Store Python app execution aliases."
                 return $null
-            } catch {
+            } catch
+            {
                 Write-WarningMessage "winget installation failed: $_"
             }
-        } else {
+        } else
+        {
             Write-InfoMessage "winget not found"
         }
-    } catch {
+    } catch
+    {
         Write-WarningMessage "winget check failed: $_"
     }
 
     # If still not found, try chocolatey
-    try {
+    try
+    {
         Write-InfoMessage "Checking for chocolatey..."
         $chocoPath = Get-Command choco -ErrorAction SilentlyContinue
-        if ($chocoPath) {
+        if ($chocoPath)
+        {
             Write-InfoMessage "Installing Python using chocolatey..."
-            try {
+            try
+            {
                 & choco install python -y
                 Write-SuccessMessage "Python installed successfully via chocolatey"
 
                 # Verify Python is actually installed and working
-                try {
+                try
+                {
                     $pythonPath = (Get-Command python -ErrorAction Stop).Source
                     $testOutput = & $pythonPath --version 2>&1
-                    if ($testOutput -match "Python \d+\.\d+") {
+                    if ($testOutput -match "Python \d+\.\d+")
+                    {
                         Write-InfoMessage "Verified Python installation: $testOutput"
                         return $pythonPath
-                    } else {
+                    } else
+                    {
                         Write-WarningMessage "Python installation verification failed"
                         return $null
                     }
-                } catch {
-                    try {
+                } catch
+                {
+                    try
+                    {
                         $pythonPath = (Get-Command python3 -ErrorAction Stop).Source
                         $testOutput = & $pythonPath --version 2>&1
-                        if ($testOutput -match "Python \d+\.\d+") {
+                        if ($testOutput -match "Python \d+\.\d+")
+                        {
                             Write-InfoMessage "Verified Python installation: $testOutput"
                             return $pythonPath
-                        } else {
+                        } else
+                        {
                             Write-WarningMessage "Python installation verification failed"
                             return $null
                         }
-                    } catch {
+                    } catch
+                    {
                         Write-WarningMessage "Could not find Python after chocolatey installation"
                         return $null
                     }
                 }
-            } catch {
+            } catch
+            {
                 Write-WarningMessage "chocolatey installation failed: $_"
             }
-        } else {
+        } else
+        {
             Write-InfoMessage "chocolatey not available"
         }
-    } catch {
+    } catch
+    {
         Write-WarningMessage "chocolatey check failed: $_"
     }
 
     # If we reach here and still don't have Python, try alternative winget package names
-    if (-not $pythonPath) {
-        try {
+    if (-not $pythonPath)
+    {
+        try
+        {
             Write-InfoMessage "Trying alternative Python package names..."
             $alternativePackages = @("Python.Python", "Python.3", "python")
-            foreach ($pkg in $alternativePackages) {
-                try {
+            foreach ($pkg in $alternativePackages)
+            {
+                try
+                {
                     Write-InfoMessage "Trying package: $pkg"
                     $installResult = & winget install --accept-package-agreements --accept-source-agreements $pkg 2>&1
-                    if ($installResult -match "Successfully installed") {
+                    if ($installResult -match "Successfully installed")
+                    {
                         # Verify installation
                         $pythonPath = (Get-Command python -ErrorAction SilentlyContinue).Source
-                        if ($pythonPath) {
+                        if ($pythonPath)
+                        {
                             $testOutput = & $pythonPath --version 2>&1
-                            if ($testOutput -match "Python \d+\.\d+") {
+                            if ($testOutput -match "Python \d+\.\d+")
+                            {
                                 Write-SuccessMessage "Python installed successfully via winget ($pkg)"
                                 return $pythonPath
                             }
                         }
-                    } else {
+                    } else
+                    {
                         Write-WarningMessage "Failed to install $pkg via winget"
                     }
-                } catch {
+                } catch
+                {
                     Write-WarningMessage "Failed to install $pkg"
                 }
             }
-        } catch {
+        } catch
+        {
             Write-WarningMessage "Alternative package installation failed"
         }
     }
@@ -456,7 +567,8 @@ function Install-PythonAutomatically {
     return $null
 }
 
-function Check-Prerequisites {
+function Check-Prerequisites
+{
     Check-Windows
     $script:PYTHON_CMD = Check-Python3
 }
@@ -465,15 +577,18 @@ function Check-Prerequisites {
 # Stata Detection
 # ============================================================================
 
-function Find-StataInstallation {
-    if ($env:STATA_PATH -and (Test-Path $env:STATA_PATH)) {
+function Find-StataInstallation
+{
+    if ($env:STATA_PATH -and (Test-Path $env:STATA_PATH))
+    {
         return $env:STATA_PATH
     }
 
     $variants = @("StataMP-64.exe", "StataSE-64.exe", "StataBE-64.exe", "StataIC-64.exe",
-                 "StataMP.exe", "StataSE.exe", "StataBE.exe", "StataIC.exe")
+        "StataMP.exe", "StataSE.exe", "StataBE.exe", "StataIC.exe")
 
-    for ($version = 50; $version -ge 13; $version--) {
+    for ($version = 50; $version -ge 13; $version--)
+    {
         $searchPaths = @(
             "C:\Program Files\Stata$version\",
             "C:\Program Files (x86)\Stata$version\",
@@ -483,50 +598,67 @@ function Find-StataInstallation {
             "C:\StataNow$version\"
         )
 
-        foreach ($path in $searchPaths) {
-            foreach ($variant in $variants) {
+        foreach ($path in $searchPaths)
+        {
+            foreach ($variant in $variants)
+            {
                 $fullPath = Join-Path $path $variant
-                if (Test-Path $fullPath) { return $fullPath }
+                if (Test-Path $fullPath)
+                { return $fullPath 
+                }
             }
         }
     }
 
-    foreach ($variant in $variants) {
+    foreach ($variant in $variants)
+    {
         $fullPath = Join-Path "C:\Stata\" $variant
-        if (Test-Path $fullPath) { return $fullPath }
+        if (Test-Path $fullPath)
+        { return $fullPath 
+        }
     }
 
     return $null
 }
 
-function Detect-StataApp {
+function Detect-StataApp
+{
     $script:STATA_PATH = $env:STATA_PATH
     $script:STATA_EDITION = ""
     $script:EXECUTION_MODE = ""
 
     # Check environment variable override first
-    if (-not [string]::IsNullOrEmpty($script:STATA_PATH)) {
-        if (-not (Test-Path -Path $script:STATA_PATH)) {
+    if (-not [string]::IsNullOrEmpty($script:STATA_PATH))
+    {
+        if (-not (Test-Path -Path $script:STATA_PATH))
+        {
             Write-ErrorMessage "STATA_PATH is set but not executable: $script:STATA_PATH"
             exit 1
         }
 
         # Extract edition from path
-        if ($script:STATA_PATH -like "*stata-mp*" -or $script:STATA_PATH -like "*StataMP*") {
+        if ($script:STATA_PATH -like "*stata-mp*" -or $script:STATA_PATH -like "*StataMP*")
+        {
             $script:STATA_EDITION = "MP"
-        } elseif ($script:STATA_PATH -like "*stata-se*" -or $script:STATA_PATH -like "*StataSE*") {
+        } elseif ($script:STATA_PATH -like "*stata-se*" -or $script:STATA_PATH -like "*StataSE*")
+        {
             $script:STATA_EDITION = "SE"
-        } elseif ($script:STATA_PATH -like "*stata-ic*" -or $script:STATA_PATH -like "*StataIC*") {
+        } elseif ($script:STATA_PATH -like "*stata-ic*" -or $script:STATA_PATH -like "*StataIC*")
+        {
             $script:STATA_EDITION = "IC"
-        } elseif ($script:STATA_PATH -like "*stata-be*" -or $script:STATA_PATH -like "*StataBE*") {
+        } elseif ($script:STATA_PATH -like "*stata-be*" -or $script:STATA_PATH -like "*StataBE*")
+        {
             $script:STATA_EDITION = "BE"
-        } else {
+        } else
+        {
             $script:STATA_EDITION = "IC"  # Default assumption
         }
-    } else {
+    } else
+    {
         # Use comprehensive Stata detection
         $stataPath = Find-StataInstallation
-        if ([string]::IsNullOrEmpty($stataPath)) {
+        if ([string]::IsNullOrEmpty($stataPath))
+        {
             Write-ErrorMessage "No Stata installation found in common paths"
             Write-Host ""
             Write-Host "Set STATA_PATH environment variable:"
@@ -537,27 +669,41 @@ function Detect-StataApp {
         $script:STATA_PATH = $stataPath
 
         # Extract edition from path
-        if ($script:STATA_PATH -like "*stata-mp*" -or $script:STATA_PATH -like "*StataMP*") {
+        if ($script:STATA_PATH -like "*stata-mp*" -or $script:STATA_PATH -like "*StataMP*")
+        {
             $script:STATA_EDITION = "MP"
-        } elseif ($script:STATA_PATH -like "*stata-se*" -or $script:STATA_PATH -like "*StataSE*") {
+        } elseif ($script:STATA_PATH -like "*stata-se*" -or $script:STATA_PATH -like "*StataSE*")
+        {
             $script:STATA_EDITION = "SE"
-        } elseif ($script:STATA_PATH -like "*stata-ic*" -or $script:STATA_PATH -like "*StataIC*") {
+        } elseif ($script:STATA_PATH -like "*stata-ic*" -or $script:STATA_PATH -like "*StataIC*")
+        {
             $script:STATA_EDITION = "IC"
-        } elseif ($script:STATA_PATH -like "*stata-be*" -or $script:STATA_PATH -like "*StataBE*") {
+        } elseif ($script:STATA_PATH -like "*stata-be*" -or $script:STATA_PATH -like "*StataBE*")
+        {
             $script:STATA_EDITION = "BE"
-        } else {
+        } else
+        {
             $script:STATA_EDITION = "IC"  # Default assumption
         }
     }
 
     # Determine execution mode (allow override)
-    if (-not [string]::IsNullOrEmpty($env:STATA_EXECUTION_MODE)) {
+    if (-not [string]::IsNullOrEmpty($env:STATA_EXECUTION_MODE))
+    {
         $script:EXECUTION_MODE = $env:STATA_EXECUTION_MODE
-    } else {
-        switch ($script:STATA_EDITION) {
-            "MP" { $script:EXECUTION_MODE = "console" }
-            "SE" { $script:EXECUTION_MODE = "console" }
-            default { $script:EXECUTION_MODE = "automation" }
+    } else
+    {
+        switch ($script:STATA_EDITION)
+        {
+            "MP"
+            { $script:EXECUTION_MODE = "console" 
+            }
+            "SE"
+            { $script:EXECUTION_MODE = "console" 
+            }
+            default
+            { $script:EXECUTION_MODE = "automation" 
+            }
         }
     }
 }
@@ -566,38 +712,50 @@ function Detect-StataApp {
 # Virtual Environment Management
 # ============================================================================
 
-function Create-Venv {
-    if (Test-Path -Path "$VENV_DIR\Scripts\python.exe") {
+function Create-Venv
+{
+    if (Test-Path -Path "$VENV_DIR\Scripts\python.exe")
+    {
         # Force recreation if the existing venv is not using the preferred Python (3.11).
         $existingVenvVersion = $null
-        try {
+        try
+        {
             $existingVenvVersion = & "$VENV_DIR\Scripts\python.exe" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>$null
-        } catch {
+        } catch
+        {
             $existingVenvVersion = $null
         }
 
-        if ($existingVenvVersion -ne "$PREFERRED_PYTHON_MAJOR.$PREFERRED_PYTHON_MINOR") {
+        if ($existingVenvVersion -ne "$PREFERRED_PYTHON_MAJOR.$PREFERRED_PYTHON_MINOR")
+        {
             Write-WarningMessage "Virtual environment exists but uses Python $existingVenvVersion (preferred: $PREFERRED_PYTHON_MAJOR.$PREFERRED_PYTHON_MINOR). Recreating venv..."
-            try {
+            try
+            {
                 Remove-Item -Recurse -Force "$VENV_DIR"
-            } catch {
+            } catch
+            {
                 Write-ErrorMessage "Failed to remove existing venv at ${VENV_DIR}: $($_.Exception.Message)"
                 exit 2
             }
-        } else {
+        } else
+        {
             Write-InfoMessage "Virtual environment already exists at $VENV_DIR (Python $existingVenvVersion)"
             # Ensure pip exists even if venv already exists (Python 3.13 issue)
-            if (-not (Test-Path -Path "$VENV_DIR\Scripts\pip.exe")) {
+            if (-not (Test-Path -Path "$VENV_DIR\Scripts\pip.exe"))
+            {
                 Write-InfoMessage "pip not found in existing venv, bootstrapping..."
-                try {
+                try
+                {
                     $ensurePipOutput = & "$VENV_DIR\Scripts\python.exe" -m ensurepip --upgrade 2>&1
-                    if ($LASTEXITCODE -ne 0) {
+                    if ($LASTEXITCODE -ne 0)
+                    {
                         Write-ErrorMessage "Failed to bootstrap pip: $ensurePipOutput"
                         Write-Host "Please delete the venv and try again: Remove-Item -Recurse -Force '$VENV_DIR'"
                         exit 2
                     }
                     Write-SuccessMessage "pip bootstrapped successfully"
-                } catch {
+                } catch
+                {
                     Write-ErrorMessage "Failed to bootstrap pip: $_"
                     Write-Host "Please delete the venv and try again: Remove-Item -Recurse -Force '$VENV_DIR'"
                     exit 2
@@ -609,22 +767,27 @@ function Create-Venv {
 
     Write-InfoMessage "Creating virtual environment..."
     $venvParent = Split-Path -Path $VENV_DIR -Parent
-    if (-not (Test-Path -Path $venvParent)) {
+    if (-not (Test-Path -Path $venvParent))
+    {
         New-Item -ItemType Directory -Path $venvParent -Force | Out-Null
     }
 
-    try {
+    try
+    {
         # If we have the Python Launcher command string (e.g. "C:\Windows\py.exe -3.11"),
         # invoke it correctly (executable + args). This avoids PATH/AppExecutionAlias issues.
-        if ($script:PYTHON_CMD -like "*\py.exe -3.11") {
+        if ($script:PYTHON_CMD -like "*\py.exe -3.11")
+        {
             $pyExe = $script:PYTHON_CMD -replace " -3\.11$", ""
             & $pyExe -3.11 -m venv $VENV_DIR
-        } else {
+        } else
+        {
             & $script:PYTHON_CMD -m venv $VENV_DIR
         }
 
         # Verify venv creation succeeded
-        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -Path "$VENV_DIR\Scripts\python.exe")) {
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -Path "$VENV_DIR\Scripts\python.exe"))
+        {
             Write-ErrorMessage "Failed to create virtual environment at $VENV_DIR"
             exit 2
         }
@@ -632,32 +795,39 @@ function Create-Venv {
         Write-SuccessMessage "Created virtual environment at $VENV_DIR"
 
         # Ensure pip is available (Python 3.13 sometimes doesn't include it)
-        if (-not (Test-Path -Path "$VENV_DIR\Scripts\pip.exe")) {
+        if (-not (Test-Path -Path "$VENV_DIR\Scripts\pip.exe"))
+        {
             Write-InfoMessage "Bootstrapping pip..."
-            try {
+            try
+            {
                 $ensurePipOutput = & "$VENV_DIR\Scripts\python.exe" -m ensurepip --upgrade 2>&1
-                if ($LASTEXITCODE -ne 0) {
+                if ($LASTEXITCODE -ne 0)
+                {
                     Write-ErrorMessage "Failed to bootstrap pip: $ensurePipOutput"
                     Write-Host "Venv creation failed. Please try deleting and recreating."
                     exit 2
                 }
                 Write-SuccessMessage "pip bootstrapped successfully"
-            } catch {
+            } catch
+            {
                 Write-ErrorMessage "Failed to bootstrap pip: $_"
                 exit 2
             }
         }
-    } catch {
+    } catch
+    {
         Write-ErrorMessage "Failed to create virtual environment: $_"
         exit 2
     }
 }
 
-function Install-Packages {
+function Install-Packages
+{
     Write-InfoMessage "Installing packages..."
 
     # Verify pip exists
-    if (-not (Test-Path -Path "$VENV_DIR\Scripts\pip.exe")) {
+    if (-not (Test-Path -Path "$VENV_DIR\Scripts\pip.exe"))
+    {
         Write-ErrorMessage "pip.exe not found at $VENV_DIR\Scripts\pip.exe"
         Write-Host "This can happen with Python 3.13. Please delete the venv and try again:"
         Write-Host "  Remove-Item -Recurse -Force '$VENV_DIR'"
@@ -667,7 +837,8 @@ function Install-Packages {
     # Upgrade pip first (use python -m pip to avoid self-upgrade issues on Windows)
     Write-InfoMessage "Upgrading pip..."
     $pipUpgradeOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade pip 2>&1
-    if ($LASTEXITCODE -ne 0) {
+    if ($LASTEXITCODE -ne 0)
+    {
         Write-ErrorMessage "Failed to upgrade pip"
         Write-Host $pipUpgradeOutput
         exit 2
@@ -679,7 +850,8 @@ function Install-Packages {
     $pyMajor = [int]$pyVersion.Split('.')[0]
     $pyMinor = [int]$pyVersion.Split('.')[1]
 
-    if ($pyMajor -eq 3 -and $pyMinor -ge 11) {
+    if ($pyMajor -eq 3 -and $pyMinor -ge 11)
+    {
         # Python 3.11+: stata_kernel's dependency pins are very old (e.g., ipykernel<5, packaging<18)
         # and can force pip into backtracking and/or native builds on Windows/ARM64 (e.g. pywinpty).
         #
@@ -687,11 +859,13 @@ function Install-Packages {
         # of Jupyter/runtime deps explicitly (including a Zed-compatible ipykernel pin).
         Write-InfoMessage "Installing stata_kernel (without dependencies) for Python $pyVersion..."
         $stataKernelOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade --no-deps stata_kernel 2>&1
-        if ($LASTEXITCODE -ne 0) {
+        if ($LASTEXITCODE -ne 0)
+        {
             Write-ErrorMessage "Failed to install stata_kernel"
             Write-Host $stataKernelOutput
             exit 3
-        } else {
+        } else
+        {
             Write-SuccessMessage "Installed stata_kernel"
         }
 
@@ -723,11 +897,13 @@ function Install-Packages {
             beautifulsoup4 `
             nbclient `
             nbformat 2>&1
-        if ($LASTEXITCODE -ne 0) {
+        if ($LASTEXITCODE -ne 0)
+        {
             Write-ErrorMessage "Failed to install pinned minimal Jupyter/runtime dependencies"
             Write-Host $depsOutput
             exit 3
-        } else {
+        } else
+        {
             Write-SuccessMessage "Installed pinned minimal Jupyter/runtime dependencies"
 
             # Patch stata_kernel to avoid importing `notebook` at runtime on Windows.
@@ -736,12 +912,14 @@ function Install-Packages {
             # which hard-requires the `notebook` package. We skip that copy on Windows to avoid the
             # notebook/pywinpty dependency chain.
             Write-InfoMessage "Patching stata_kernel to avoid notebook/pywinpty dependency on Windows..."
-            try {
+            try
+            {
                 # Locate site-packages in a venv reliably.
                 # `site.getsitepackages()` can vary across platforms and virtualenv implementations,
                 # so prefer an explicit query from Python.
                 $sitePackages = & "$VENV_DIR\Scripts\python.exe" -c "import site; print(site.getsitepackages()[0])" 2>$null
-                if (-not $sitePackages) {
+                if (-not $sitePackages)
+                {
                     Write-ErrorMessage "Failed to locate site-packages for venv"
                     exit 3
                 }
@@ -749,20 +927,24 @@ function Install-Packages {
                 # On Windows venvs this should typically be:
                 #   $VENV_DIR\Lib\site-packages
                 # But verify and fall back if needed.
-                if (-not (Test-Path -Path $sitePackages)) {
+                if (-not (Test-Path -Path $sitePackages))
+                {
                     $fallbackSitePackages = Join-Path $VENV_DIR "Lib\site-packages"
-                    if (Test-Path -Path $fallbackSitePackages) {
+                    if (Test-Path -Path $fallbackSitePackages)
+                    {
                         $sitePackages = $fallbackSitePackages
                     }
                 }
 
                 $kernelPy = Join-Path $sitePackages "stata_kernel\kernel.py"
-                if (-not (Test-Path -Path $kernelPy)) {
+                if (-not (Test-Path -Path $kernelPy))
+                {
                     # Final fallback: ask Python for the module file location
                     $kernelPy = & "$VENV_DIR\Scripts\python.exe" -c "import stata_kernel.kernel as k; import os; print(os.path.abspath(k.__file__))" 2>$null
                 }
 
-                if (-not $kernelPy -or -not (Test-Path -Path $kernelPy)) {
+                if (-not $kernelPy -or -not (Test-Path -Path $kernelPy))
+                {
                     Write-ErrorMessage "stata_kernel kernel.py not found at: $kernelPy"
                     exit 3
                 }
@@ -770,7 +952,8 @@ function Install-Packages {
                 $kernelContent = Get-Content -Path $kernelPy -Raw
 
                 # Only patch if the notebook copy target exists and hasn't been patched yet.
-                if ($kernelContent -match "files\\('notebook'\\)" -and -not ($kernelContent -match "SIGHT_ZED_PATCH_SKIP_NOTEBOOK")) {
+                if ($kernelContent -match "files\\('notebook'\\)" -and -not ($kernelContent -match "SIGHT_ZED_PATCH_SKIP_NOTEBOOK"))
+                {
                     # 1) Replace the notebook destination Path(...) entry in to_paths with a dummy Path().
                     $patternToPath = "Path\\(\\s*files\\('notebook'\\)\\s*\\.joinpath\\(\\s*'static/components/codemirror/mode/stata/stata\\.js'\\s*\\)\\s*\\)"
                     $patched = $kernelContent -replace $patternToPath, "Path()  # SIGHT_ZED_PATCH_SKIP_NOTEBOOK"
@@ -790,20 +973,24 @@ for from_path, to_path in zip(from_paths, to_paths):
 
                     $patched | Out-File -FilePath $kernelPy -Encoding utf8
                     Write-SuccessMessage "Patched stata_kernel to skip notebook CodeMirror copy"
-                } else {
+                } else
+                {
                     Write-InfoMessage "stata_kernel patch not needed (already patched or notebook reference not present)"
                 }
-            } catch {
+            } catch
+            {
                 Write-ErrorMessage "Failed to patch stata_kernel: $($_.Exception.Message)"
                 exit 3
             }
         }
-    } else {
+    } else
+    {
         # Python 3.10 and below: normal installation is generally fine.
         # Still avoid the `jupyter` meta-package to reduce risk of native builds on Windows.
         Write-InfoMessage "Installing stata_kernel and minimal Jupyter components (this may take a minute)..."
         $installOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade stata_kernel jupyter-core jupyter-client 2>&1
-        if ($LASTEXITCODE -ne 0) {
+        if ($LASTEXITCODE -ne 0)
+        {
             Write-ErrorMessage "Failed to install stata_kernel and minimal Jupyter components"
             Write-Host $installOutput
             exit 2
@@ -813,10 +1000,12 @@ for from_path, to_path in zip(from_paths, to_paths):
         # Pin ipykernel to a Zed-compatible version (avoid ipykernel 7.x issues on Windows)
         Write-InfoMessage "Installing ipykernel==$IPYKERNEL_VERSION for Zed compatibility..."
         $ipykernelOutput = & "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade "ipykernel==$IPYKERNEL_VERSION" 2>&1
-        if ($LASTEXITCODE -ne 0) {
+        if ($LASTEXITCODE -ne 0)
+        {
             Write-WarningMessage "Failed to install pinned ipykernel, but continuing..."
             Write-Host $ipykernelOutput
-        } else {
+        } else
+        {
             Write-SuccessMessage "Installed ipykernel==$IPYKERNEL_VERSION"
         }
     }
@@ -826,7 +1015,8 @@ for from_path, to_path in zip(from_paths, to_paths):
 # Configuration Management
 # ============================================================================
 
-function Get-ConfigTemplate {
+function Get-ConfigTemplate
+{
     @"
 # stata_kernel configuration file
 # Documentation: https://kylebarron.dev/stata_kernel/using_stata_kernel/configuration/
@@ -863,8 +1053,10 @@ execution_mode = EXECUTION_MODE_PLACEHOLDER
 "@
 }
 
-function Write-Config {
-    if (-not (Test-Path -Path $CONFIG_FILE)) {
+function Write-Config
+{
+    if (-not (Test-Path -Path $CONFIG_FILE))
+    {
         # Create new config from template
         $configContent = Get-ConfigTemplate
         $configContent = $configContent -replace "STATA_PATH_PLACEHOLDER", $script:STATA_PATH
@@ -872,7 +1064,8 @@ function Write-Config {
         $configContent | Out-File -FilePath $CONFIG_FILE -Encoding utf8
         (Get-Item $CONFIG_FILE).Attributes = "Normal"
         Write-SuccessMessage "Created configuration at $CONFIG_FILE"
-    } else {
+    } else
+    {
         # Update existing config - preserve user settings
         $configContent = Get-Content -Path $CONFIG_FILE -Raw
         $configContent = $configContent -replace "stata_path\s*=.*", "stata_path = $($script:STATA_PATH)"
@@ -886,18 +1079,22 @@ function Write-Config {
 # Kernel Registration
 # ============================================================================
 
-function Register-Kernel {
+function Register-Kernel
+{
     Write-InfoMessage "Registering kernel with Jupyter (deterministic kernelspec written into %APPDATA% for Zed discovery)..."
-    try {
+    try
+    {
         # Deterministic install location:
         #   %APPDATA%\jupyter\kernels\stata
         $forcedKernelDir = Join-Path (Join-Path $KERNEL_INSTALL_PREFIX "jupyter\kernels") "stata"
 
-        if (-not (Test-Path -Path (Split-Path -Path $forcedKernelDir -Parent))) {
+        if (-not (Test-Path -Path (Split-Path -Path $forcedKernelDir -Parent)))
+        {
             New-Item -ItemType Directory -Path (Split-Path -Path $forcedKernelDir -Parent) -Force | Out-Null
         }
 
-        if (Test-Path -Path $forcedKernelDir) {
+        if (Test-Path -Path $forcedKernelDir)
+        {
             Remove-Item -Path $forcedKernelDir -Recurse -Force
         }
 
@@ -972,24 +1169,29 @@ IPKernelApp.launch_instance(kernel_class=kernel_mod.StataKernel)
         $kernelJsonPath = Join-Path $forcedKernelDir "kernel.json"
         $kernelJson | Out-File -FilePath $kernelJsonPath -Encoding utf8
 
-        if (-not (Test-Path -Path $kernelJsonPath)) {
+        if (-not (Test-Path -Path $kernelJsonPath))
+        {
             Write-ErrorMessage "Failed to write kernel spec at $kernelJsonPath"
             exit 3
         }
 
         $script:KERNEL_DIR = $forcedKernelDir
         Write-SuccessMessage "Registered stata kernel into: $forcedKernelDir"
-    } catch {
+    } catch
+    {
         Write-ErrorMessage "Failed to register kernel: $($_.Exception.Message)"
         exit 3
     }
 }
 
-function Verify-KernelSpec {
+function Verify-KernelSpec
+{
     # Dynamically find where the stata kernel was installed
-    try {
+    try
+    {
         $kernelListOutputRaw = & "$VENV_DIR\Scripts\jupyter.exe" kernelspec list --json 2>&1
-        if ($LASTEXITCODE -ne 0) {
+        if ($LASTEXITCODE -ne 0)
+        {
             Write-ErrorMessage "Failed to list Jupyter kernels"
             Write-Host $kernelListOutputRaw
             exit 3
@@ -999,7 +1201,8 @@ function Verify-KernelSpec {
         # Since we capture 2>&1, strip any leading non-JSON lines and parse from the first '{'.
         $kernelListOutput = ($kernelListOutputRaw | Out-String)
         $jsonStart = $kernelListOutput.IndexOf('{')
-        if ($jsonStart -lt 0) {
+        if ($jsonStart -lt 0)
+        {
             Write-ErrorMessage "Failed to parse Jupyter kernelspec JSON (no JSON object found)"
             Write-Host $kernelListOutputRaw
             exit 3
@@ -1007,7 +1210,8 @@ function Verify-KernelSpec {
         $kernelListJson = $kernelListOutput.Substring($jsonStart)
 
         $kernelList = $kernelListJson | ConvertFrom-Json
-        if (-not $kernelList.kernelspecs.stata) {
+        if (-not $kernelList.kernelspecs.stata)
+        {
             Write-ErrorMessage "Stata kernel not found in Jupyter kernelspec list"
             exit 3
         }
@@ -1016,19 +1220,22 @@ function Verify-KernelSpec {
         Write-InfoMessage "Found stata kernel at: $script:KERNEL_DIR"
 
         # Verify kernel.json exists
-        if (-not (Test-Path -Path "$script:KERNEL_DIR\kernel.json")) {
+        if (-not (Test-Path -Path "$script:KERNEL_DIR\kernel.json"))
+        {
             Write-ErrorMessage "Kernel spec not found at $script:KERNEL_DIR\kernel.json"
             exit 3
         }
 
         # Verify language is "stata" (lowercase) for Zed matching
         $kernelJson = Get-Content -Path "$script:KERNEL_DIR\kernel.json" -Raw
-        if (-not ($kernelJson -match '"language"\s*:\s*"stata"')) {
+        if (-not ($kernelJson -match '"language"\s*:\s*"stata"'))
+        {
             Write-WarningMessage "Kernel language may not be set correctly for Zed (expected `"stata`")"
         }
 
         Write-SuccessMessage "Verified kernel spec at $script:KERNEL_DIR"
-    } catch {
+    } catch
+    {
         Write-ErrorMessage "Failed to verify kernel spec: $($_.Exception.Message)"
         exit 3
     }
@@ -1038,7 +1245,8 @@ function Verify-KernelSpec {
 # Workspace Kernel (changes to workspace root before starting Stata)
 # ============================================================================
 
-function Get-WorkspaceKernelScript {
+function Get-WorkspaceKernelScript
+{
     @'
 #!/usr/bin/env python3
 """
@@ -1133,7 +1341,8 @@ if __name__ == '__main__':
 '@
 }
 
-function Install-WorkspaceKernel {
+function Install-WorkspaceKernel
+{
     Write-InfoMessage "Installing workspace kernel..."
 
     # Install the workspace kernel into the same forced prefix location used for the main kernel,
@@ -1141,7 +1350,8 @@ function Install-WorkspaceKernel {
     $script:WORKSPACE_KERNEL_DIR = Join-Path (Join-Path $KERNEL_INSTALL_PREFIX "jupyter\\kernels") "stata_workspace"
 
     # Create workspace kernel directory
-    if (-not (Test-Path -Path $script:WORKSPACE_KERNEL_DIR)) {
+    if (-not (Test-Path -Path $script:WORKSPACE_KERNEL_DIR))
+    {
         New-Item -ItemType Directory -Path $script:WORKSPACE_KERNEL_DIR -Force | Out-Null
     }
 
@@ -1161,31 +1371,40 @@ function Install-WorkspaceKernel {
     Write-SuccessMessage "Installed workspace kernel at $script:WORKSPACE_KERNEL_DIR"
 }
 
-function Uninstall-WorkspaceKernel {
+function Uninstall-WorkspaceKernel
+{
     # Dynamically find workspace kernel location
-    try {
+    try
+    {
         $jupyterPath = "$VENV_DIR\Scripts\jupyter.exe"
-        if (-not (Test-Path -Path $jupyterPath)) {
+        if (-not (Test-Path -Path $jupyterPath))
+        {
             Write-InfoMessage "Workspace kernel not found (jupyter not installed)"
             return
         }
 
         $kernelListOutputRaw = & $jupyterPath kernelspec list --json 2>&1
-        if ($LASTEXITCODE -eq 0) {
+        if ($LASTEXITCODE -eq 0)
+        {
             $kernelListOutput = ($kernelListOutputRaw | Out-String)
             $jsonStart = $kernelListOutput.IndexOf('{')
-            if ($jsonStart -lt 0) { return }
+            if ($jsonStart -lt 0)
+            { return 
+            }
             $kernelList = $kernelListOutput.Substring($jsonStart) | ConvertFrom-Json
-            if ($kernelList.kernelspecs.stata_workspace) {
+            if ($kernelList.kernelspecs.stata_workspace)
+            {
                 $workspaceKernelPath = $kernelList.kernelspecs.stata_workspace.resource_dir
-                if (Test-Path -Path $workspaceKernelPath) {
+                if (Test-Path -Path $workspaceKernelPath)
+                {
                     Remove-Item -Path $workspaceKernelPath -Recurse -Force
                     Write-SuccessMessage "Removed workspace kernel"
                     return
                 }
             }
         }
-    } catch {
+    } catch
+    {
         # Ignore errors during uninstall
     }
 
@@ -1196,7 +1415,8 @@ function Uninstall-WorkspaceKernel {
 # PATH Management
 # ============================================================================
 
-function Add-VenvToPath {
+function Add-VenvToPath
+{
     $venvScripts = "$VENV_DIR\Scripts"
 
     # Get current user PATH
@@ -1207,19 +1427,25 @@ function Add-VenvToPath {
     $normalized = $pathEntries | ForEach-Object { $_.TrimEnd('\') }
     $targetNormalized = $venvScripts.TrimEnd('\')
 
-    if ($normalized -contains $targetNormalized) {
+    if ($normalized -contains $targetNormalized)
+    {
         Write-InfoMessage "Jupyter venv is already in PATH"
         return
     }
 
     # Add to PATH
     Write-InfoMessage "Adding Jupyter venv to user PATH for Zed integration..."
-    $newPath = if ($currentPath) { "$currentPath;$venvScripts" } else { $venvScripts }
+    $newPath = if ($currentPath)
+    { "$currentPath;$venvScripts" 
+    } else
+    { $venvScripts 
+    }
     [System.Environment]::SetEnvironmentVariable('Path', $newPath, 'User')
     Write-SuccessMessage "Added to PATH: $venvScripts"
 }
 
-function Remove-VenvFromPath {
+function Remove-VenvFromPath
+{
     $venvScripts = "$VENV_DIR\Scripts"
 
     # Get current user PATH
@@ -1230,7 +1456,8 @@ function Remove-VenvFromPath {
     $normalized = $pathEntries | ForEach-Object { $_.TrimEnd('\') }
     $targetNormalized = $venvScripts.TrimEnd('\')
 
-    if ($normalized -notcontains $targetNormalized) {
+    if ($normalized -notcontains $targetNormalized)
+    {
         Write-InfoMessage "Jupyter venv not in PATH (already removed)"
         return
     }
@@ -1249,7 +1476,8 @@ function Remove-VenvFromPath {
 # Uninstallation
 # ============================================================================
 
-function Uninstall {
+function Uninstall
+{
     param ([bool]$removeConfig)
 
     Write-InfoMessage "Uninstalling stata_kernel..."
@@ -1261,56 +1489,73 @@ function Uninstall {
     Remove-VenvFromPath
 
     # Remove kernel spec - dynamically find it
-    try {
+    try
+    {
         $jupyterPath = "$VENV_DIR\Scripts\jupyter.exe"
-        if (Test-Path -Path $jupyterPath) {
+        if (Test-Path -Path $jupyterPath)
+        {
             $kernelListOutputRaw = & $jupyterPath kernelspec list --json 2>&1
-            if ($LASTEXITCODE -eq 0) {
+            if ($LASTEXITCODE -eq 0)
+            {
                 $kernelListOutput = ($kernelListOutputRaw | Out-String)
                 $jsonStart = $kernelListOutput.IndexOf('{')
-                if ($jsonStart -lt 0) {
+                if ($jsonStart -lt 0)
+                {
                     Write-InfoMessage "Could not parse kernel list (no JSON found)"
                     return
                 }
                 $kernelList = $kernelListOutput.Substring($jsonStart) | ConvertFrom-Json
-                if ($kernelList.kernelspecs.stata) {
+                if ($kernelList.kernelspecs.stata)
+                {
                     $kernelPath = $kernelList.kernelspecs.stata.resource_dir
-                    if (Test-Path -Path $kernelPath) {
+                    if (Test-Path -Path $kernelPath)
+                    {
                         Remove-Item -Path $kernelPath -Recurse -Force
                         Write-SuccessMessage "Removed kernel spec"
-                    } else {
+                    } else
+                    {
                         Write-InfoMessage "Kernel spec not found (already removed)"
                     }
-                } else {
+                } else
+                {
                     Write-InfoMessage "Kernel spec not found (already removed)"
                 }
-            } else {
+            } else
+            {
                 Write-InfoMessage "Could not list kernels (venv may be broken)"
             }
-        } else {
+        } else
+        {
             Write-InfoMessage "Kernel spec not found (already removed)"
         }
-    } catch {
+    } catch
+    {
         Write-InfoMessage "Could not remove kernel spec (may already be removed)"
     }
 
     # Remove virtual environment
-    if (Test-Path -Path $VENV_DIR) {
+    if (Test-Path -Path $VENV_DIR)
+    {
         Remove-Item -Path $VENV_DIR -Recurse -Force
         Write-SuccessMessage "Removed virtual environment"
-    } else {
+    } else
+    {
         Write-InfoMessage "Virtual environment not found (already removed)"
     }
 
     # Optionally remove config
-    if ($removeConfig) {
-        if (Test-Path -Path $CONFIG_FILE) {
+    if ($removeConfig)
+    {
+        if (Test-Path -Path $CONFIG_FILE)
+        {
             Remove-Item -Path $CONFIG_FILE -Force
             Write-SuccessMessage "Removed configuration file"
-        } else {
+        } else
+        {
             Write-InfoMessage "Configuration file not found (already removed)"
         }
-    } else {
+    } else
+    {
         Write-InfoMessage "Configuration preserved at $CONFIG_FILE (use --remove-config to delete)"
     }
 
@@ -1321,7 +1566,8 @@ function Uninstall {
 # Main
 # ============================================================================
 
-function Print-Summary {
+function Print-Summary
+{
     Write-Host ""
     Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     Write-Host "  stata_kernel installed successfully!"
@@ -1367,8 +1613,10 @@ function Print-Summary {
     Write-Host ""
 }
 
-function Main {
-    if ($uninstall) {
+function Main
+{
+    if ($uninstall)
+    {
         Uninstall -removeConfig $removeConfig
         exit 0
     }
