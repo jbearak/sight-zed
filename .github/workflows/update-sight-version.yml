@@ -48,8 +48,10 @@ jobs:
             echo "Using manually specified version: $LATEST_VERSION"
           else
             # Fetch latest release tag from jbearak/sight repo
-            LATEST_VERSION=$(gh api repos/jbearak/sight/releases/latest --jq '.tag_name') || true
-            if [ -z "$LATEST_VERSION" ]; then
+            if ! LATEST_VERSION=$(gh api repos/jbearak/sight/releases/latest --jq '.tag_name' 2>/dev/null); then
+              LATEST_VERSION=""
+            fi
+            if [ -z "$LATEST_VERSION" ] || [ "$LATEST_VERSION" = "null" ]; then
               echo "::error::Failed to fetch latest release from jbearak/sight"
               exit 1
             fi
