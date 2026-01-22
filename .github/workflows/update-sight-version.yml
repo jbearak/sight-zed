@@ -1,0 +1,176 @@
+name: Update Sight Version
+
+on:
+  schedule:
+    # Run daily at midnight UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Sight version to update to (e.g., v0.1.17). Leave empty to use latest release.'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-for-update:
+    runs-on: ubuntu-latest
+    outputs:
+      needs_update: ${{ steps.check.outputs.needs_update }}
+      latest_version: ${{ steps.check.outputs.latest_version }}
+      current_version: ${{ steps.check.outputs.current_version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for updates
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Get current SERVER_VERSION from src/lib.rs
+          CURRENT_VERSION=$(grep -oP 'const SERVER_VERSION: &str = "\K[^"]+' src/lib.rs)
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current SERVER_VERSION: $CURRENT_VERSION"
+
+          # Get target version (from input or latest release)
+          if [ -n "${{ inputs.version }}" ]; then
+            LATEST_VERSION="${{ inputs.version }}"
+            echo "Using manually specified version: $LATEST_VERSION"
+          else
+            LATEST_VERSION=$(gh api repos/jbearak/sight/releases/latest --jq '.tag_name')
+            echo "Latest sight release: $LATEST_VERSION"
+          fi
+          echo "latest_version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+
+          # Check if update is needed
+          if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
+            echo "Already up to date"
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Check if PR already exists for this version
+          EXISTING_PR=$(gh pr list --search "Update sight to $LATEST_VERSION" --state open --json number --jq '.[0].number')
+          if [ -n "$EXISTING_PR" ]; then
+            echo "PR #$EXISTING_PR already exists for version $LATEST_VERSION"
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Update needed: $CURRENT_VERSION -> $LATEST_VERSION"
+          echo "needs_update=true" >> $GITHUB_OUTPUT
+
+  update-and-build:
+    needs: check-for-update
+    if: needs.check-for-update.outputs.needs_update == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update version files
+        id: update
+        run: |
+          LATEST_VERSION="${{ needs.check-for-update.outputs.latest_version }}"
+
+          # Update SERVER_VERSION in src/lib.rs
+          sed -i "s/const SERVER_VERSION: &str = \"[^\"]*\"/const SERVER_VERSION: \&str = \"$LATEST_VERSION\"/" src/lib.rs
+          echo "Updated src/lib.rs"
+
+          # Get current extension version and bump patch
+          CURRENT_EXT_VERSION=$(grep -oP '^version = "\K[^"]+' Cargo.toml)
+          echo "Current extension version: $CURRENT_EXT_VERSION"
+
+          # Parse and bump patch version
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_EXT_VERSION"
+          NEW_PATCH=$((PATCH + 1))
+          NEW_EXT_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+          echo "New extension version: $NEW_EXT_VERSION"
+          echo "new_ext_version=$NEW_EXT_VERSION" >> $GITHUB_OUTPUT
+
+          # Update Cargo.toml
+          sed -i "s/^version = \"$CURRENT_EXT_VERSION\"/version = \"$NEW_EXT_VERSION\"/" Cargo.toml
+          echo "Updated Cargo.toml"
+
+          # Update extension.toml
+          sed -i "s/^version = \"$CURRENT_EXT_VERSION\"/version = \"$NEW_EXT_VERSION\"/" extension.toml
+          echo "Updated extension.toml"
+
+          # Show changes
+          echo "--- Changes ---"
+          git diff
+
+      - name: Setup Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          targets: wasm32-wasip1
+
+      - name: Build WASM extension
+        run: |
+          cargo build --release --target wasm32-wasip1
+          cp target/wasm32-wasip1/release/sight_extension.wasm extension.wasm
+
+      - name: Verify WASM file
+        run: |
+          WASM_SIZE=$(stat -c%s extension.wasm)
+          echo "WASM file size: $WASM_SIZE bytes"
+
+          if [ "$WASM_SIZE" -lt 100000 ]; then
+            echo "Error: WASM file is too small (< 100KB), build may have failed"
+            exit 1
+          fi
+
+          echo "WASM file size is reasonable"
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          LATEST_VERSION="${{ needs.check-for-update.outputs.latest_version }}"
+          CURRENT_VERSION="${{ needs.check-for-update.outputs.current_version }}"
+          NEW_EXT_VERSION="${{ steps.update.outputs.new_ext_version }}"
+          BRANCH_NAME="update-sight-${LATEST_VERSION}"
+
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Create branch and commit
+          git checkout -b "$BRANCH_NAME"
+          git add src/lib.rs Cargo.toml extension.toml extension.wasm
+          git commit -m "Update sight to $LATEST_VERSION
+
+          - Update SERVER_VERSION: $CURRENT_VERSION -> $LATEST_VERSION
+          - Bump extension version to $NEW_EXT_VERSION
+          - Rebuild extension.wasm"
+
+          # Push branch
+          git push origin "$BRANCH_NAME"
+
+          # Create PR
+          gh pr create \
+            --title "Update sight to $LATEST_VERSION" \
+            --label "automated" \
+            --body "## Summary
+
+          This PR updates the sight language server to **$LATEST_VERSION**.
+
+          ### Changes
+          - \`SERVER_VERSION\` in \`src/lib.rs\`: \`$CURRENT_VERSION\` -> \`$LATEST_VERSION\`
+          - Extension version: -> \`$NEW_EXT_VERSION\`
+          - Rebuilt \`extension.wasm\`
+
+          ### Testing Checklist
+          - [ ] Install extension in Zed
+          - [ ] Open a \`.do\` file and verify LSP starts
+          - [ ] Check hover documentation works
+          - [ ] Verify go-to-definition functions
+          - [ ] Test on macOS / Linux / Windows (if possible)
+
+          ---
+          *This PR was automatically created by the update-sight-version workflow.*
+          "
