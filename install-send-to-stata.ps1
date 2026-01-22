@@ -57,8 +57,8 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
 
 # Expected SHA-256 checksums for send-to-stata executables
 # Update these when rebuilding the executables (run update-checksum.ps1)
-$expectedChecksumArm64 = "51aab45f56c54424efa160e4625dd4d23c65ed9112a9fe6763c24eff60effe74"
-$expectedChecksumX64 = "1d73f6a4d1c58e1191d1215c5689a4b03ecf6605341a14aecf01e82dcc426463"
+$expectedChecksumArm64 = "1f4ca7ebfdaff5913247c54358a9628f135782fc239b3fe3af5f5d26e7e46180"
+$expectedChecksumX64 = "4fead048fda4c69a962c807a94281d866e175965c50823ff88df6bece97d83ae"
 
 function Get-HostArch {
     # Detect host architecture for selecting the correct binary
