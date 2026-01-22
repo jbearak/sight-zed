@@ -90,7 +90,11 @@ jobs:
           echo "Updated src/lib.rs"
 
           # Get current extension version and bump patch
-          CURRENT_EXT_VERSION=$(grep -oP '^version = "\K[^"]+' Cargo.toml)
+          CURRENT_EXT_VERSION=$(grep -oP '^version = "\K[^"]+' Cargo.toml) || true
+          if [ -z "$CURRENT_EXT_VERSION" ]; then
+            echo "::error::Failed to extract version from Cargo.toml"
+            exit 1
+          fi
           echo "Current extension version: $CURRENT_EXT_VERSION"
 
           # Validate and parse semver (MAJOR.MINOR.PATCH)
