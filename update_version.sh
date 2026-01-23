@@ -83,24 +83,24 @@ if [ "$EXPECTED_SHA" != "$ACTUAL_SHA" ]; then
 fi
 echo "send-to-stata.sh checksum OK"
 
-# Validate Windows exe checksums match installer
+# Validate Windows exe checksums match latest release
 echo "Validating Windows exe checksums..."
 EXPECTED_ARM64=$(grep '^\$expectedChecksumArm64' install-send-to-stata.ps1 | sed 's/.*"\([^"]*\)".*/\1/')
 EXPECTED_X64=$(grep '^\$expectedChecksumX64' install-send-to-stata.ps1 | sed 's/.*"\([^"]*\)".*/\1/')
-ACTUAL_ARM64=$(shasum -a 256 send-to-stata-arm64.exe | cut -d' ' -f1)
-ACTUAL_X64=$(shasum -a 256 send-to-stata-x64.exe | cut -d' ' -f1)
+ACTUAL_ARM64=$(curl -sL "https://github.com/jbearak/send-to-stata/releases/latest/download/send-to-stata-arm64.exe" | shasum -a 256 | cut -d' ' -f1)
+ACTUAL_X64=$(curl -sL "https://github.com/jbearak/send-to-stata/releases/latest/download/send-to-stata-x64.exe" | shasum -a 256 | cut -d' ' -f1)
 if [ "$EXPECTED_ARM64" != "$ACTUAL_ARM64" ]; then
     echo "Error: send-to-stata-arm64.exe checksum mismatch" >&2
     echo "  Expected: $EXPECTED_ARM64" >&2
     echo "  Actual:   $ACTUAL_ARM64" >&2
-    echo "  Run: pwsh -File update-checksum.ps1" >&2
+    echo "  Run the update-send-to-stata GitHub Action to update checksums" >&2
     exit 1
 fi
 if [ "$EXPECTED_X64" != "$ACTUAL_X64" ]; then
     echo "Error: send-to-stata-x64.exe checksum mismatch" >&2
     echo "  Expected: $EXPECTED_X64" >&2
     echo "  Actual:   $ACTUAL_X64" >&2
-    echo "  Run: pwsh -File update-checksum.ps1" >&2
+    echo "  Run the update-send-to-stata GitHub Action to update checksums" >&2
     exit 1
 fi
 echo "Windows exe checksums OK"
