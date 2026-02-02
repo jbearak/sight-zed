@@ -170,6 +170,18 @@ cargo build --release --target wasm32-wasip1
 cp target/wasm32-wasip1/release/sight_extension.wasm extension.wasm
 ```
 
+Or use the dev setup script:
+
+```bash
+./tools/dev/dev-setup-macos.sh
+```
+
+To test the extension as a marketplace user would experience it (without send-to-stata or jupyter-kernel):
+
+```bash
+./tools/dev/dev-setup-macos.sh --skip-tools
+```
+
 ### Windows
 
 Use the PowerShell setup script:
