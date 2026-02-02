@@ -46,7 +46,8 @@ zed-stata/
 │       ├── dev-setup-macos.sh  # macOS dev environment setup
 │       ├── dev-setup-windows.ps1 # Windows dev environment setup
 │       ├── update-send-to-stata-checksum.sh  # Updates checksum in installer
-│       └── update-dev-checksums.ps1          # Updates checksums in dev-setup
+│       ├── update-dev-checksums.ps1          # Updates checksums in dev-setup
+│       └── update_version.sh   # Version bump automation
 ├── tree-sitter-stata/          # Tree-sitter grammar (git submodule)
 │
 ├── Cargo.toml                  # Rust project manifest
@@ -54,7 +55,6 @@ zed-stata/
 ├── extension.toml              # Zed extension manifest
 ├── extension.wasm              # Built extension (committed)
 ├── validate.sh                 # Build and dependency validation
-├── update_version.sh           # Version bump automation
 │
 ├── AGENTS.md                   # AI agent instructions
 ├── DEVELOPMENT.md              # Development guide (this file)
@@ -138,7 +138,7 @@ ln -s $(pwd) ~/.local/share/zed/extensions/installed/stata
 
 Use the version bump script:
 ```bash
-./update_version.sh 0.1.18
+./tools/dev/update_version.sh 0.1.18
 ```
 
 This updates:
