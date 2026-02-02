@@ -4,6 +4,7 @@
 #
 # Usage:
 #   ./dev-setup-macos.sh              Build extension, install symlink, run installers
+#   ./dev-setup-macos.sh --skip-tools Build extension only (no jupyter/send-to-stata)
 #   ./dev-setup-macos.sh --uninstall  Remove extension symlink and uninstall components
 
 set -euo pipefail
@@ -11,7 +12,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ZED_EXT_DIR="$HOME/Library/Application Support/Zed/extensions/installed"
-SYMLINK_PATH="$ZED_EXT_DIR/sight"
+SYMLINK_PATH="$ZED_EXT_DIR/stata"
 
 # Colors for output
 RED='\033[0;31m'
@@ -141,12 +142,23 @@ uninstall() {
 }
 
 install() {
+  local skip_tools="${1:-false}"
+
   echo "Setting up Sight Zed extension..."
   echo ""
   check_prerequisites
   build_extension
   build_grammar
   install_symlink
+
+  if [[ "$skip_tools" == "true" ]]; then
+    echo ""
+    print_success "Extension installed (skipped send-to-stata and jupyter-kernel)"
+    echo ""
+    echo "Restart Zed to load the extension."
+    return
+  fi
+
   echo ""
   "$REPO_ROOT/tools/send-to-stata/install-macos.sh" --quiet
   echo ""
@@ -183,6 +195,8 @@ install() {
 main() {
   if [[ "${1:-}" == "--uninstall" ]]; then
     uninstall
+  elif [[ "${1:-}" == "--skip-tools" ]]; then
+    install true
   else
     install
   fi
