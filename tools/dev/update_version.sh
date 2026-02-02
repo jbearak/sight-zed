@@ -48,7 +48,7 @@ done
 echo "Running pre-release validation..."
 
 # Validate grammar revision exists
-if ! ./validate.sh --grammar-rev; then
+if ! ./tools/dev/validate.sh --grammar-rev; then
     echo "Error: Grammar revision validation failed." >&2
     exit 1
 fi
@@ -64,7 +64,7 @@ if [ -n "$SIGHT_VERSION" ]; then
     fi
     echo "Sight release $SIGHT_VERSION exists."
 else
-    if ! ./validate.sh --lsp; then
+    if ! ./tools/dev/validate.sh --lsp; then
         echo "Error: LSP validation failed." >&2
         exit 1
     fi
@@ -72,21 +72,21 @@ fi
 
 # Validate send-to-stata.sh checksum matches installer
 echo "Validating send-to-stata.sh checksum..."
-EXPECTED_SHA=$(grep '^SEND_TO_STATA_SHA256=' install-send-to-stata.sh | sed 's/.*"\([^"]*\)".*/\1/')
-ACTUAL_SHA=$(shasum -a 256 send-to-stata.sh | cut -d' ' -f1)
+EXPECTED_SHA=$(grep '^SEND_TO_STATA_SHA256=' tools/send-to-stata/install-macos.sh | sed 's/.*"\([^"]*\)".*/\1/')
+ACTUAL_SHA=$(shasum -a 256 tools/send-to-stata/send-to-stata.sh | cut -d' ' -f1)
 if [ "$EXPECTED_SHA" != "$ACTUAL_SHA" ]; then
     echo "Error: send-to-stata.sh checksum mismatch" >&2
     echo "  Expected: $EXPECTED_SHA" >&2
     echo "  Actual:   $ACTUAL_SHA" >&2
-    echo "  Run: ./update-checksum.sh" >&2
+    echo "  Run: ./tools/dev/update-send-to-stata-checksum.sh" >&2
     exit 1
 fi
 echo "send-to-stata.sh checksum OK"
 
 # Validate Windows exe checksums match latest release
 echo "Validating Windows exe checksums..."
-EXPECTED_ARM64=$(grep '^\$expectedChecksumArm64' install-send-to-stata.ps1 | sed 's/.*"\([^"]*\)".*/\1/')
-EXPECTED_X64=$(grep '^\$expectedChecksumX64' install-send-to-stata.ps1 | sed 's/.*"\([^"]*\)".*/\1/')
+EXPECTED_ARM64=$(grep '^\$expectedChecksumArm64' tools/send-to-stata/install-windows.ps1 | sed 's/.*"\([^"]*\)".*/\1/')
+EXPECTED_X64=$(grep '^\$expectedChecksumX64' tools/send-to-stata/install-windows.ps1 | sed 's/.*"\([^"]*\)".*/\1/')
 ACTUAL_ARM64=$(curl -sL "https://github.com/jbearak/send-to-stata/releases/latest/download/send-to-stata-arm64.exe" | shasum -a 256 | cut -d' ' -f1)
 ACTUAL_X64=$(curl -sL "https://github.com/jbearak/send-to-stata/releases/latest/download/send-to-stata-x64.exe" | shasum -a 256 | cut -d' ' -f1)
 if [ "$EXPECTED_ARM64" != "$ACTUAL_ARM64" ]; then
