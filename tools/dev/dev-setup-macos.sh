@@ -104,25 +104,39 @@ build_grammar() {
 install_symlink() {
   mkdir -p "$ZED_EXT_DIR"
 
-  if [[ -L "$SYMLINK_PATH" ]]; then
-    rm "$SYMLINK_PATH"
-  elif [[ -e "$SYMLINK_PATH" ]]; then
-    print_error "$SYMLINK_PATH exists and is not a symlink"
-    echo "Remove it manually if you want to proceed"
-    exit 1
-  fi
+  # Clean up old symlinks from both possible locations
+  local ALT_PATH="$HOME/.local/share/zed/extensions/installed/sight"
+  
+  for path in "$SYMLINK_PATH" "$ALT_PATH"; do
+    if [[ -L "$path" ]]; then
+      rm "$path"
+      print_success "Removed old symlink at $path"
+    elif [[ -e "$path" ]]; then
+      print_error "$path exists and is not a symlink"
+      echo "Remove it manually if you want to proceed"
+      exit 1
+    fi
+  done
 
   ln -s "$REPO_ROOT" "$SYMLINK_PATH"
   print_success "Installed extension symlink at $SYMLINK_PATH"
 }
 
 uninstall_symlink() {
-  if [[ -L "$SYMLINK_PATH" ]]; then
-    rm "$SYMLINK_PATH"
-    print_success "Removed extension symlink"
-  elif [[ -e "$SYMLINK_PATH" ]]; then
-    print_warning "$SYMLINK_PATH exists but is not a symlink, skipping"
-  else
+  local ALT_PATH="$HOME/.local/share/zed/extensions/installed/sight"
+  local found=false
+  
+  for path in "$SYMLINK_PATH" "$ALT_PATH"; do
+    if [[ -L "$path" ]]; then
+      rm "$path"
+      print_success "Removed extension symlink at $path"
+      found=true
+    elif [[ -e "$path" ]]; then
+      print_warning "$path exists but is not a symlink, skipping"
+    fi
+  done
+  
+  if [[ "$found" == "false" ]]; then
     print_warning "Extension symlink not found, skipping"
   fi
 }
