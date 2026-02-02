@@ -20,8 +20,9 @@
 
 set -euo pipefail
 
-# Script directory (for relative paths)
+# Script directory and repo root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Color codes for output
 RED='\033[0;31m'
@@ -123,7 +124,7 @@ record_result() {
 # Extract SERVER_VERSION from src/lib.rs
 # Output: Version string (e.g., "v0.1.11")
 extract_server_version() {
-    local lib_rs="${SCRIPT_DIR}/src/lib.rs"
+    local lib_rs="${REPO_ROOT}/src/lib.rs"
     
     if [[ ! -f "$lib_rs" ]]; then
         echo "ERROR: File not found: $lib_rs" >&2
@@ -145,7 +146,7 @@ extract_server_version() {
 # Extract grammar revision from extension.toml
 # Output: Commit SHA string
 extract_grammar_revision() {
-    local extension_toml="${SCRIPT_DIR}/extension.toml"
+    local extension_toml="${REPO_ROOT}/extension.toml"
     
     if [[ ! -f "$extension_toml" ]]; then
         echo "ERROR: File not found: $extension_toml" >&2
@@ -334,7 +335,7 @@ validate_grammar_revision() {
 validate_extension_build() {
     print_info "Building extension WASM..."
     
-    cd "$SCRIPT_DIR"
+    cd "$REPO_ROOT"
     
     # Check if wasm32-wasip1 target is installed
     if ! rustup target list --installed 2>/dev/null | grep -q "wasm32-wasip1"; then
@@ -352,7 +353,7 @@ validate_extension_build() {
     fi
     
     # Check for output file
-    local wasm_file="${SCRIPT_DIR}/target/wasm32-wasip1/release/sight_extension.wasm"
+    local wasm_file="${REPO_ROOT}/target/wasm32-wasip1/release/sight_extension.wasm"
     if [[ ! -f "$wasm_file" ]]; then
         print_fail "WASM output file not found: $wasm_file"
         return 1
