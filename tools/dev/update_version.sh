@@ -157,4 +157,5 @@ fi
 
 git add $FILES_TO_COMMIT
 git commit -m "Bump version to $NEW_VERSION"
-echo "Committed version bump to $NEW_VERSION"
+git tag "v$NEW_VERSION"
+echo "Committed and tagged v$NEW_VERSION"
