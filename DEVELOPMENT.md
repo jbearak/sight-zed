@@ -22,7 +22,8 @@ zed-stata/
 │       ├── highlights.scm      # Syntax highlighting queries
 │       ├── indents.scm         # Indentation rules
 │       ├── outline.scm         # Code outline queries
-│       └── overrides.scm       # Scope overrides
+│       ├── overrides.scm       # Scope overrides
+│       └── tasks.json          # Extension-provided tasks
 ├── src/
 │   └── lib.rs                  # Zed extension entry point
 ├── target/                     # Rust build artifacts (ignored)
@@ -30,33 +31,35 @@ zed-stata/
 │   ├── *.bats                  # Bash Automated Testing System tests
 │   ├── *.Tests.ps1             # Pester tests for PowerShell
 │   └── fixtures/               # Test fixtures
+├── tools/
+│   ├── send-to-stata/
+│   │   ├── README.md           # Send-to-Stata documentation
+│   │   ├── install-macos.sh    # macOS installer
+│   │   ├── install-windows.ps1 # Windows installer
+│   │   └── send-to-stata.sh    # Main script (macOS only)
+│   ├── jupyter-kernel/
+│   │   ├── README.md           # Jupyter kernel documentation
+│   │   ├── install-macos.sh    # macOS installer
+│   │   └── install-windows.ps1 # Windows installer
+│   └── dev/
+│       ├── README.md           # Development setup documentation
+│       ├── dev-setup-macos.sh  # macOS dev environment setup
+│       ├── dev-setup-windows.ps1 # Windows dev environment setup
+│       ├── update-send-to-stata-checksum.sh  # Updates checksum in installer
+│       └── update-dev-checksums.ps1          # Updates checksums in dev-setup
 ├── tree-sitter-stata/          # Tree-sitter grammar (git submodule)
 │
 ├── Cargo.toml                  # Rust project manifest
 ├── Cargo.lock                  # Rust dependency lockfile
 ├── extension.toml              # Zed extension manifest
 ├── extension.wasm              # Built extension (committed)
+├── validate.sh                 # Build and dependency validation
+├── update_version.sh           # Version bump automation
 │
-├── install-jupyter-stata.ps1  # Windows Jupyter kernel installer
-├── install-jupyter-stata.sh   # macOS/Linux Jupyter kernel installer
-├── install-send-to-stata.ps1  # Windows send-to-stata installer
-├── install-send-to-stata.sh   # macOS/Linux send-to-stata installer
-│
-├── send-to-stata.sh           # macOS send-to-stata script
-│
-├── setup.ps1                  # Windows full setup script
-├── setup.sh                   # macOS/Linux setup script
-├── validate.sh                # Build and dependency validation
-│
-├── update_version.sh          # Version bump automation
-├── update-checksum.sh         # Update macOS script checksums
-├── update-setup-checksums.ps1 # Update setup.ps1 dependency checksums
-│
-├── AGENTS.md                  # AI agent instructions
-├── DEVELOPMENT.md             # Development guide (this file)
-├── LICENSE                    # GPLv3 license
-├── README.md                  # User-facing documentation
-└── SEND-TO-STATA.md           # Send-to-Stata documentation
+├── AGENTS.md                   # AI agent instructions
+├── DEVELOPMENT.md              # Development guide (this file)
+├── LICENSE                     # GPLv3 license
+└── README.md                   # User-facing documentation
 ```
 
 ## Prerequisites
@@ -70,7 +73,7 @@ zed-stata/
 ### Windows
 
 - PowerShell 7+ (`winget install Microsoft.PowerShell`)
-- The `setup.ps1` script handles most dependencies
+- The `tools/dev/dev-setup-windows.ps1` script handles most dependencies
 
 ## Building
 
@@ -81,8 +84,8 @@ zed-stata/
 cargo build --release --target wasm32-wasip1
 cp target/wasm32-wasip1/release/sight_extension.wasm extension.wasm
 
-# Windows (via setup.ps1)
-.\setup.ps1 -Yes
+# Windows (via dev-setup-windows.ps1)
+.\tools\dev\dev-setup-windows.ps1 -Yes
 ```
 
 ## Testing
@@ -126,7 +129,7 @@ For development/testing:
 
 Or symlink:
 ```bash
-ln -s $(pwd) ~/.local/share/zed/extensions/installed/sight
+ln -s $(pwd) ~/.local/share/zed/extensions/installed/stata
 ```
 
 ## Version Management
@@ -165,10 +168,10 @@ After modifying scripts, update their checksums:
 
 ```bash
 # macOS send-to-stata.sh checksum
-./update-checksum.sh
+./tools/dev/update-send-to-stata-checksum.sh
 
-# Windows setup.ps1 dependency checksums
-pwsh -File update-setup-checksums.ps1
+# Windows dev-setup dependency checksums
+pwsh -File tools/dev/update-dev-checksums.ps1
 ```
 
 ## GitHub Actions

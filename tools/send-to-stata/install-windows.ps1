@@ -36,7 +36,7 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
             if ($SkipAutomationCheck) { $scriptArgs += '-SkipAutomationCheck' }
             if ($ReturnFocus) { $scriptArgs += '-ReturnFocus'; $scriptArgs += $ReturnFocus }
             if ($ActivateStata) { $scriptArgs += '-ActivateStata'; $scriptArgs += $ActivateStata }
-            $url = "https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.ps1"
+            $url = "https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-windows.ps1"
             $argsStr = ($scriptArgs | ForEach-Object { "'$_'" }) -join ','
             & pwsh -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm '$url'))) $argsStr"
             exit $LASTEXITCODE
@@ -51,7 +51,7 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
     Write-Host "  winget install Microsoft.PowerShell"
     Write-Host ""
     Write-Host "Then run:" -ForegroundColor Cyan
-    Write-Host "  pwsh -c `"irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.ps1 | iex`""
+    Write-Host "  pwsh -c `"irm https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-windows.ps1 | iex`""
     exit 1
 }
 
@@ -97,9 +97,9 @@ function Install-Executable {
         # Download from send-to-stata repo releases
         $githubRef = $env:SIGHT_GITHUB_REF
         if ($githubRef -and $githubRef -ne "main") {
-            # Custom ref - download from sight-zed repo (for testing)
-            $url = "https://github.com/jbearak/sight-zed/raw/$githubRef/$exeName"
-            Write-Host "Downloading $exeName from sight-zed (custom ref: $githubRef)..."
+            # Custom ref - download from zed-stata repo (for testing)
+            $url = "https://github.com/jbearak/zed-stata/raw/$githubRef/$exeName"
+            Write-Host "Downloading $exeName from zed-stata (custom ref: $githubRef)..."
         } else {
             # Production - download from send-to-stata releases
             $url = "https://github.com/jbearak/send-to-stata/releases/latest/download/$exeName"

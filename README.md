@@ -36,7 +36,7 @@ Execute Stata code directly from Zed with keyboard shortcuts. Works with both th
 > [!NOTE]
 > **Why a separate install?** Zed extensions can't register custom keybindings or tasks—those must live in user config files. The send-to-stata functionality requires both, so it can't be bundled into the extension itself.
 
-See [SEND-TO-STATA.md](SEND-TO-STATA.md) for full documentation, configuration options, and troubleshooting.
+See [tools/send-to-stata/README.md](tools/send-to-stata/README.md) for full documentation, configuration options, and troubleshooting.
 
 ### Keyboard Shortcuts
 
@@ -54,7 +54,7 @@ See [SEND-TO-STATA.md](SEND-TO-STATA.md) for full documentation, configuration o
 
 **Run the installer in Terminal:**
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-macos.sh)"
 ```
 
 ### Windows
@@ -68,7 +68,7 @@ See [SEND-TO-STATA.md](SEND-TO-STATA.md) for full documentation, configuration o
 
 **Run the installer in PowerShell:**
 ```powershell
-irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.ps1 | iex
+irm https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-windows.ps1 | iex
 ```
 
 > [!TIP]
@@ -97,7 +97,7 @@ Usage in Zed:
 
 **Run the installer in Terminal:**
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-stata.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/jupyter-kernel/install-macos.sh)"
 ```
 
 ### Windows
@@ -111,7 +111,7 @@ Usage in Zed:
 
 **Run the installer in PowerShell:**
 ```powershell
-irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-stata.ps1 | iex
+irm https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/jupyter-kernel/install-windows.ps1 | iex
 ```
 
 > [!IMPORTANT]
@@ -141,6 +141,115 @@ irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-sta
 > [!TIP]
 > The installer creates `~/.stata_kernel.conf` (or `%USERPROFILE%\.stata_kernel.conf` on Windows) with auto-detected settings. Edit this file to customize graph format, cache directory, and other options.
 
+## What the Install Scripts Do
+
+### Why Install Scripts Are Required
+
+The extension provides basic tasks that show installation instructions, but full Send-to-Stata and Jupyter REPL functionality requires running the installers because:
+
+- **Temp file management**: Stata executes code from `.do` files, so the script creates temp files and manages cleanup
+- **Statement detection**: Multi-line statements with `///` continuations require parsing logic
+- **Stata variant detection**: The script auto-detects which Stata variant (MP, SE, IC) is installed
+- **Keybindings**: Zed extensions cannot register keybindings; they must be added to user config files
+- **Platform-specific binaries**: Windows requires a native executable for clipboard/SendKeys automation
+
+### Send-to-Stata Installer
+
+The send-to-stata installer configures keyboard shortcuts to send code from Zed to Stata.
+
+**What It Does NOT Do:**
+- Does not modify Stata installation
+- Does not require admin/sudo privileges
+- Does not install system-wide packages
+
+#### Files Created (macOS)
+
+| File | Purpose |
+|------|---------|
+| `~/.local/bin/send-to-stata.sh` | Main script that communicates with Stata via AppleScript |
+| `~/.config/zed/tasks.json` | Updated with Stata task definitions |
+| `~/.config/zed/keymap.json` | Updated with keyboard shortcuts |
+
+#### Files Created (Windows)
+
+| File | Purpose |
+|------|---------|
+| `%APPDATA%\Zed\stata\send-to-stata.exe` | Native executable for Stata automation |
+| `%APPDATA%\Zed\tasks.json` | Updated with Stata task definitions |
+| `%APPDATA%\Zed\keymap.json` | Updated with keyboard shortcuts |
+
+### Jupyter Kernel Installer
+
+The Jupyter kernel installer sets up stata_kernel for use with Zed's REPL.
+
+#### Files Created (macOS)
+
+| File | Purpose |
+|------|---------|
+| `~/.local/share/jupyter/kernels/stata/` | Standard kernel specification |
+| `~/.local/share/jupyter/kernels/stata_workspace/` | Workspace kernel specification |
+| `~/.stata_kernel.conf` | Kernel configuration (Stata path, graph format, etc.) |
+
+#### Files Created (Windows)
+
+| File | Purpose |
+|------|---------|
+| `%APPDATA%\jupyter\kernels\stata\` | Standard kernel specification |
+| `%APPDATA%\jupyter\kernels\stata_workspace\` | Workspace kernel specification |
+| `%LOCALAPPDATA%\stata_kernel\venv\` | Isolated Python virtual environment |
+| `%USERPROFILE%\.stata_kernel.conf` | Kernel configuration |
+
+## Manual Keybindings Setup
+
+If you prefer to configure keybindings manually instead of running the installer, add the following to your Zed keymap file.
+
+### macOS
+
+Add to `~/.config/zed/keymap.json`:
+
+```json
+[
+  {
+    "context": "Editor && extension == do",
+    "bindings": {
+      "cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send Statement"}]]],
+      "shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send File"}]]],
+      "alt-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include Statement"}]]],
+      "alt-shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include File"}]]],
+      "shift-enter": ["workspace::SendKeystrokes", "cmd-c ctrl-` cmd-v enter"],
+      "alt-enter": ["workspace::SendKeystrokes", "cmd-left shift-cmd-right cmd-c ctrl-` cmd-v enter"],
+      "ctrl-shift-w": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: CD into Workspace Folder"}]]],
+      "ctrl-shift-f": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: CD into File Folder"}]]]
+    }
+  }
+]
+```
+
+### Windows
+
+Add to `%APPDATA%\Zed\keymap.json`:
+
+```json
+[
+  {
+    "context": "Editor && extension == do",
+    "bindings": {
+      "ctrl-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send Statement"}]]],
+      "shift-ctrl-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send File"}]]],
+      "alt-ctrl-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include Statement"}]]],
+      "alt-shift-ctrl-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include File"}]]],
+      "shift-enter": ["workspace::SendKeystrokes", "ctrl-c ctrl-` ctrl-v enter"],
+      "alt-enter": ["workspace::SendKeystrokes", "home shift-end ctrl-c ctrl-` ctrl-v enter"],
+      "ctrl-shift-w": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: CD into Workspace Folder"}]]],
+      "ctrl-shift-f": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: CD into File Folder"}]]]
+    }
+  }
+]
+```
+
+> [!NOTE]
+> Manual keybindings require the send-to-stata script/executable to be installed. The keybindings trigger tasks that call the script. Run the installer to install the script, or see [tools/send-to-stata/README.md](tools/send-to-stata/README.md) for manual script installation.
+
 ## Building from Source
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development setup, directory structure, and workflows.
@@ -150,14 +259,14 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development setup, directory s
 Install from a local clone:
 
 ```bash
-git clone https://github.com/jbearak/sight-zed
-cd sight-zed
+git clone https://github.com/jbearak/zed-stata
+cd zed-stata
 
 # macOS
-./install-send-to-stata.sh
+./tools/send-to-stata/install-macos.sh
 
 # Windows (PowerShell 7+)
-pwsh -File .\install-send-to-stata.ps1
+pwsh -File .\tools\send-to-stata\install-windows.ps1
 ```
 
 ### Jupyter Kernel
@@ -165,14 +274,14 @@ pwsh -File .\install-send-to-stata.ps1
 Install stata_kernel from a local clone:
 
 ```bash
-git clone https://github.com/jbearak/sight-zed
-cd sight-zed
+git clone https://github.com/jbearak/zed-stata
+cd zed-stata
 
 # macOS
-./install-jupyter-stata.sh
+./tools/jupyter-kernel/install-macos.sh
 
 # Windows (PowerShell 7+)
-pwsh -File .\install-jupyter-stata.ps1
+pwsh -File .\tools\jupyter-kernel\install-windows.ps1
 ```
 
 ## Related Projects

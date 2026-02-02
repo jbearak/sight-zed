@@ -22,29 +22,29 @@ Send Stata code from Zed editor to Stata for execution. Supports two modes:
 ### macOS
 
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-macos.sh)"
 ```
 
 Or install from a local clone:
 
 ```bash
-git clone https://github.com/jbearak/sight-zed
-cd sight-zed
-./install-send-to-stata.sh
+git clone https://github.com/jbearak/zed-stata
+cd zed-stata
+./tools/send-to-stata/install-macos.sh
 ```
 
 ### Windows
 
 ```powershell
-irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-send-to-stata.ps1 | iex
+irm https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-windows.ps1 | iex
 ```
 
 Or install from a local clone:
 
 ```powershell
-git clone https://github.com/jbearak/sight-zed
-cd sight-zed
-pwsh -File .\install-send-to-stata.ps1
+git clone https://github.com/jbearak/zed-stata
+cd zed-stata
+pwsh -File .\tools\send-to-stata\install-windows.ps1
 ```
 
 > [TIP]

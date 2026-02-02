@@ -30,7 +30,7 @@ jobs:
           echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
           
           # Get current checksum from installer script
-          CURRENT_X64=$(grep '^\$expectedChecksumX64 = ' install-send-to-stata.ps1 | sed 's/.*"\(.*\)".*/\1/')
+          CURRENT_X64=$(grep '^\$expectedChecksumX64 = ' tools/send-to-stata/install-windows.ps1 | sed 's/.*"\(.*\)".*/\1/')
           
           # Get new checksum from release
           NEW_X64_URL=$(gh api repos/jbearak/send-to-stata/releases/latest --jq '.assets[] | select(.name=="send-to-stata-x64.exe.sha256") | .browser_download_url')
@@ -73,11 +73,11 @@ jobs:
           echo "X64 checksum: $X64_SHA"
           
           # Update checksums in installer
-          sed -i "s/^\$expectedChecksumArm64 = \".*\"/\$expectedChecksumArm64 = \"$ARM64_SHA\"/" install-send-to-stata.ps1
-          sed -i "s/^\$expectedChecksumX64 = \".*\"/\$expectedChecksumX64 = \"$X64_SHA\"/" install-send-to-stata.ps1
+          sed -i "s/^\$expectedChecksumArm64 = \".*\"/\$expectedChecksumArm64 = \"$ARM64_SHA\"/" tools/send-to-stata/install-windows.ps1
+          sed -i "s/^\$expectedChecksumX64 = \".*\"/\$expectedChecksumX64 = \"$X64_SHA\"/" tools/send-to-stata/install-windows.ps1
           
           # Verify changes
-          git diff install-send-to-stata.ps1
+          git diff tools/send-to-stata/install-windows.ps1
 
       - name: Create PR
         if: steps.check.outputs.needs_update == 'true'
@@ -92,7 +92,7 @@ jobs:
           
           git push origin --delete "$BRANCH" 2>/dev/null || true
           git checkout -b "$BRANCH"
-          git add install-send-to-stata.ps1
+          git add tools/send-to-stata/install-windows.ps1
           git commit -m "Update send-to-stata checksums to $LATEST"
           git push origin "$BRANCH"
           

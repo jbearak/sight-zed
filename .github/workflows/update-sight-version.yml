@@ -187,7 +187,7 @@ jobs:
 
           echo "WASM file size is reasonable"
 
-      - name: Update setup.ps1 checksum
+      - name: Update dev-setup-windows.ps1 checksum
         run: |
           LATEST_VERSION="${{ needs.check-for-update.outputs.latest_version }}"
 
@@ -199,15 +199,15 @@ jobs:
           NEW_CHECKSUM=$(sha256sum /tmp/sight-server.js | cut -d' ' -f1)
           echo "New SightServer checksum: $NEW_CHECKSUM"
 
-          # Update the checksum in setup.ps1
-          sed -i "s/SightServer = \"[a-f0-9]\{64\}\"/SightServer = \"$NEW_CHECKSUM\"/" setup.ps1
+          # Update the checksum in dev-setup-windows.ps1
+          sed -i "s/SightServer = \"[a-f0-9]\{64\}\"/SightServer = \"$NEW_CHECKSUM\"/" tools/dev/dev-setup-windows.ps1
 
           # Verify the change was made
-          grep "SightServer" setup.ps1
+          grep "SightServer" tools/dev/dev-setup-windows.ps1
 
           # Commit the change
-          git add setup.ps1
-          git commit -m "Update setup.ps1 SightServer checksum for $LATEST_VERSION" || echo "No changes to commit"
+          git add tools/dev/dev-setup-windows.ps1
+          git commit -m "Update dev-setup-windows.ps1 SightServer checksum for $LATEST_VERSION" || echo "No changes to commit"
 
       - name: Create Pull Request
         env:
@@ -235,7 +235,7 @@ jobs:
             "- SERVER_VERSION: ${CURRENT_VERSION} -> ${LATEST_VERSION}" \
             "- Extension version: ${CURRENT_EXT_VERSION} -> ${NEW_EXT_VERSION}" \
             "- Rebuilt extension.wasm" \
-            "- Updated setup.ps1 SightServer checksum" \
+            "- Updated dev-setup-windows.ps1 SightServer checksum" \
             "" \
             "### Testing Checklist" \
             "- [ ] Install extension in Zed" \

@@ -24,7 +24,7 @@ winget install Microsoft.PowerShell
 Install on Windows:
 
 ```powershell
-pwsh -File .\install-jupyter-stata.ps1
+pwsh -File .\tools\jupyter-kernel\install-windows.ps1
 ```
 
 What the installer does (Windows):
@@ -127,12 +127,12 @@ Both kernels (stata and stata_workspace) will be available in the kernel selecti
 
 To uninstall:
 ```powershell
-.\install-jupyter-stata.ps1 --uninstall
+.\tools\jupyter-kernel\install-windows.ps1 --uninstall
 ```
 
 To uninstall including config:
 ```powershell
-.\install-jupyter-stata.ps1 --uninstall --remove-config
+.\tools\jupyter-kernel\install-windows.ps1 --uninstall --remove-config
 ```
 
 ## Updating the Tree-Sitter Grammar
@@ -175,7 +175,7 @@ cp target/wasm32-wasip1/release/sight_extension.wasm extension.wasm
 Use the PowerShell setup script:
 
 ```powershell
-.\setup.ps1 -Yes
+.\tools\dev\dev-setup-windows.ps1 -Yes
 ```
 
 This handles:
@@ -196,7 +196,30 @@ The `.gitignore` reflects this:
 
 This excludes all `.wasm` files except `extension.wasm`. After building, you must commit the updated `extension.wasm` for users to receive the new version.
 
-Note: `grammars/stata.wasm` is not committed to git. On macOS/Linux, Zed's extension CI builds the grammar from source. On Windows, `setup.ps1` downloads the pre-built grammar WASM from tree-sitter-stata releases.
+Note: `grammars/stata.wasm` is not committed to git. On macOS/Linux, Zed's extension CI builds the grammar from source. On Windows, `tools/dev/dev-setup-windows.ps1` downloads the pre-built grammar WASM from tree-sitter-stata releases.
+
+## Tools Directory Structure
+
+The repository organizes scripts into a `tools/` directory with subdirectories for each tool category:
+
+```text
+tools/
+├── send-to-stata/
+│   ├── README.md              # Full documentation for Send-to-Stata
+│   ├── install-macos.sh       # macOS installer
+│   ├── install-windows.ps1    # Windows installer
+│   └── send-to-stata.sh       # Main script (macOS only)
+├── jupyter-kernel/
+│   ├── README.md              # Jupyter kernel documentation
+│   ├── install-macos.sh       # macOS installer
+│   └── install-windows.ps1    # Windows installer
+└── dev/
+    ├── README.md              # Development setup documentation
+    ├── dev-setup-macos.sh     # macOS dev environment setup
+    ├── dev-setup-windows.ps1  # Windows dev environment setup
+    ├── update-send-to-stata-checksum.sh  # Updates checksum in installer
+    └── update-dev-checksums.ps1          # Updates checksums in dev-setup
+```
 
 ## Windows Architecture
 
@@ -228,7 +251,7 @@ Zed compiles tree-sitter grammars to WASM internally, but this compilation fails
 The grammar WASM is:
 1. Built on macOS/Linux using the WASI SDK
 2. Published to tree-sitter-stata releases as `tree-sitter-stata.wasm`
-3. Downloaded by `setup.ps1` and placed in `grammars/stata.wasm`
+3. Downloaded by `tools/dev/dev-setup-windows.ps1` and placed in `grammars/stata.wasm`
 4. Referenced in `extension.toml` with `[grammars.stata]` and `path = "grammars/stata.wasm"`
 
 **Critical**: The `extension.toml` must include:
@@ -246,14 +269,14 @@ Building Rust to `wasm32-wasip1` on Windows requires:
 - WASI SDK (for WASM-specific libc)
 - Rust with the `wasm32-wasip1` target
 
-The `setup.ps1` script handles installing all these dependencies via Chocolatey.
+The `tools/dev/dev-setup-windows.ps1` script handles installing all these dependencies via Chocolatey.
 
 ### Windows File Layout
 
-After running `setup.ps1`, the extension includes:
+After running `tools/dev/dev-setup-windows.ps1`, the extension includes:
 
-```
-sight-zed/
+```text
+zed-stata/
 ├── extension.wasm          # Rust extension compiled to WASM
 ├── grammars/
 │   └── stata.wasm          # Pre-built tree-sitter grammar (downloaded)
@@ -264,8 +287,8 @@ sight-zed/
 ```
 
 When installed to Zed:
-```
-%APPDATA%\Zed\extensions\installed\sight\
+```text
+%APPDATA%\Zed\extensions\installed\stata\
 ├── extension.wasm
 ├── grammars/
 │   └── stata.wasm
@@ -292,7 +315,7 @@ When releasing a new version:
 1. Update `SERVER_VERSION` in `src/lib.rs`
 2. Ensure the release includes `sight-server.js` (for Windows Node.js fallback)
 3. If the grammar changed, rebuild and publish `tree-sitter-stata.wasm`
-4. Run `setup.ps1` on Windows to verify everything works
+4. Run `tools/dev/dev-setup-windows.ps1` on Windows to verify everything works
 
 ## Installing the Extension Locally
 
@@ -305,7 +328,7 @@ For development/testing in Zed:
 
 Or symlink to Zed's extensions directory:
 ```bash
-ln -s $(pwd) ~/.local/share/zed/extensions/installed/sight
+ln -s $(pwd) ~/.local/share/zed/extensions/installed/stata
 ```
 
 ## Depth Colorization (Not Currently Functional)
@@ -436,15 +459,15 @@ In `.do` files:
 
 In user-facing docs, we write "opt" instead of "alt" because that is how the "alt" key is labeled on Mac keyboards.
 
-See [SEND-TO-STATA.md](SEND-TO-STATA.md) for full documentation.
+See [tools/send-to-stata/README.md](tools/send-to-stata/README.md) for full documentation.
 
 ## Updating send-to-stata.sh
 
-The installer (`install-send-to-stata.sh`) embeds a SHA-256 checksum of `send-to-stata.sh` for integrity verification during curl-pipe installation. When modifying `send-to-stata.sh`:
+The installer (`tools/send-to-stata/install-macos.sh`) embeds a SHA-256 checksum of `tools/send-to-stata/send-to-stata.sh` for integrity verification during curl-pipe installation. When modifying `tools/send-to-stata/send-to-stata.sh`:
 
-1. Make your changes to `send-to-stata.sh`
-2. Run `./update-checksum.sh` — this updates the checksum in the installer and commits the change
-3. Commit `send-to-stata.sh` separately (or amend the checksum commit)
+1. Make your changes to `tools/send-to-stata/send-to-stata.sh`
+2. Run `./tools/dev/update-send-to-stata-checksum.sh` — this updates the checksum in the installer and commits the change
+3. Commit `tools/send-to-stata/send-to-stata.sh` separately (or amend the checksum commit)
 
 The checksum ensures the two scripts stay in sync and detects accidental mismatches or CDN caching issues. It doesn't protect against a compromised GitHub account (an attacker could modify both files). Verification is skipped when users specify a custom `SIGHT_GITHUB_REF` for testing branches.
 
@@ -452,21 +475,21 @@ If you forget to update the checksum, curl-pipe installations will fail with a c
 
 ## Updating send-to-stata executables checksum on Windows
 
-The `update-send-to-stata.yml` GitHub Action automatically downloads new releases from [jbearak/send-to-stata](https://github.com/jbearak/send-to-stata) and updates the checksums in `install-send-to-stata.ps1`. No manual intervention is needed.
+The `update-send-to-stata.yml` GitHub Action automatically downloads new releases from [jbearak/send-to-stata](https://github.com/jbearak/send-to-stata) and updates the checksums in `tools/send-to-stata/install-windows.ps1`. No manual intervention is needed.
 
 The installer verifies checksums when downloading from GitHub. Verification is skipped when users specify a custom `SIGHT_GITHUB_REF` for testing branches.
 
-## Updating setup.ps1 dependency checksums
+## Updating dev-setup-windows.ps1 dependency checksums
 
-Use `update-setup-checksums.ps1` (PowerShell 7+) when upstream dependencies release new versions:
+Use `tools/dev/update-dev-checksums.ps1` (PowerShell 7+) when upstream dependencies release new versions:
 
-1. Run `pwsh -File update-setup-checksums.ps1` from repo root
+1. Run `pwsh -File tools/dev/update-dev-checksums.ps1` from repo root
 2. It downloads WASI SDK, tree-sitter-stata grammar, and Sight language server
-3. Calculates SHA-256 checksums and updates `setup.ps1`
+3. Calculates SHA-256 checksums and updates `tools/dev/dev-setup-windows.ps1`
 4. Auto-commits the changes
 5. Use `-DryRun` to see the new hashes without modifying files
 
-The checksums are verified during `setup.ps1` execution to detect corrupted downloads.
+The checksums are verified during `tools/dev/dev-setup-windows.ps1` execution to detect corrupted downloads.
 
 ## Windows Send-to-Stata Architecture
 
@@ -493,7 +516,7 @@ By default, focus returns to Zed after sending code. Use `-ActivateStata` to kee
 
 ### Installer Parameters
 
-The `install-send-to-stata.ps1` script accepts:
+The `tools/send-to-stata/install-windows.ps1` script accepts:
 
 | Parameter | Description |
 |-----------|-------------|
@@ -506,15 +529,15 @@ For CI/CD, pass `-ActivateStata true` or `-ActivateStata false` to skip the inte
 
 ```powershell
 # Non-interactive install, stay in Zed (default behavior)
-.\install-send-to-stata.ps1 -SkipAutomationCheck -ActivateStata false
+.\tools\send-to-stata\install-windows.ps1 -SkipAutomationCheck -ActivateStata false
 
 # Non-interactive install, switch to Stata
-.\install-send-to-stata.ps1 -SkipAutomationCheck -ActivateStata true
+.\tools\send-to-stata\install-windows.ps1 -SkipAutomationCheck -ActivateStata true
 ```
 
 ### macOS Installer Parameters
 
-The `install-send-to-stata.sh` script accepts:
+The `tools/send-to-stata/install-macos.sh` script accepts:
 
 | Parameter | Description |
 |-----------|-------------|
@@ -527,17 +550,17 @@ For CI/CD, pass `--activate-stata` or `--stay-in-zed` to skip the interactive pr
 
 ```bash
 # Non-interactive install, stay in Zed (default behavior)
-./install-send-to-stata.sh --stay-in-zed
+./tools/send-to-stata/install-macos.sh --stay-in-zed
 
 # Non-interactive install, switch to Stata
-./install-send-to-stata.sh --activate-stata
+./tools/send-to-stata/install-macos.sh --activate-stata
 ```
 
 Note: `--activate-stata` and `--stay-in-zed` are mutually exclusive.
 
 ## Jupyter Stata Kernel Variants
 
-The `install-jupyter-stata.sh` installer creates two Jupyter kernels:
+The `tools/jupyter-kernel/install-macos.sh` installer creates two Jupyter kernels:
 
 | Kernel | Working Directory | Use Case |
 |--------|-------------------|----------|

@@ -50,7 +50,7 @@ if ($PSVersionTable.PSVersion.Major -lt 7)
             if ($removeConfig)
             { $scriptArgs += '-RemoveConfig' 
             }
-            $url = "https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-stata.ps1"
+            $url = "https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/jupyter-kernel/install-windows.ps1"
             $argsStr = ($scriptArgs | ForEach-Object { "'$_'" }) -join ','
             & pwsh -NoProfile -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((irm '$url'))) $argsStr"
             exit $LASTEXITCODE
@@ -65,7 +65,7 @@ if ($PSVersionTable.PSVersion.Major -lt 7)
     Write-Host "  winget install Microsoft.PowerShell"
     Write-Host ""
     Write-Host "Then run:" -ForegroundColor Cyan
-    Write-Host "  pwsh -c `"irm https://raw.githubusercontent.com/jbearak/sight-zed/main/install-jupyter-stata.ps1 | iex`""
+    Write-Host "  pwsh -c `"irm https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/jupyter-kernel/install-windows.ps1 | iex`""
     exit 1
 }
 
@@ -123,6 +123,7 @@ function Write-InfoMessage
     param ([string]$message)
     Write-Host $message
 }
+
 
 # ============================================================================
 # Prerequisite Checks
@@ -336,6 +337,7 @@ function Check-Python3
 
     return $pythonPath
 }
+
 
 function Install-PythonAutomatically
 {
@@ -572,6 +574,7 @@ function Check-Prerequisites
     Check-Windows
     $script:PYTHON_CMD = Check-Python3
 }
+
 
 # ============================================================================
 # Stata Detection
@@ -821,6 +824,7 @@ function Create-Venv
     }
 }
 
+
 function Install-Packages
 {
     Write-InfoMessage "Installing packages..."
@@ -1010,6 +1014,7 @@ for from_path, to_path in zip(from_paths, to_paths):
         }
     }
 }
+
 
 # ============================================================================
 # Configuration Management
@@ -1241,6 +1246,7 @@ function Verify-KernelSpec
     }
 }
 
+
 # ============================================================================
 # Workspace Kernel (changes to workspace root before starting Stata)
 # ============================================================================
@@ -1471,6 +1477,7 @@ function Remove-VenvFromPath
     [System.Environment]::SetEnvironmentVariable('Path', $newPath, 'User')
     Write-SuccessMessage "Removed from PATH"
 }
+
 
 # ============================================================================
 # Uninstallation
