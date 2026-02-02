@@ -52,26 +52,24 @@ pwsh -File .\tools\jupyter-kernel\install-windows.ps1
 
 ## What the Installer Does
 
+- Creates an isolated Python virtual environment with `stata_kernel` and its dependencies (`jupyter-core`, `jupyter-client`, `ipykernel`)
+- Auto-detects your Stata installation and writes the configuration file with the detected path and execution mode
+- Registers two Jupyter kernels: **Stata** and **Stata (Workspace)**
+
 ### Files Created
 
 **macOS:**
-- `~/.local/share/stata_kernel/venv/` - Python virtual environment with stata_kernel
-- `~/.stata_kernel.conf` - Kernel configuration file
+- `~/.local/share/stata_kernel/venv/` - Python virtual environment
+- `~/.stata_kernel.conf` - Kernel configuration (auto-detected settings)
 - `~/Library/Jupyter/kernels/stata/` - Standard kernel specification
 - `~/Library/Jupyter/kernels/stata_workspace/` - Workspace kernel specification
 
 **Windows:**
-- `%LOCALAPPDATA%\stata_kernel\venv\` - Python virtual environment with stata_kernel
-- `%USERPROFILE%\.stata_kernel.conf` - Kernel configuration file
+- `%LOCALAPPDATA%\stata_kernel\venv\` - Python virtual environment
+- `%USERPROFILE%\.stata_kernel.conf` - Kernel configuration (auto-detected settings)
 - `%APPDATA%\jupyter\kernels\stata\` - Standard kernel specification
 - `%APPDATA%\jupyter\kernels\stata_workspace\` - Workspace kernel specification
-- Adds the venv Scripts directory to user PATH for Zed discovery
-
-### What It Does NOT Do
-
-- Does not modify your Stata installation
-- Does not require admin/sudo privileges
-- Does not install system-wide packages
+- Adds the venv Scripts directory to user PATH (required for Zed to discover the kernels)
 
 ## Kernel Differences
 
