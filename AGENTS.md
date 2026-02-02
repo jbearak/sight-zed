@@ -369,15 +369,15 @@ This is a Zed API limitation - extensions cannot distinguish between regular str
 
 Full validation suite:
 ```bash
-./validate.sh
+./tools/dev/validate.sh
 ```
 
 Individual checks:
 ```bash
-./validate.sh --lsp          # Check LSP version
-./validate.sh --grammar-rev  # Check grammar revision
-./validate.sh --build        # Test extension build
-./validate.sh --grammar-build # Test grammar build
+./tools/dev/validate.sh --lsp          # Check LSP version
+./tools/dev/validate.sh --grammar-rev  # Check grammar revision
+./tools/dev/validate.sh --build        # Test extension build
+./tools/dev/validate.sh --grammar-build # Test grammar build
 ```
 
 ### Environment Variables

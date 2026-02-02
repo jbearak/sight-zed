@@ -47,14 +47,14 @@ zed-stata/
 │       ├── dev-setup-windows.ps1 # Windows dev environment setup
 │       ├── update-send-to-stata-checksum.sh  # Updates checksum in installer
 │       ├── update-dev-checksums.ps1          # Updates checksums in dev-setup
-│       └── update_version.sh   # Version bump automation
+│       ├── update_version.sh   # Version bump automation
+│       └── validate.sh         # Build and dependency validation
 ├── tree-sitter-stata/          # Tree-sitter grammar (git submodule)
 │
 ├── Cargo.toml                  # Rust project manifest
 ├── Cargo.lock                  # Rust dependency lockfile
 ├── extension.toml              # Zed extension manifest
 ├── extension.wasm              # Built extension (committed)
-├── validate.sh                 # Build and dependency validation
 │
 ├── AGENTS.md                   # AI agent instructions
 ├── DEVELOPMENT.md              # Development guide (this file)
@@ -94,13 +94,13 @@ cp target/wasm32-wasip1/release/sight_extension.wasm extension.wasm
 
 ```bash
 # Run all validations
-./validate.sh
+./tools/dev/validate.sh
 
 # Individual checks
-./validate.sh --lsp          # Check LSP version
-./validate.sh --grammar-rev  # Check grammar revision
-./validate.sh --build        # Test extension build
-./validate.sh --grammar-build # Test grammar build
+./tools/dev/validate.sh --lsp          # Check LSP version
+./tools/dev/validate.sh --grammar-rev  # Check grammar revision
+./tools/dev/validate.sh --build        # Test extension build
+./tools/dev/validate.sh --grammar-build # Test grammar build
 ```
 
 ### BATS Tests (macOS/Linux)
