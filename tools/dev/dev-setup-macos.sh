@@ -1,14 +1,15 @@
 #!/bin/bash
 #
-# setup.sh - Build and install Sight Zed extension for local development
+# dev-setup-macos.sh - Build and install Sight Zed extension for local development
 #
 # Usage:
-#   ./setup.sh              Build extension, install symlink, run installers
-#   ./setup.sh --uninstall  Remove extension symlink and uninstall components
+#   ./dev-setup-macos.sh              Build extension, install symlink, run installers
+#   ./dev-setup-macos.sh --uninstall  Remove extension symlink and uninstall components
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ZED_EXT_DIR="$HOME/Library/Application Support/Zed/extensions/installed"
 SYMLINK_PATH="$ZED_EXT_DIR/sight"
 
@@ -81,16 +82,17 @@ check_prerequisites() {
 
 build_extension() {
   echo "Building extension..."
+  cd "$REPO_ROOT"
   cargo build --release --target wasm32-wasip1
-  cp "$SCRIPT_DIR/target/wasm32-wasip1/release/sight_extension.wasm" "$SCRIPT_DIR/extension.wasm"
+  cp "$REPO_ROOT/target/wasm32-wasip1/release/sight_extension.wasm" "$REPO_ROOT/extension.wasm"
   print_success "Built extension.wasm"
 }
 
 build_grammar() {
   echo "Building grammar..."
-  cd "$SCRIPT_DIR/grammars/stata"
+  cd "$REPO_ROOT/grammars/stata"
   tree-sitter build --wasm -o stata.wasm
-  cd "$SCRIPT_DIR"
+  cd "$REPO_ROOT"
   print_success "Built grammars/stata/stata.wasm"
 }
 
@@ -109,7 +111,7 @@ install_symlink() {
     exit 1
   fi
 
-  ln -s "$SCRIPT_DIR" "$SYMLINK_PATH"
+  ln -s "$REPO_ROOT" "$SYMLINK_PATH"
   print_success "Installed extension symlink at $SYMLINK_PATH"
 }
 
@@ -133,9 +135,9 @@ uninstall() {
   echo ""
   uninstall_symlink
   echo ""
-  "$SCRIPT_DIR/install-send-to-stata.sh" --uninstall
+  "$REPO_ROOT/tools/send-to-stata/install-macos.sh" --uninstall
   echo ""
-  "$SCRIPT_DIR/install-jupyter-stata.sh" --uninstall
+  "$REPO_ROOT/tools/jupyter-kernel/install-macos.sh" --uninstall
 }
 
 install() {
@@ -146,9 +148,9 @@ install() {
   build_grammar
   install_symlink
   echo ""
-  "$SCRIPT_DIR/install-send-to-stata.sh" --quiet
+  "$REPO_ROOT/tools/send-to-stata/install-macos.sh" --quiet
   echo ""
-  "$SCRIPT_DIR/install-jupyter-stata.sh" --quiet
+  "$REPO_ROOT/tools/jupyter-kernel/install-macos.sh" --quiet
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo "  Sight Zed extension setup complete!"

@@ -1,22 +1,23 @@
 #!/bin/bash
 #
-# update-checksum.sh - Update the embedded checksum in install-send-to-stata.sh
+# update-send-to-stata-checksum.sh - Update the embedded checksum in install-macos.sh
 #
 # Run this after modifying send-to-stata.sh to update the integrity check.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INSTALLER="$SCRIPT_DIR/install-send-to-stata.sh"
-TARGET="$SCRIPT_DIR/send-to-stata.sh"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+INSTALLER="$REPO_ROOT/tools/send-to-stata/install-macos.sh"
+TARGET="$REPO_ROOT/tools/send-to-stata/send-to-stata.sh"
 
 if [[ ! -f "$TARGET" ]]; then
-  echo "Error: send-to-stata.sh not found" >&2
+  echo "Error: send-to-stata.sh not found at $TARGET" >&2
   exit 1
 fi
 
 if [[ ! -f "$INSTALLER" ]]; then
-  echo "Error: install-send-to-stata.sh not found" >&2
+  echo "Error: install-macos.sh not found at $INSTALLER" >&2
   exit 1
 fi
 

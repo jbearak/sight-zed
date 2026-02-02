@@ -7,7 +7,7 @@ param(
 
     [string]$ZedExtensionsDir = "$(Join-Path $env:LOCALAPPDATA 'Zed\extensions\installed')",
 
-    # Forwarded to install-send-to-stata.ps1
+    # Forwarded to install-windows.ps1
     [switch]$RegisterAutomation,
     [switch]$SkipAutomationCheck
 )
@@ -38,13 +38,13 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
             & pwsh -File $scriptPath @scriptArgs
             exit $LASTEXITCODE
         } else {
-            # Piped execution - setup.ps1 shouldn't be run this way, guide user to clone
-            Write-Host "ERROR: setup.ps1 should be run from a cloned repository." -ForegroundColor Red
+            # Piped execution - dev-setup-windows.ps1 shouldn't be run this way, guide user to clone
+            Write-Host "ERROR: dev-setup-windows.ps1 should be run from a cloned repository." -ForegroundColor Red
             Write-Host ""
             Write-Host "Clone the repo and run:" -ForegroundColor Cyan
             Write-Host "  git clone https://github.com/jbearak/sight-zed"
             Write-Host "  cd sight-zed"
-            Write-Host "  pwsh -File .\setup.ps1"
+            Write-Host "  pwsh -File .\tools\dev\dev-setup-windows.ps1"
             exit 1
         }
     }
@@ -57,12 +57,15 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
     Write-Host "  winget install Microsoft.PowerShell"
     Write-Host ""
     Write-Host "Then run:" -ForegroundColor Cyan
-    Write-Host "  pwsh -File .\setup.ps1"
+    Write-Host "  pwsh -File .\tools\dev\dev-setup-windows.ps1"
     exit 1
 }
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+# Resolve repo root (two levels up from tools/dev/)
+$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..'))
 
 # ============================================================================
 # Expected SHA-256 checksums for downloaded files
@@ -166,13 +169,13 @@ function Confirm-Install {
 }
 function Report-MsvcInstructions {
     Write-Host ""
-    Write-Host "MSVC toolchain still unavailable. Please install manually, then re-open a NEW terminal and re-run setup.ps1:"
+    Write-Host "MSVC toolchain still unavailable. Please install manually, then re-open a NEW terminal and re-run dev-setup-windows.ps1:"
     Write-Host "  1) Install 'Visual Studio 2022 Build Tools'."
     Write-Host "  2) Select workload: Desktop development with C++."
     Write-Host "  3) Include component: Microsoft.VisualStudio.Component.VC.Tools.ARM64 (for ARM64 host)."
     Write-Host ""
     Write-Host "After installation, close this window, open a fresh terminal, and rerun:"
-    Write-Host "  powershell -NoProfile -ExecutionPolicy Bypass -File .\\setup.ps1 -Yes"
+    Write-Host "  powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\dev\dev-setup-windows.ps1 -Yes"
     throw "MSVC toolchain not detected; manual install required."
 }
 
@@ -357,7 +360,7 @@ function Invoke-WithMsvc {
     }
 
     if (-not $msvcReady) {
-        throw "MSVC build tools (cl.exe/link.exe) were not found. Install the 'Desktop development with C++' workload or rerun setup.ps1 to install via winget."
+        throw "MSVC build tools (cl.exe/link.exe) were not found. Install the 'Desktop development with C++' workload or rerun dev-setup-windows.ps1 to install via winget."
     }
 
     Invoke-Command -ScriptBlock $Script
@@ -561,7 +564,7 @@ function Download-TreeSitterGrammar {
     # Zed cannot compile tree-sitter grammars to WASM on Windows, so we download
     # a pre-built WASM from the tree-sitter-stata releases.
 
-    $grammarsDir = Join-Path $PSScriptRoot 'grammars'
+    $grammarsDir = Join-Path $RepoRoot 'grammars'
     if (-not (Test-Path $grammarsDir)) {
         New-Item -ItemType Directory -Path $grammarsDir -Force | Out-Null
     }
@@ -619,12 +622,12 @@ function Build-Extension {
     }
     if ($LASTEXITCODE -ne 0) { throw "cargo build failed." }
 
-    $builtWasm = Join-Path $PSScriptRoot 'target\wasm32-wasip2\release\sight_extension.wasm'
+    $builtWasm = Join-Path $RepoRoot 'target\wasm32-wasip2\release\sight_extension.wasm'
     if (-not (Test-Path $builtWasm)) {
         throw "Expected build output not found: $builtWasm"
     }
 
-    $destWasm = Join-Path $PSScriptRoot 'extension.wasm'
+    $destWasm = Join-Path $RepoRoot 'extension.wasm'
     Copy-Item -Path $builtWasm -Destination $destWasm -Force
 
     $size = (Get-Item $destWasm).Length
@@ -643,7 +646,7 @@ function Download-LanguageServerForDev {
     # so it can be found during dev testing.
 
     $serverVersion = "v0.1.11"
-    $serverDir = Join-Path $PSScriptRoot "sight-node-$serverVersion"
+    $serverDir = Join-Path $RepoRoot "sight-node-$serverVersion"
     $serverScript = Join-Path $serverDir "sight-server.js"
 
     if (Test-Path $serverScript) {
@@ -721,7 +724,7 @@ function Install-ZedExtension {
     )
 
     foreach ($item in $itemsToCopy) {
-        $src = Join-Path $PSScriptRoot $item
+        $src = Join-Path $RepoRoot $item
         if (Test-Path $src) {
             Copy-Item -Path $src -Destination $dest -Recurse -Force
         }
@@ -729,7 +732,7 @@ function Install-ZedExtension {
 
     # Copy only the pre-built grammar WASM, not the source directory.
     # If we copy grammars/stata/ (the source), Zed will try to compile it and fail on Windows.
-    $grammarWasm = Join-Path $PSScriptRoot 'grammars\stata.wasm'
+    $grammarWasm = Join-Path $RepoRoot 'grammars\stata.wasm'
     if (Test-Path $grammarWasm) {
         $destGrammars = Join-Path $dest 'grammars'
         New-Item -ItemType Directory -Path $destGrammars -Force | Out-Null
@@ -755,7 +758,7 @@ function Uninstall-ZedExtension {
 function Build-SendToStataExecutables {
     Write-Host "Building send-to-stata executables from source..."
 
-    $projectPath = Join-Path $PSScriptRoot 'send-to-stata\SendToStata.csproj'
+    $projectPath = Join-Path $RepoRoot 'send-to-stata\SendToStata.csproj'
     if (-not (Test-Path $projectPath)) {
         Write-Warning "SendToStata.csproj not found; skipping build (will download from GitHub)"
         return
@@ -778,7 +781,7 @@ function Build-SendToStataExecutables {
         }
     }
 
-    $outputPath = $PSScriptRoot
+    $outputPath = $RepoRoot
     $builtCount = 0
 
     # Build ARM64 version
@@ -787,8 +790,8 @@ function Build-SendToStataExecutables {
         & dotnet publish $projectPath -c Release -r win-arm64 --self-contained -o $outputPath -v quiet | Out-Null
         $exitCode = $LASTEXITCODE
         if ($exitCode -eq 0) {
-            $builtExe = Join-Path $PSScriptRoot 'send-to-stata.exe'
-            $targetExe = Join-Path $PSScriptRoot 'send-to-stata-arm64.exe'
+            $builtExe = Join-Path $RepoRoot 'send-to-stata.exe'
+            $targetExe = Join-Path $RepoRoot 'send-to-stata-arm64.exe'
             if (Test-Path $builtExe) {
                 Move-Item $builtExe $targetExe -Force
                 Write-Host " Done" -ForegroundColor Green
@@ -810,8 +813,8 @@ function Build-SendToStataExecutables {
         & dotnet publish $projectPath -c Release -r win-x64 --self-contained -o $outputPath -v quiet | Out-Null
         $exitCode = $LASTEXITCODE
         if ($exitCode -eq 0) {
-            $builtExe = Join-Path $PSScriptRoot 'send-to-stata.exe'
-            $targetExe = Join-Path $PSScriptRoot 'send-to-stata-x64.exe'
+            $builtExe = Join-Path $RepoRoot 'send-to-stata.exe'
+            $targetExe = Join-Path $RepoRoot 'send-to-stata-x64.exe'
             if (Test-Path $builtExe) {
                 Move-Item $builtExe $targetExe -Force
                 Write-Host " Done" -ForegroundColor Green
@@ -833,7 +836,7 @@ function Build-SendToStataExecutables {
     }
 
     # Clean up PDB file if it exists
-    $pdbFile = Join-Path $PSScriptRoot 'send-to-stata.pdb'
+    $pdbFile = Join-Path $RepoRoot 'send-to-stata.pdb'
     if (Test-Path $pdbFile) {
         Remove-Item $pdbFile -Force -ErrorAction SilentlyContinue
     }
@@ -851,7 +854,7 @@ function Install-SendToStata {
         Build-SendToStataExecutables
     }
 
-    $installer = Join-Path $PSScriptRoot 'install-send-to-stata.ps1'
+    $installer = Join-Path $RepoRoot 'tools\send-to-stata\install-windows.ps1'
     if (-not (Test-Path $installer)) {
         throw "Installer not found: $installer"
     }
@@ -863,18 +866,18 @@ function Install-SendToStata {
 
     Write-Host "Installing send-to-stata integration..."
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $installer @args
-    if ($LASTEXITCODE -ne 0) { throw "install-send-to-stata.ps1 failed with exit code $LASTEXITCODE" }
+    if ($LASTEXITCODE -ne 0) { throw "install-windows.ps1 failed with exit code $LASTEXITCODE" }
 }
 
 function Uninstall-SendToStata {
-    $installer = Join-Path $PSScriptRoot 'install-send-to-stata.ps1'
+    $installer = Join-Path $RepoRoot 'tools\send-to-stata\install-windows.ps1'
     if (-not (Test-Path $installer)) {
         throw "Installer not found: $installer"
     }
 
     Write-Host "Uninstalling send-to-stata integration..."
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $installer -Uninstall
-    if ($LASTEXITCODE -ne 0) { throw "install-send-to-stata.ps1 -Uninstall failed with exit code $LASTEXITCODE" }
+    if ($LASTEXITCODE -ne 0) { throw "install-windows.ps1 -Uninstall failed with exit code $LASTEXITCODE" }
 }
 
 # Main

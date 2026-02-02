@@ -19,6 +19,9 @@ else
 fi
 INSTALL_DIR="$HOME/.local/bin"
 ZED_CONFIG_DIR="$HOME/.config/zed"
+CURSOR_CONFIG_DIR="$HOME/.cursor"
+KIRO_CONFIG_DIR="$HOME/.kiro"
+WINDSURF_CONFIG_DIR="$HOME/.windsurf"
 
 # GitHub raw URL for curl-pipe installation
 GITHUB_RAW_BASE="https://raw.githubusercontent.com/jbearak/sight-zed"
@@ -106,7 +109,7 @@ check_prerequisites() {
 # Fetches send-to-stata.sh from GitHub when running via curl-pipe.
 # Used when no local send-to-stata.sh exists (curl-pipe installation context).
 fetch_script_from_github() {
-  local url="$GITHUB_RAW_BASE/$GITHUB_REF/send-to-stata.sh"
+  local url="$GITHUB_RAW_BASE/$GITHUB_REF/tools/send-to-stata/send-to-stata.sh"
   local temp_file
   temp_file=$(mktemp)
   
@@ -120,7 +123,7 @@ fetch_script_from_github() {
     echo ""
     echo "Check your internet connection and try again, or install from a local clone:"
     echo "  git clone https://github.com/jbearak/sight-zed.git"
-    echo "  cd sight-zed && ./install-send-to-stata.sh"
+    echo "  cd sight-zed/tools/send-to-stata && ./install-macos.sh"
     exit 1
   fi
   
@@ -138,7 +141,7 @@ fetch_script_from_github() {
       echo "This could indicate tampering or a version mismatch."
       echo "Install from a local clone to bypass:"
       echo "  git clone https://github.com/jbearak/sight-zed.git"
-      echo "  cd sight-zed && ./install-send-to-stata.sh"
+      echo "  cd sight-zed/tools/send-to-stata && ./install-macos.sh"
       exit 1
     fi
     print_success "Checksum verified"
