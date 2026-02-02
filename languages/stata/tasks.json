@@ -1,7 +1,7 @@
 [
   {
     "label": "Stata: Send File to Stata",
-    "command": "if command -v send-to-stata.sh &>/dev/null; then send-to-stata.sh --file-mode --file \"$ZED_FILE\"; else echo \"Send-to-Stata not installed.\"; echo \"\"; echo \"Install with:\"; echo \"  macOS:   /bin/bash -c \\\"\\$(curl -fsSL https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-macos.sh)\\\"\"; echo \"  Windows: irm https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-windows.ps1 | iex\"; echo \"\"; echo \"Documentation: https://github.com/jbearak/zed-stata/tree/main/tools/send-to-stata\"; exit 1; fi",
+    "command": "if command -v send-to-stata.sh &>/dev/null; then send-to-stata.sh --file-mode --file \"$ZED_FILE\"; else echo \"Send-to-Stata not installed.\"; echo \"\"; echo \"Sending code to Stata requires an additional tool that communicates with the Stata application.\"; echo \"\"; echo \"Install with:\"; echo \"  macOS:   /bin/bash -c \\\"\\$(curl -fsSL https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-macos.sh)\\\"\"; echo \"  Windows: irm https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-windows.ps1 | iex\"; echo \"\"; echo \"Documentation: https://github.com/jbearak/zed-stata/tree/main/tools/send-to-stata\"; exit 1; fi",
     "shell": { "program": "bash" },
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
@@ -10,7 +10,7 @@
   },
   {
     "label": "Stata: Send Statement to Stata",
-    "command": "if command -v send-to-stata.sh &>/dev/null; then send-to-stata.sh --statement --file \"$ZED_FILE\" --row \"$ZED_ROW\"; else echo \"Send-to-Stata not installed.\"; echo \"\"; echo \"Install with:\"; echo \"  macOS:   /bin/bash -c \\\"\\$(curl -fsSL https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-macos.sh)\\\"\"; echo \"  Windows: irm https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-windows.ps1 | iex\"; echo \"\"; echo \"Documentation: https://github.com/jbearak/zed-stata/tree/main/tools/send-to-stata\"; exit 1; fi",
+    "command": "if command -v send-to-stata.sh &>/dev/null; then send-to-stata.sh --statement --file \"$ZED_FILE\" --row \"$ZED_ROW\"; else echo \"Send-to-Stata not installed.\"; echo \"\"; echo \"Sending code to Stata requires an additional tool that communicates with the Stata application.\"; echo \"\"; echo \"Install with:\"; echo \"  macOS:   /bin/bash -c \\\"\\$(curl -fsSL https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-macos.sh)\\\"\"; echo \"  Windows: irm https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-windows.ps1 | iex\"; echo \"\"; echo \"Documentation: https://github.com/jbearak/zed-stata/tree/main/tools/send-to-stata\"; exit 1; fi",
     "shell": { "program": "bash" },
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
@@ -19,7 +19,7 @@
   },
   {
     "label": "Stata: Include File",
-    "command": "if command -v send-to-stata.sh &>/dev/null; then send-to-stata.sh --file-mode --include --file \"$ZED_FILE\"; else echo \"Send-to-Stata not installed.\"; echo \"\"; echo \"Install with:\"; echo \"  macOS:   /bin/bash -c \\\"\\$(curl -fsSL https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-macos.sh)\\\"\"; echo \"  Windows: irm https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-windows.ps1 | iex\"; echo \"\"; echo \"Documentation: https://github.com/jbearak/zed-stata/tree/main/tools/send-to-stata\"; exit 1; fi",
+    "command": "if command -v send-to-stata.sh &>/dev/null; then send-to-stata.sh --file-mode --include --file \"$ZED_FILE\"; else echo \"Send-to-Stata not installed.\"; echo \"\"; echo \"Sending code to Stata requires an additional tool that communicates with the Stata application.\"; echo \"\"; echo \"Install with:\"; echo \"  macOS:   /bin/bash -c \\\"\\$(curl -fsSL https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-macos.sh)\\\"\"; echo \"  Windows: irm https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-windows.ps1 | iex\"; echo \"\"; echo \"Documentation: https://github.com/jbearak/zed-stata/tree/main/tools/send-to-stata\"; exit 1; fi",
     "shell": { "program": "bash" },
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
@@ -28,7 +28,7 @@
   },
   {
     "label": "Stata: Include Statement",
-    "command": "if command -v send-to-stata.sh &>/dev/null; then send-to-stata.sh --statement --include --file \"$ZED_FILE\" --row \"$ZED_ROW\"; else echo \"Send-to-Stata not installed.\"; echo \"\"; echo \"Install with:\"; echo \"  macOS:   /bin/bash -c \\\"\\$(curl -fsSL https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-macos.sh)\\\"\"; echo \"  Windows: irm https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-windows.ps1 | iex\"; echo \"\"; echo \"Documentation: https://github.com/jbearak/zed-stata/tree/main/tools/send-to-stata\"; exit 1; fi",
+    "command": "if command -v send-to-stata.sh &>/dev/null; then send-to-stata.sh --statement --include --file \"$ZED_FILE\" --row \"$ZED_ROW\"; else echo \"Send-to-Stata not installed.\"; echo \"\"; echo \"Sending code to Stata requires an additional tool that communicates with the Stata application.\"; echo \"\"; echo \"Install with:\"; echo \"  macOS:   /bin/bash -c \\\"\\$(curl -fsSL https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-macos.sh)\\\"\"; echo \"  Windows: irm https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-windows.ps1 | iex\"; echo \"\"; echo \"Documentation: https://github.com/jbearak/zed-stata/tree/main/tools/send-to-stata\"; exit 1; fi",
     "shell": { "program": "bash" },
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
@@ -37,7 +37,7 @@
   },
   {
     "label": "Stata: CD to Workspace",
-    "command": "if command -v send-to-stata.sh &>/dev/null; then send-to-stata.sh --cd-workspace --file \"$ZED_FILE\"; else echo \"Send-to-Stata not installed.\"; echo \"\"; echo \"Install with:\"; echo \"  macOS:   /bin/bash -c \\\"\\$(curl -fsSL https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-macos.sh)\\\"\"; echo \"  Windows: irm https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-windows.ps1 | iex\"; echo \"\"; echo \"Documentation: https://github.com/jbearak/zed-stata/tree/main/tools/send-to-stata\"; exit 1; fi",
+    "command": "if command -v send-to-stata.sh &>/dev/null; then send-to-stata.sh --cd-workspace --file \"$ZED_FILE\"; else echo \"Send-to-Stata not installed.\"; echo \"\"; echo \"Sending code to Stata requires an additional tool that communicates with the Stata application.\"; echo \"\"; echo \"Install with:\"; echo \"  macOS:   /bin/bash -c \\\"\\$(curl -fsSL https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-macos.sh)\\\"\"; echo \"  Windows: irm https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-windows.ps1 | iex\"; echo \"\"; echo \"Documentation: https://github.com/jbearak/zed-stata/tree/main/tools/send-to-stata\"; exit 1; fi",
     "shell": { "program": "bash" },
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
@@ -46,7 +46,7 @@
   },
   {
     "label": "Stata: CD to File Directory",
-    "command": "if command -v send-to-stata.sh &>/dev/null; then send-to-stata.sh --cd-file-dir --file \"$ZED_FILE\"; else echo \"Send-to-Stata not installed.\"; echo \"\"; echo \"Install with:\"; echo \"  macOS:   /bin/bash -c \\\"\\$(curl -fsSL https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-macos.sh)\\\"\"; echo \"  Windows: irm https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-windows.ps1 | iex\"; echo \"\"; echo \"Documentation: https://github.com/jbearak/zed-stata/tree/main/tools/send-to-stata\"; exit 1; fi",
+    "command": "if command -v send-to-stata.sh &>/dev/null; then send-to-stata.sh --cd-file-dir --file \"$ZED_FILE\"; else echo \"Send-to-Stata not installed.\"; echo \"\"; echo \"Sending code to Stata requires an additional tool that communicates with the Stata application.\"; echo \"\"; echo \"Install with:\"; echo \"  macOS:   /bin/bash -c \\\"\\$(curl -fsSL https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-macos.sh)\\\"\"; echo \"  Windows: irm https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-windows.ps1 | iex\"; echo \"\"; echo \"Documentation: https://github.com/jbearak/zed-stata/tree/main/tools/send-to-stata\"; exit 1; fi",
     "shell": { "program": "bash" },
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
