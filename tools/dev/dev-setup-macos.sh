@@ -12,7 +12,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ZED_EXT_DIR="$HOME/Library/Application Support/Zed/extensions/installed"
-SYMLINK_PATH="$ZED_EXT_DIR/sight"
+SYMLINK_PATH="$ZED_EXT_DIR/stata"
 
 # Colors for output
 RED='\033[0;31m'
