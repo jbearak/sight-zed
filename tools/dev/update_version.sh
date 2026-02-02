@@ -150,12 +150,12 @@ else
 fi
 
 # Commit the changes
-FILES_TO_COMMIT="Cargo.toml extension.toml extension.wasm"
+FILES_TO_COMMIT="Cargo.toml extension.toml"
 if [ -n "$SIGHT_VERSION" ]; then
     FILES_TO_COMMIT="$FILES_TO_COMMIT src/lib.rs"
 fi
 
-git add $FILES_TO_COMMIT
+git add -f $FILES_TO_COMMIT
 git commit -m "Bump version to $NEW_VERSION"
 git tag "v$NEW_VERSION"
 echo "Committed and tagged v$NEW_VERSION"
