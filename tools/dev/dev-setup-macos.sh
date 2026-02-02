@@ -12,7 +12,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ZED_EXT_DIR="$HOME/Library/Application Support/Zed/extensions/installed"
-SYMLINK_PATH="$ZED_EXT_DIR/sight"
+SYMLINK_PATH="$ZED_EXT_DIR/stata"
 
 # Colors for output
 RED='\033[0;31m'
@@ -104,10 +104,12 @@ build_grammar() {
 install_symlink() {
   mkdir -p "$ZED_EXT_DIR"
 
-  # Clean up old symlinks from both possible locations
-  local ALT_PATH="$HOME/.local/share/zed/extensions/installed/sight"
+  # Clean up old symlinks from both possible locations and old names
+  local ALT_PATH="$HOME/.local/share/zed/extensions/installed/stata"
+  local OLD_SIGHT_NAME="$ZED_EXT_DIR/sight"
+  local OLD_ALT_SIGHT="$HOME/.local/share/zed/extensions/installed/sight"
   
-  for path in "$SYMLINK_PATH" "$ALT_PATH"; do
+  for path in "$SYMLINK_PATH" "$ALT_PATH" "$OLD_SIGHT_NAME" "$OLD_ALT_SIGHT"; do
     if [[ -L "$path" ]]; then
       rm "$path"
       print_success "Removed old symlink at $path"
@@ -123,10 +125,12 @@ install_symlink() {
 }
 
 uninstall_symlink() {
-  local ALT_PATH="$HOME/.local/share/zed/extensions/installed/sight"
+  local ALT_PATH="$HOME/.local/share/zed/extensions/installed/stata"
+  local OLD_SIGHT_NAME="$ZED_EXT_DIR/sight"
+  local OLD_ALT_SIGHT="$HOME/.local/share/zed/extensions/installed/sight"
   local found=false
   
-  for path in "$SYMLINK_PATH" "$ALT_PATH"; do
+  for path in "$SYMLINK_PATH" "$ALT_PATH" "$OLD_SIGHT_NAME" "$OLD_ALT_SIGHT"; do
     if [[ -L "$path" ]]; then
       rm "$path"
       print_success "Removed extension symlink at $path"
