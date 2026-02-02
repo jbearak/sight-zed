@@ -1,7 +1,7 @@
 id = "stata"
 name = "Stata"
 description = "Stata language support for Zed"
-version = "0.1.21"
+version = "0.1.22"
 schema_version = 1
 authors = ["Jonathan Marc Bearak"]
 repository = "https://github.com/jbearak/zed-stata"
@@ -12,7 +12,7 @@ capabilities = []
 
 [lib]
 kind = "Rust"
-version = "0.1.21"
+version = "0.1.22"
 
 [grammars.stata]
 repository = "https://github.com/jbearak/tree-sitter-stata"
