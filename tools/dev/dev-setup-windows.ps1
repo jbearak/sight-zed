@@ -42,8 +42,8 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
             Write-Host "ERROR: dev-setup-windows.ps1 should be run from a cloned repository." -ForegroundColor Red
             Write-Host ""
             Write-Host "Clone the repo and run:" -ForegroundColor Cyan
-            Write-Host "  git clone https://github.com/jbearak/sight-zed"
-            Write-Host "  cd sight-zed"
+            Write-Host "  git clone https://github.com/jbearak/zed-stata"
+            Write-Host "  cd zed-stata"
             Write-Host "  pwsh -File .\tools\dev\dev-setup-windows.ps1"
             exit 1
         }

@@ -54,7 +54,7 @@ See [tools/send-to-stata/README.md](tools/send-to-stata/README.md) for full docu
 
 **Run the installer in Terminal:**
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight-zed/main/tools/send-to-stata/install-macos.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-macos.sh)"
 ```
 
 ### Windows
@@ -68,7 +68,7 @@ See [tools/send-to-stata/README.md](tools/send-to-stata/README.md) for full docu
 
 **Run the installer in PowerShell:**
 ```powershell
-irm https://raw.githubusercontent.com/jbearak/sight-zed/main/tools/send-to-stata/install-windows.ps1 | iex
+irm https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/send-to-stata/install-windows.ps1 | iex
 ```
 
 > [!TIP]
@@ -97,7 +97,7 @@ Usage in Zed:
 
 **Run the installer in Terminal:**
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight-zed/main/tools/jupyter-kernel/install-macos.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/jupyter-kernel/install-macos.sh)"
 ```
 
 ### Windows
@@ -111,7 +111,7 @@ Usage in Zed:
 
 **Run the installer in PowerShell:**
 ```powershell
-irm https://raw.githubusercontent.com/jbearak/sight-zed/main/tools/jupyter-kernel/install-windows.ps1 | iex
+irm https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/jupyter-kernel/install-windows.ps1 | iex
 ```
 
 > [!IMPORTANT]
@@ -259,8 +259,8 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development setup, directory s
 Install from a local clone:
 
 ```bash
-git clone https://github.com/jbearak/sight-zed
-cd sight-zed
+git clone https://github.com/jbearak/zed-stata
+cd zed-stata
 
 # macOS
 ./tools/send-to-stata/install-macos.sh
@@ -274,8 +274,8 @@ pwsh -File .\tools\send-to-stata\install-windows.ps1
 Install stata_kernel from a local clone:
 
 ```bash
-git clone https://github.com/jbearak/sight-zed
-cd sight-zed
+git clone https://github.com/jbearak/zed-stata
+cd zed-stata
 
 # macOS
 ./tools/jupyter-kernel/install-macos.sh

@@ -19,12 +19,9 @@ else
 fi
 INSTALL_DIR="$HOME/.local/bin"
 ZED_CONFIG_DIR="$HOME/.config/zed"
-CURSOR_CONFIG_DIR="$HOME/.cursor"
-KIRO_CONFIG_DIR="$HOME/.kiro"
-WINDSURF_CONFIG_DIR="$HOME/.windsurf"
 
 # GitHub raw URL for curl-pipe installation
-GITHUB_RAW_BASE="https://raw.githubusercontent.com/jbearak/sight-zed"
+GITHUB_RAW_BASE="https://raw.githubusercontent.com/jbearak/zed-stata"
 GITHUB_REF="${SIGHT_GITHUB_REF:-main}"
 
 # Expected SHA-256 checksum of send-to-stata.sh (updated by update-checksum.sh)
@@ -122,8 +119,8 @@ fetch_script_from_github() {
     echo "URL: $url"
     echo ""
     echo "Check your internet connection and try again, or install from a local clone:"
-    echo "  git clone https://github.com/jbearak/sight-zed.git"
-    echo "  cd sight-zed/tools/send-to-stata && ./install-macos.sh"
+    echo "  git clone https://github.com/jbearak/zed-stata.git"
+    echo "  cd zed-stata/tools/send-to-stata && ./install-macos.sh"
     exit 1
   fi
   
@@ -140,8 +137,8 @@ fetch_script_from_github() {
       echo ""
       echo "This could indicate tampering or a version mismatch."
       echo "Install from a local clone to bypass:"
-      echo "  git clone https://github.com/jbearak/sight-zed.git"
-      echo "  cd sight-zed/tools/send-to-stata && ./install-macos.sh"
+      echo "  git clone https://github.com/jbearak/zed-stata.git"
+      echo "  cd zed-stata/tools/send-to-stata && ./install-macos.sh"
       exit 1
     fi
     print_success "Checksum verified"

@@ -202,7 +202,7 @@ Note: `grammars/stata.wasm` is not committed to git. On macOS/Linux, Zed's exten
 
 The repository organizes scripts into a `tools/` directory with subdirectories for each tool category:
 
-```
+```text
 tools/
 ├── send-to-stata/
 │   ├── README.md              # Full documentation for Send-to-Stata
@@ -275,8 +275,8 @@ The `tools/dev/dev-setup-windows.ps1` script handles installing all these depend
 
 After running `tools/dev/dev-setup-windows.ps1`, the extension includes:
 
-```
-sight-zed/
+```text
+zed-stata/
 ├── extension.wasm          # Rust extension compiled to WASM
 ├── grammars/
 │   └── stata.wasm          # Pre-built tree-sitter grammar (downloaded)
@@ -287,8 +287,8 @@ sight-zed/
 ```
 
 When installed to Zed:
-```
-%APPDATA%\Zed\extensions\installed\sight\
+```text
+%APPDATA%\Zed\extensions\installed\stata\
 ├── extension.wasm
 ├── grammars/
 │   └── stata.wasm
@@ -328,7 +328,7 @@ For development/testing in Zed:
 
 Or symlink to Zed's extensions directory:
 ```bash
-ln -s $(pwd) ~/.local/share/zed/extensions/installed/sight
+ln -s $(pwd) ~/.local/share/zed/extensions/installed/stata
 ```
 
 ## Depth Colorization (Not Currently Functional)

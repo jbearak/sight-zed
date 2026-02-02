@@ -18,7 +18,7 @@ The installer sets up `stata_kernel` for use with Zed's built-in Jupyter integra
 Run the installer in Terminal:
 
 ```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/sight-zed/main/tools/jupyter-kernel/install-macos.sh)"
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/jupyter-kernel/install-macos.sh)"
 ```
 
 Or from a local clone:
@@ -39,7 +39,7 @@ Or from a local clone:
 Run the installer in PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/jbearak/sight-zed/main/tools/jupyter-kernel/install-windows.ps1 | iex
+irm https://raw.githubusercontent.com/jbearak/zed-stata/main/tools/jupyter-kernel/install-windows.ps1 | iex
 ```
 
 Or from a local clone:

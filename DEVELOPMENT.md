@@ -129,7 +129,7 @@ For development/testing:
 
 Or symlink:
 ```bash
-ln -s $(pwd) ~/.local/share/zed/extensions/installed/sight
+ln -s $(pwd) ~/.local/share/zed/extensions/installed/stata
 ```
 
 ## Version Management

@@ -4,7 +4,7 @@ version = "0.1.19"
 edition = "2021"
 license = "GPL-3.0"
 description = "Zed extension for Stata language support using the Sight LSP"
-repository = "https://github.com/jbearak/sight-zed"
+repository = "https://github.com/jbearak/zed-stata"
 
 [lib]
 crate-type = ["cdylib"]
