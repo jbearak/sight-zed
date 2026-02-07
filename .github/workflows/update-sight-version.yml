@@ -167,8 +167,8 @@ jobs:
           echo "current_ext_version=$CURRENT_EXT_VERSION" >> "$GITHUB_OUTPUT"
 
           # Run update script (updates src/lib.rs, Cargo.toml, extension.toml, rebuilds WASM, commits)
-          chmod +x update_version.sh
-          ./update_version.sh --sight-version "$LATEST_VERSION"
+          chmod +x tools/dev/update_version.sh
+          ./tools/dev/update_version.sh --sight-version "$LATEST_VERSION"
 
           # Capture new extension version for PR description (first version line only)
           NEW_EXT_VERSION=$(grep -oP '^version = "\K[^"]+' extension.toml | head -1)
