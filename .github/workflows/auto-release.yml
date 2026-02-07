@@ -24,7 +24,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # Extract version from extension.toml
-          VERSION=$(grep -oP '^version = "\K[^"]+' extension.toml) || true
+          VERSION=$(grep -oP '^version = "\K[^"]+' extension.toml | head -1) || true
           if [ -z "$VERSION" ]; then
             echo "::error::Failed to extract version from extension.toml"
             exit 1
