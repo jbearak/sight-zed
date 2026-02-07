@@ -222,8 +222,8 @@ jobs:
           # Create branch (update_version.sh already committed the changes)
           git checkout -b "$BRANCH_NAME"
 
-          # Push branch to origin
-          git push origin "$BRANCH_NAME"
+          # Push branch to origin (force in case a stale branch exists from a prior failed run)
+          git push --force origin "$BRANCH_NAME"
 
           # Create PR
           printf '%s\n' \
