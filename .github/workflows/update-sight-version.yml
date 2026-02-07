@@ -245,6 +245,9 @@ jobs:
             "---" \
             "*Automated PR from update-sight-version workflow.*" > /tmp/pr-body.md
 
+          # Ensure the label exists (create it if missing)
+          gh label create "automated" --description "Automated PRs" --color "0E8A16" 2>/dev/null || true
+
           gh pr create \
             --title "Update sight to $LATEST_VERSION" \
             --label "automated" \
