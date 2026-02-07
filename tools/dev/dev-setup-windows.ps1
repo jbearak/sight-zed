@@ -79,7 +79,7 @@ $script:Checksums = @{
     TreeSitterGrammar = "357d74471e1c8e316805f882c4b942438ee1c54b5f23687ac001d710b826a237"
 
     # Sight language server v0.1.11
-    SightServer = "0c36e13b5c85447fb64d2b1ac3dbeff733911e6b96bfc0afb182a75f5467f38f"
+    SightServer = "694e370a32b30c75b7785d2433e719e44708992fc782533477b5a1acd2210205"
 }
 
 function Test-FileChecksum {
