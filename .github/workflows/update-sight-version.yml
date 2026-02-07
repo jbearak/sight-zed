@@ -201,8 +201,10 @@ jobs:
           NEW_CHECKSUM=$(sha256sum /tmp/sight-server.js | cut -d' ' -f1)
           echo "New SightServer checksum: $NEW_CHECKSUM"
 
-          # Update the checksum in dev-setup-windows.ps1
+          # Update the checksum and version references in dev-setup-windows.ps1
           sed -i "s/SightServer = \"[a-f0-9]\{64\}\"/SightServer = \"$NEW_CHECKSUM\"/" tools/dev/dev-setup-windows.ps1
+          sed -i "s/# Sight language server v[0-9]\+\.[0-9]\+\.[0-9]\+/# Sight language server $LATEST_VERSION/" tools/dev/dev-setup-windows.ps1
+          sed -i "s/\$serverVersion = \"v[0-9]\+\.[0-9]\+\.[0-9]\+\"/\$serverVersion = \"$LATEST_VERSION\"/" tools/dev/dev-setup-windows.ps1
 
           # Verify the change was made
           grep "SightServer" tools/dev/dev-setup-windows.ps1
