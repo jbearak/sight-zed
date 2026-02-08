@@ -212,8 +212,8 @@ Add to `~/.config/zed/keymap.json`:
   {
     "context": "Editor && extension == do",
     "bindings": {
-      "cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send Statement to Stata"}]]],
-      "shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send File to Stata"}]]],
+      "cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Do Statement"}]]],
+      "shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Do File"}]]],
       "alt-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include Statement"}]]],
       "alt-shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include File"}]]],
       "shift-enter": ["workspace::SendKeystrokes", "cmd-c ctrl-` cmd-v enter"],
@@ -234,8 +234,8 @@ Add to `%APPDATA%\Zed\keymap.json`:
   {
     "context": "Editor && extension == do",
     "bindings": {
-      "ctrl-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send Statement to Stata"}]]],
-      "shift-ctrl-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send File to Stata"}]]],
+      "ctrl-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Do Statement"}]]],
+      "shift-ctrl-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Do File"}]]],
       "alt-ctrl-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include Statement"}]]],
       "alt-shift-ctrl-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include File"}]]],
       "shift-enter": ["workspace::SendKeystrokes", "ctrl-c ctrl-` ctrl-v enter"],

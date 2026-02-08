@@ -154,7 +154,7 @@ function Install-Tasks {
 
     $newTasks = @(
         @{
-            label = "Stata: Send Statement to Stata"
+            label = "Stata: Do Statement"
             command = "& `"$exePath`" -Statement$activateStataArg -File `"`$ZED_FILE`" -Row `$ZED_ROW"
             use_new_terminal = $false
             allow_concurrent_runs = $true
@@ -162,7 +162,7 @@ function Install-Tasks {
             hide = "on_success"
         },
         @{
-            label = "Stata: Send File to Stata"
+            label = "Stata: Do File"
             command = "& `"$exePath`" -FileMode$activateStataArg -File `"`$ZED_FILE`""
             use_new_terminal = $false
             allow_concurrent_runs = $true
@@ -250,8 +250,8 @@ function Install-Keybindings {
     $newBlock = @{
         context = "Editor && extension == do"
         bindings = @{
-            "ctrl-enter" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Send Statement to Stata" })))
-            "shift-ctrl-enter" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Send File to Stata" })))
+            "ctrl-enter" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Do Statement" })))
+            "shift-ctrl-enter" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Do File" })))
             "alt-ctrl-enter" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Include Statement" })))
             "alt-shift-ctrl-enter" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Include File" })))
             # Use literal backtick (``) so it survives PowerShell parsing

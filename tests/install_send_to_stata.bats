@@ -101,11 +101,11 @@ call_func() {
     
     # Check for both tasks
     run jq '.[].label' "$ZED_CONFIG_DIR/tasks.json"
-    [[ "$output" == *"Stata: Send Statement to Stata"* ]]
-    [[ "$output" == *"Stata: Send File to Stata"* ]]
+    [[ "$output" == *"Stata: Do Statement"* ]]
+    [[ "$output" == *"Stata: Do File"* ]]
 }
 
-@test "tasks: Send Statement command preserves selection bytes (no extra quoting)" {
+@test "tasks: Do Statement command preserves selection bytes (no extra quoting)" {
     # Expand STATA_TASKS inside the sourced installer script (not in this test process).
     run bash -c 'source "$1"; printf "%s\n" "$STATA_TASKS"' bash "$SCRIPT"
     [ "$status" -eq 0 ]
@@ -126,7 +126,7 @@ call_func() {
     # Check existing task preserved
     run jq '.[].label' "$ZED_CONFIG_DIR/tasks.json"
     [[ "$output" == *"Other Task"* ]]
-    [[ "$output" == *"Stata: Send Statement to Stata"* ]]
+    [[ "$output" == *"Stata: Do Statement"* ]]
 }
 
 @test "tasks: replaces existing Stata tasks" {
@@ -139,7 +139,7 @@ call_func() {
     # Old Stata task should be removed
     run jq '.[].label' "$ZED_CONFIG_DIR/tasks.json"
     [[ "$output" != *"Stata: Old Task"* ]]
-    [[ "$output" == *"Stata: Send Statement to Stata"* ]]
+    [[ "$output" == *"Stata: Do Statement"* ]]
 }
 
 # ============================================================================
@@ -412,8 +412,8 @@ call_func() {
     [ "$status" -eq 0 ]
     
     # Count occurrences of activation command (should be 8, one per task)
-    # Tasks: Send Statement, Send File, Include Statement, Include File,
-    #        CD into Workspace Folder, CD into File Folder, Do Upward Lines, Do Downward Lines
+    # Tasks: Do Statement, Do File, Include Statement, Include File,
+    #        CD to Workspace, CD to File Directory, Do Upward Lines, Do Downward Lines
     local count
     count=$(echo "$output" | grep -c "tell application" || true)
     [ "$count" -eq 8 ]
