@@ -154,7 +154,7 @@ function Install-Tasks {
 
     $newTasks = @(
         @{
-            label = "Stata: Send Statement"
+            label = "Stata: Send Statement to Stata"
             command = "& `"$exePath`" -Statement$activateStataArg -File `"`$ZED_FILE`" -Row `$ZED_ROW"
             use_new_terminal = $false
             allow_concurrent_runs = $true
@@ -162,7 +162,7 @@ function Install-Tasks {
             hide = "on_success"
         },
         @{
-            label = "Stata: Send File"
+            label = "Stata: Send File to Stata"
             command = "& `"$exePath`" -FileMode$activateStataArg -File `"`$ZED_FILE`""
             use_new_terminal = $false
             allow_concurrent_runs = $true
@@ -186,7 +186,7 @@ function Install-Tasks {
             hide = "on_success"
         },
         @{
-            label = "Stata: CD into Workspace Folder"
+            label = "Stata: CD to Workspace"
             command = "& `"$exePath`" -CDWorkspace$activateStataArg -Workspace `"`$ZED_WORKTREE_ROOT`""
             use_new_terminal = $false
             allow_concurrent_runs = $true
@@ -194,7 +194,7 @@ function Install-Tasks {
             hide = "on_success"
         },
         @{
-            label = "Stata: CD into File Folder"
+            label = "Stata: CD to File Directory"
             command = "& `"$exePath`" -CDFile$activateStataArg -File `"`$ZED_FILE`""
             use_new_terminal = $false
             allow_concurrent_runs = $true
@@ -250,15 +250,15 @@ function Install-Keybindings {
     $newBlock = @{
         context = "Editor && extension == do"
         bindings = @{
-            "ctrl-enter" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Send Statement" })))
-            "shift-ctrl-enter" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Send File" })))
+            "ctrl-enter" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Send Statement to Stata" })))
+            "shift-ctrl-enter" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Send File to Stata" })))
             "alt-ctrl-enter" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Include Statement" })))
             "alt-shift-ctrl-enter" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Include File" })))
             # Use literal backtick (``) so it survives PowerShell parsing
             "shift-enter" = @("workspace::SendKeystrokes", "ctrl-c ctrl-`` ctrl-v enter")
             "alt-enter" = @("workspace::SendKeystrokes", "home shift-end ctrl-c ctrl-`` ctrl-v enter")
-            "ctrl-shift-w" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: CD into Workspace Folder" })))
-            "ctrl-shift-f" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: CD into File Folder" })))
+            "ctrl-shift-w" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: CD to Workspace" })))
+            "ctrl-shift-f" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: CD to File Directory" })))
             "ctrl-shift-up" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Do Upward Lines" })))
             "ctrl-shift-down" = @("action::Sequence", @("workspace::Save", @("task::Spawn", @{ task_name = "Stata: Do Downward Lines" })))
         }

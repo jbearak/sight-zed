@@ -101,8 +101,8 @@ call_func() {
     
     # Check for both tasks
     run jq '.[].label' "$ZED_CONFIG_DIR/tasks.json"
-    [[ "$output" == *"Stata: Send Statement"* ]]
-    [[ "$output" == *"Stata: Send File"* ]]
+    [[ "$output" == *"Stata: Send Statement to Stata"* ]]
+    [[ "$output" == *"Stata: Send File to Stata"* ]]
 }
 
 @test "tasks: Send Statement command preserves selection bytes (no extra quoting)" {
@@ -126,7 +126,7 @@ call_func() {
     # Check existing task preserved
     run jq '.[].label' "$ZED_CONFIG_DIR/tasks.json"
     [[ "$output" == *"Other Task"* ]]
-    [[ "$output" == *"Stata: Send Statement"* ]]
+    [[ "$output" == *"Stata: Send Statement to Stata"* ]]
 }
 
 @test "tasks: replaces existing Stata tasks" {
@@ -139,7 +139,7 @@ call_func() {
     # Old Stata task should be removed
     run jq '.[].label' "$ZED_CONFIG_DIR/tasks.json"
     [[ "$output" != *"Stata: Old Task"* ]]
-    [[ "$output" == *"Stata: Send Statement"* ]]
+    [[ "$output" == *"Stata: Send Statement to Stata"* ]]
 }
 
 # ============================================================================
