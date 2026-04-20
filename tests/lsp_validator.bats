@@ -19,7 +19,7 @@ setup() {
     # Source the validation script functions (without running main)
     local tmp_source
     tmp_source=$(mktemp)
-    sed '/^main "\$@"$/d' "$PROJECT_DIR/validate.sh" > "$tmp_source"
+    sed '/^main "\$@"$/d' "$PROJECT_DIR/tools/dev/validate.sh" > "$tmp_source"
     # Override SCRIPT_DIR to use our temp directory
     sed -i.bak "s|SCRIPT_DIR=.*|SCRIPT_DIR=\"$TEMP_DIR\"|" "$tmp_source"
     # shellcheck source=/dev/null
@@ -27,13 +27,7 @@ setup() {
     rm -f "$tmp_source" "$tmp_source.bak"
     
     # Define required assets for testing
-    REQUIRED_ASSETS=(
-        "sight-darwin-arm64"
-        "sight-linux-arm64"
-        "sight-linux-x64"
-        "sight-windows-x64.exe"
-        "sight-windows-arm64.exe"
-    )
+    REQUIRED_ASSETS=("sight-server.js")
 }
 
 # Teardown - cleanup temp files
@@ -63,6 +57,11 @@ create_mock_release_response() {
     done
     response+=']}'
     echo "$response"
+}
+
+# Emit a mock curl response body followed by the expected HTTP status line.
+emit_mock_curl_response() {
+    printf '%s\n%s\n' "$1" "$2"
 }
 
 # Helper: Check which assets are missing from a set
@@ -118,7 +117,7 @@ generate_random_version() {
 #######################################
 
 @test "Property 3: all required assets present - identifies complete set" {
-    # All 5 required assets are present
+    # All required assets are present
     local available_assets="${REQUIRED_ASSETS[*]}"
     local missing
     missing=$(check_missing_assets "$available_assets")
@@ -131,31 +130,26 @@ generate_random_version() {
     local missing
     missing=$(check_missing_assets "$available_assets")
     
-    # All 5 should be missing
+    # All required assets should be missing
     local missing_count
     missing_count=$(echo "$missing" | wc -w | tr -d ' ')
-    [ "$missing_count" -eq 5 ]
+    [ "$missing_count" -eq "${#REQUIRED_ASSETS[@]}" ]
 }
 
-@test "Property 3: single asset missing - identifies exactly one missing" {
-    # Remove sight-darwin-arm64 from the list
-    local available_assets="sight-linux-arm64 sight-linux-x64 sight-windows-x64.exe sight-windows-arm64.exe"
+@test "Property 3: required asset missing - identifies the missing asset" {
+    local available_assets=""
     local missing
     missing=$(check_missing_assets "$available_assets")
     
-    [ "$missing" = "sight-darwin-arm64" ]
+    [ "$missing" = "sight-server.js" ]
 }
 
-@test "Property 3: multiple assets missing - identifies all missing" {
-    # Only include 2 assets
-    local available_assets="sight-darwin-arm64 sight-linux-x64"
+@test "Property 3: unrelated assets present - still identifies required asset as missing" {
+    local available_assets="some-other-asset"
     local missing
     missing=$(check_missing_assets "$available_assets")
     
-    # Should identify 3 missing assets
-    [[ "$missing" == *"sight-linux-arm64"* ]]
-    [[ "$missing" == *"sight-windows-x64.exe"* ]]
-    [[ "$missing" == *"sight-windows-arm64.exe"* ]]
+    [ "$missing" = "sight-server.js" ]
 }
 
 @test "Property 3: extra assets present - still identifies required correctly" {
@@ -169,14 +163,14 @@ generate_random_version() {
 
 @test "Property 3: similar but wrong asset names - identifies as missing" {
     # Assets with similar but incorrect names
-    local available_assets="sight-darwin-x64 sight-linux-arm32 sight-linux-x86 sight-windows-x86.exe sight-windows-arm32.exe"
+    local available_assets="sight-server.ts sight-server.mjs sight-windows-x64.exe"
     local missing
     missing=$(check_missing_assets "$available_assets")
     
-    # All 5 should be missing since names don't match exactly
+    # All required assets should be missing since names don't match exactly
     local missing_count
     missing_count=$(echo "$missing" | wc -w | tr -d ' ')
-    [ "$missing_count" -eq 5 ]
+    [ "$missing_count" -eq "${#REQUIRED_ASSETS[@]}" ]
 }
 
 # Property-based test: Random subsets (run 10 iterations)
@@ -230,7 +224,7 @@ generate_random_version() {
             missing_count=$(echo "$missing" | wc -w | tr -d ' ')
         fi
         
-        local expected_missing=$((5 - available_count))
+        local expected_missing=$((${#REQUIRED_ASSETS[@]} - available_count))
         
         if [[ "$missing_count" -ne "$expected_missing" ]]; then
             echo "Failed: available=$available_count, missing=$missing_count, expected_missing=$expected_missing"
@@ -402,39 +396,37 @@ generate_random_version() {
 #######################################
 
 @test "Property 3: validate_lsp_release reports missing release correctly" {
-    # This test verifies error reporting for missing releases
-    # We use a version that definitely doesn't exist
-    
-    # Mock curl to return 404
+    # This test verifies error reporting for missing releases via HTTP status.
+    local mock_response_body='{"message":"Not Found"}'
+    local mock_http_code="404"
+
     curl() {
-        return 1
+        emit_mock_curl_response "$mock_response_body" "$mock_http_code"
     }
-    export -f curl
+    export -f curl emit_mock_curl_response
+    export mock_response_body mock_http_code
     
     run validate_lsp_release "v999.999.999"
     
     [ "$status" -eq 1 ]
-    [[ "$output" == *"not found"* ]] || [[ "$output" == *"FAIL"* ]]
+    [[ "$output" == *"Release not found: v999.999.999"* ]]
 }
 
 @test "Property 3: validate_lsp_release reports missing assets correctly" {
-    # This test verifies error reporting for missing assets
-    # We need to mock the curl response to return incomplete assets
-    
-    # Create a mock response with only some assets
-    local mock_response='{"tag_name": "v1.0.0", "assets": [{"name": "sight-darwin-arm64"}, {"name": "sight-linux-x64"}]}'
-    
-    # Mock curl to return our response
+    # This test verifies the HTTP 200 path that reports missing assets.
+    local mock_response_body='{"tag_name": "v1.0.0", "assets": [{"name": "sight-linux-x64"}]}'
+    local mock_http_code="200"
+
     curl() {
-        echo "$mock_response"
-        return 0
+        emit_mock_curl_response "$mock_response_body" "$mock_http_code"
     }
-    export -f curl
-    export mock_response
+    export -f curl emit_mock_curl_response
+    export mock_response_body mock_http_code
     
     run validate_lsp_release "v1.0.0"
     
     # Should fail due to missing assets
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Missing assets"* ]] || [[ "$output" == *"FAIL"* ]]
+    [[ "$output" == *"Missing assets in release v1.0.0:"* ]]
+    [[ "$output" == *"sight-server.js"* ]]
 }

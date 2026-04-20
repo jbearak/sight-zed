@@ -6,7 +6,7 @@ When a new version of the Sight LSP is released:
 
 1. Edit `src/lib.rs`
 2. Update `SERVER_VERSION` constant to the new tag (e.g., `"v0.1.12"`)
-3. The extension downloads binaries from GitHub releases at `jbearak/sight`
+3. The extension downloads `sight-server.js` from GitHub releases at `jbearak/sight`
 
 ## Jupyter Stata Kernel on Windows
 
@@ -235,24 +235,22 @@ tools/
 
 ## Windows Architecture
 
-Windows requires special handling due to several platform-specific limitations:
+Windows still requires special handling for grammar/build setup, but the Sight LSP launch model is now the same on every platform:
 
-### Problem 1: Sight LSP Binary Crashes on Windows
+### Cross-Platform LSP Launch
 
-The pre-built `sight-windows-x64.exe` binary from the Sight releases crashes immediately on startup (exits with no output). This appears to be a bug in how the Sight LSP is compiled for Windows.
+The extension uses Zed's embedded Node.js to run `sight-server.js` on macOS, Linux, and Windows.
 
-**Solution**: On Windows, the extension uses Zed's embedded Node.js to run `sight-server.js` (a bundled JavaScript version of the LSP) instead of the native binary.
+**Why**: This avoids platform-specific native binary downloads, execute-bit issues, truncated native binary caches, and Rosetta-specific handling on macOS.
 
 ```rust
 // In src/lib.rs
-if platform == zed::Os::Windows {
-    let node_path = zed::node_binary_path()?;
-    let server_script = self.get_node_server_path()?;
-    // Run: node sight-server.js --stdio
-}
+let node_path = zed::node_binary_path()?;
+let server_script = self.get_node_server_path()?;
+// Run: node sight-server.js --stdio
 ```
 
-The `sight-server.js` file is downloaded from the same GitHub release as the native binaries.
+The `sight-server.js` file is downloaded from the Sight GitHub release matching `SERVER_VERSION`.
 
 ### Problem 2: Zed Cannot Compile Tree-Sitter Grammars on Windows
 
@@ -310,22 +308,14 @@ When installed to Zed:
 └── extension.toml
 ```
 
-### LSP Binary Resolution by Platform
-
-| Platform | LSP Approach |
-|----------|--------------|
-| macOS (ARM64) | Native binary: `sight-darwin-arm64` |
-| macOS (x64) | Native binary: `sight-darwin-arm64` (via Rosetta) |
-| Linux (ARM64) | Native binary: `sight-linux-arm64` |
-| Linux (x64) | Native binary: `sight-linux-x64` |
-| Windows | Node.js: `node sight-server.js --stdio` |
+The LSP launch command is identical on every platform: Zed runs `node sight-server.js --stdio` with its embedded Node.js.
 
 ### Updating for Windows
 
 When releasing a new version:
 
 1. Update `SERVER_VERSION` in `src/lib.rs`
-2. Ensure the release includes `sight-server.js` (for Windows Node.js fallback)
+2. Ensure the release includes `sight-server.js`
 3. If the grammar changed, rebuild and publish `tree-sitter-stata.wasm`
 4. Run `tools/dev/dev-setup-windows.ps1` on Windows to verify everything works
 
