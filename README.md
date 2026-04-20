@@ -57,7 +57,7 @@ Without this setting, Zed uses the tree-sitter outline query, which is currently
 Execute Stata code directly from Zed with keyboard shortcuts. Works with both the Stata application and terminal sessions.
 
 > [!NOTE]
-> **Why a separate install?** Zed extensions can't register custom keybindings or tasks—those must live in user config files. The send-to-stata functionality requires both, so it can't be bundled into the extension itself.
+> **Why a separate install?** Zed extensions can provide tasks, but custom keybindings still have to live in user config, and in practice users need their own copies of the tasks for those bindings. On Windows, the workflow also depends on the native `send-to-stata.exe` binary. The installer sets up the required script or executable plus the user-owned task and keybinding configuration.
 
 See [tools/send-to-stata/README.md](tools/send-to-stata/README.md) for full documentation, configuration options, and troubleshooting.
 
