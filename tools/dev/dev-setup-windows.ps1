@@ -663,6 +663,14 @@ function Download-LanguageServerForDev {
         }
     }
 
+    # Clean up legacy work cache from the previous extension name so leftover
+    # work\sight\... trees don't confuse dev testing after the rename.
+    $legacyZedWorkDir = Join-Path $env:LOCALAPPDATA "Zed\extensions\work\sight\sight-node-$serverVersion"
+    if (Test-Path $legacyZedWorkDir) {
+        Remove-Item -Path $legacyZedWorkDir -Recurse -Force
+        Write-Host "Removed legacy Zed work cache: $legacyZedWorkDir" -ForegroundColor Yellow
+    }
+
     # First check if Zed already downloaded it to the work directory
     $zedWorkDir = Join-Path $env:LOCALAPPDATA "Zed\extensions\work\stata\sight-node-$serverVersion"
     $zedServerScript = Join-Path $zedWorkDir "sight-server.js"
@@ -709,6 +717,14 @@ function Install-ZedExtension {
         New-Item -ItemType Directory -Path $InstallRoot -Force | Out-Null
     }
 
+    # Remove legacy 'sight' install from the previous extension name to prevent
+    # duplicate registrations after the rename.
+    $legacyDest = Join-Path $InstallRoot 'sight'
+    if (Test-Path $legacyDest) {
+        Remove-Item -Path $legacyDest -Recurse -Force
+        Write-Host "Removed legacy extension directory: $legacyDest"
+    }
+
     if (Test-Path $dest) {
         Remove-Item -Path $dest -Recurse -Force
     }
@@ -752,6 +768,14 @@ function Uninstall-ZedExtension {
         Write-Host "Removed extension directory: $dest"
     } else {
         Write-Host "Extension directory not found (already removed): $dest"
+    }
+
+    # Also remove legacy 'sight' install from the previous extension name to prevent
+    # duplicate registrations after the rename.
+    $legacyDest = Join-Path $InstallRoot 'sight'
+    if (Test-Path $legacyDest) {
+        Remove-Item -Path $legacyDest -Recurse -Force
+        Write-Host "Removed legacy extension directory: $legacyDest"
     }
 }
 

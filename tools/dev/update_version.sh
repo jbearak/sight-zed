@@ -98,7 +98,9 @@ update_manifest_release_version() {
 
 validate_release_version_format() {
     local version="$1"
-    local semver_regex='^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
+    # Strict SemVer 2.0.0: pre-release starts with '-' and build metadata with '+',
+    # both composed of dot-separated identifiers of [0-9A-Za-z-].
+    local semver_regex='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
 
     if [[ ! "$version" =~ $semver_regex ]]; then
         echo "Error: version '$version' is not a supported semver string" >&2

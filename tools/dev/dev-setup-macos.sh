@@ -13,6 +13,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 ZED_EXT_DIR="$HOME/Library/Application Support/Zed/extensions/installed"
 SYMLINK_PATH="$ZED_EXT_DIR/stata"
+# Legacy symlink from the previous extension name; remove on install/uninstall
+# to prevent duplicate extension loading after the rename.
+LEGACY_SYMLINK_PATH="$ZED_EXT_DIR/sight"
 
 # Colors for output
 RED='\033[0;31m'
@@ -101,8 +104,20 @@ build_grammar() {
 # Symlink Installation
 # ============================================================================
 
+remove_legacy_symlink() {
+  if [[ -L "$LEGACY_SYMLINK_PATH" ]]; then
+    rm "$LEGACY_SYMLINK_PATH"
+    print_success "Removed legacy extension symlink at $LEGACY_SYMLINK_PATH"
+  elif [[ -e "$LEGACY_SYMLINK_PATH" ]]; then
+    print_warning "$LEGACY_SYMLINK_PATH exists but is not a symlink, skipping"
+  fi
+}
+
 install_symlink() {
   mkdir -p "$ZED_EXT_DIR"
+
+  # Clean up legacy symlink from previous extension name to avoid duplicate loads.
+  remove_legacy_symlink
 
   if [[ -L "$SYMLINK_PATH" ]]; then
     rm "$SYMLINK_PATH"
@@ -125,6 +140,9 @@ uninstall_symlink() {
   else
     print_warning "Extension symlink not found, skipping"
   fi
+
+  # Also clean up legacy symlink from previous extension name.
+  remove_legacy_symlink
 }
 
 # ============================================================================
