@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# dev-setup-macos.sh - Build and install Sight Zed extension for local development
+# dev-setup-macos.sh - Build and install the Stata Zed extension for local development
 #
 # Usage:
 #   ./dev-setup-macos.sh              Build extension, install symlink, run installers
@@ -132,7 +132,7 @@ uninstall_symlink() {
 # ============================================================================
 
 uninstall() {
-  echo "Uninstalling Sight Zed extension..."
+  echo "Uninstalling Stata Zed extension..."
   echo ""
   uninstall_symlink
   echo ""
@@ -144,7 +144,7 @@ uninstall() {
 install() {
   local skip_tools="${1:-false}"
 
-  echo "Setting up Sight Zed extension..."
+  echo "Setting up Stata Zed extension..."
   echo ""
   check_prerequisites
   build_extension
@@ -165,7 +165,7 @@ install() {
   "$REPO_ROOT/tools/jupyter-kernel/install-macos.sh" --quiet
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "  Sight Zed extension setup complete!"
+  echo "  Stata Zed extension setup complete!"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   echo ""
   echo "  Extension:        Installed at $SYMLINK_PATH"

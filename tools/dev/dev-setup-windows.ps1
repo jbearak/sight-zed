@@ -664,7 +664,7 @@ function Download-LanguageServerForDev {
     }
 
     # First check if Zed already downloaded it to the work directory
-    $zedWorkDir = Join-Path $env:LOCALAPPDATA "Zed\extensions\work\sight\sight-node-$serverVersion"
+    $zedWorkDir = Join-Path $env:LOCALAPPDATA "Zed\extensions\work\stata\sight-node-$serverVersion"
     $zedServerScript = Join-Path $zedWorkDir "sight-server.js"
 
     if (Test-Path $zedServerScript) {
@@ -704,7 +704,7 @@ function Install-ZedExtension {
         throw "APPDATA is not set; cannot locate Zed configuration directory."
     }
 
-    $dest = Join-Path $InstallRoot 'sight'
+    $dest = Join-Path $InstallRoot 'stata'
     if (-not (Test-Path $InstallRoot)) {
         New-Item -ItemType Directory -Path $InstallRoot -Force | Out-Null
     }
@@ -746,7 +746,7 @@ function Install-ZedExtension {
 function Uninstall-ZedExtension {
     param([string]$InstallRoot)
 
-    $dest = Join-Path $InstallRoot 'sight'
+    $dest = Join-Path $InstallRoot 'stata'
     if (Test-Path $dest) {
         Remove-Item -Path $dest -Recurse -Force
         Write-Host "Removed extension directory: $dest"

@@ -25,7 +25,7 @@ A [Zed](https://zed.dev) extension providing support for the Stata statistical p
 
 ## Installation
 
-Install from the Zed extension marketplace by searching for "Sight" or "Stata".
+Install from the Zed extension marketplace by searching for "Stata".
 
 Syntax highlighting, completions, and diagnostics will work immediately once you open a ".do" file.
 

@@ -22,7 +22,7 @@ setup() {
     # Source the validation script functions (without running main)
     # Create a temporary file that sources validate.sh but doesn't run main
     local tmp_source=$(mktemp)
-    sed '/^main "\$@"$/d' "$PROJECT_DIR/validate.sh" > "$tmp_source"
+    sed '/^main "\$@"$/d' "$PROJECT_DIR/tools/dev/validate.sh" > "$tmp_source"
     # Override SCRIPT_DIR to use our temp directory
     sed -i.bak "s|SCRIPT_DIR=.*|SCRIPT_DIR=\"$TEMP_DIR\"|" "$tmp_source"
     source "$tmp_source"
@@ -63,13 +63,13 @@ EOF
 create_extension_toml() {
     local revision="$1"
     cat > "$TEMP_DIR/extension.toml" << EOF
-id = "sight"
-name = "Sight - Stata Language Server"
+id = "stata"
+name = "Stata"
 description = "Language support for Stata using LSP"
 version = "0.1.10"
 schema_version = 1
 authors = ["Jonathan Marc Bearak"]
-repository = "https://github.com/jbearak/sight-zed"
+repository = "https://github.com/jbearak/zed-stata"
 
 [lib]
 kind = "Rust"
@@ -293,8 +293,8 @@ EOF
 # Test: Error on missing grammars.stata section
 @test "Property 2: error on missing grammars.stata section" {
     cat > "$TEMP_DIR/extension.toml" << 'EOF'
-id = "sight"
-name = "Sight - Stata Language Server"
+id = "stata"
+name = "Stata"
 version = "0.1.10"
 
 [lib]
@@ -311,8 +311,8 @@ EOF
 # Test: Error on missing rev field in grammars.stata section
 @test "Property 2: error on missing rev field" {
     cat > "$TEMP_DIR/extension.toml" << 'EOF'
-id = "sight"
-name = "Sight - Stata Language Server"
+id = "stata"
+name = "Stata"
 version = "0.1.10"
 
 [grammars.stata]
@@ -329,8 +329,8 @@ EOF
 @test "Property 2: extract revision with multiple grammar sections" {
     local revision="872da1d652dd32cc871ea4a3c3f84bdea7c68c8c"
     cat > "$TEMP_DIR/extension.toml" << EOF
-id = "sight"
-name = "Sight - Stata Language Server"
+id = "stata"
+name = "Stata"
 version = "0.1.10"
 
 [grammars.other]

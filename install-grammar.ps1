@@ -48,7 +48,7 @@ if (Test-Path $grammarSrcDir)
 }
 
 # Also install to Zed extensions directory if it exists
-$zedExtDir = Join-Path $env:LOCALAPPDATA 'Zed\extensions\installed\sight'
+$zedExtDir = Join-Path $env:LOCALAPPDATA 'Zed\extensions\installed\stata'
 if (Test-Path $zedExtDir)
 {
     $zedGrammarsDir = Join-Path $zedExtDir 'grammars'

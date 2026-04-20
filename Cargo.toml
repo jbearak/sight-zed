@@ -1,9 +1,9 @@
 [package]
-name = "sight-extension"
-version = "0.1.26"
+name = "zed-stata"
+version = "0.5.0"
 edition = "2021"
 license = "GPL-3.0"
-description = "Zed extension for Stata language support using the Sight LSP"
+description = "Zed extension for Stata language support"
 repository = "https://github.com/jbearak/zed-stata"
 
 [lib]

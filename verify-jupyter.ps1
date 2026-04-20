@@ -119,9 +119,9 @@ try {
 
 # Check 5: Zed extension
 Write-Section "Zed Extension Configuration"
-$extPath = "$env:LOCALAPPDATA\Zed\extensions\installed\sight"
+$extPath = "$env:LOCALAPPDATA\Zed\extensions\installed\stata"
 if (Test-Path $extPath) {
-    Write-Check "Sight extension is installed" $true
+    Write-Check "Stata extension is installed" $true
     Write-Host "    Location: $extPath" -ForegroundColor Gray
 
     # Check config.toml
@@ -142,7 +142,7 @@ if (Test-Path $extPath) {
         Write-Check "config.toml NOT found" $false
     }
 } else {
-    Write-Check "Sight extension NOT installed" $false
+    Write-Check "Stata extension NOT installed" $false
 }
 
 # Check 6: Zed process

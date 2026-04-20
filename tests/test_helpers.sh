@@ -198,8 +198,8 @@ create_temp_extension_toml() {
     local revision="$1"
     local tmpfile=$(mktemp)
     cat > "$tmpfile" << EOF
-id = "sight"
-name = "Sight - Stata Language Server"
+id = "stata"
+name = "Stata"
 version = "0.1.10"
 
 [grammars.stata]

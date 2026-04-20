@@ -130,11 +130,11 @@ Or create a symlink manually:
 
 **macOS:**
 ```bash
-ln -s "$(pwd)" "$HOME/Library/Application Support/Zed/extensions/installed/sight"
+ln -s "$(pwd)" "$HOME/Library/Application Support/Zed/extensions/installed/stata"
 ```
 
 **Windows:**
-The setup script copies files to `%LOCALAPPDATA%\Zed\extensions\installed\sight\`
+The setup script copies files to `%LOCALAPPDATA%\Zed\extensions\installed\stata\`
 
 ## Checksum Update Scripts
 
