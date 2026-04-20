@@ -11,6 +11,7 @@
 #   --all           Run all validations (default)
 #   --lsp           Validate LSP release exists with required assets
 #   --grammar-rev   Validate grammar revision exists
+#   --release-version Validate extension.toml version matches Cargo.toml [package].version
 #   --api-version   Validate extension.toml [lib].version matches Cargo.toml zed_extension_api
 #   --build         Build extension WASM
 #   --grammar-build Build grammar from specified revision
@@ -79,6 +80,7 @@ Options:
   --all           Run all validations (default if no options specified)
   --lsp           Validate LSP release exists with required assets
   --grammar-rev   Validate grammar revision exists
+  --release-version Validate extension.toml version matches Cargo.toml [package].version
   --api-version   Validate extension.toml [lib].version matches Cargo.toml zed_extension_api
   --build         Build extension WASM
   --grammar-build Build grammar from specified revision
@@ -90,6 +92,7 @@ Environment Variables:
 Examples:
   ./validate.sh                 # Run all validations
   ./validate.sh --lsp           # Only check LSP release
+  ./validate.sh --release-version # Only check release-version alignment
   ./validate.sh --api-version   # Only check manifest/API version alignment
   ./validate.sh --build         # Only build extension WASM
   ./validate.sh --lsp --build   # Check LSP and build extension
@@ -168,6 +171,37 @@ extract_grammar_revision() {
     echo "$revision"
 }
 
+# Extract top-level extension.toml version.
+# Output: Release version string (e.g., "0.5.0")
+extract_manifest_release_version() {
+    local extension_toml="${REPO_ROOT}/extension.toml"
+
+    if [[ ! -f "$extension_toml" ]]; then
+        echo "ERROR: File not found: $extension_toml" >&2
+        return 1
+    fi
+
+    local version
+    version=$(awk '
+        /^\[/ { exit }
+        /^[[:space:]]*version[[:space:]]*=/ {
+            if (match($0, /"[^"]+"/)) {
+                print substr($0, RSTART + 1, RLENGTH - 2)
+                found = 1
+                exit
+            }
+        }
+        END { if (!found) exit 1 }
+    ' "$extension_toml" 2>/dev/null || true)
+
+    if [[ -z "$version" ]]; then
+        echo "ERROR: top-level version not found in $extension_toml" >&2
+        return 1
+    fi
+
+    echo "$version"
+}
+
 # Extract [lib].version from extension.toml
 # Output: API version string (e.g., "0.7.0")
 extract_manifest_lib_version() {
@@ -194,6 +228,38 @@ extract_manifest_lib_version() {
 
     if [[ -z "$version" ]]; then
         echo "ERROR: [lib] version not found in $extension_toml" >&2
+        return 1
+    fi
+
+    echo "$version"
+}
+
+# Extract Cargo.toml [package].version
+# Output: Release version string (e.g., "0.5.0")
+extract_cargo_package_version() {
+    local cargo_toml="${REPO_ROOT}/Cargo.toml"
+
+    if [[ ! -f "$cargo_toml" ]]; then
+        echo "ERROR: File not found: $cargo_toml" >&2
+        return 1
+    fi
+
+    local version
+    version=$(awk '
+        /^\[package\][[:space:]]*$/ { in_package = 1; next }
+        /^\[/ { in_package = 0 }
+        in_package && /^[[:space:]]*version[[:space:]]*=/ {
+            if (match($0, /"[^"]+"/)) {
+                print substr($0, RSTART + 1, RLENGTH - 2)
+                found = 1
+                exit
+            }
+        }
+        END { if (!found) exit 1 }
+    ' "$cargo_toml" 2>/dev/null || true)
+
+    if [[ -z "$version" ]]; then
+        echo "ERROR: [package] version not found in $cargo_toml" >&2
         return 1
     fi
 
@@ -254,6 +320,39 @@ normalize_version() {
     else
         echo "v${version}"
     fi
+}
+
+#######################################
+# Release Version Validator
+#######################################
+
+# Validate extension.toml version matches Cargo.toml [package].version
+# Arguments:
+#   $1 - Optional manifest release version
+#   $2 - Optional Cargo package version
+# Returns: 0 on success, 1 on failure
+validate_release_version_alignment() {
+    local manifest_version="${1:-}"
+    local cargo_version="${2:-}"
+
+    if [[ -z "$manifest_version" ]]; then
+        manifest_version=$(extract_manifest_release_version) || return 1
+    fi
+
+    if [[ -z "$cargo_version" ]]; then
+        cargo_version=$(extract_cargo_package_version) || return 1
+    fi
+
+    print_info "Checking release version alignment..."
+
+    if [[ "$manifest_version" != "$cargo_version" ]]; then
+        print_fail "extension.toml version is $manifest_version but Cargo.toml [package].version is $cargo_version"
+        echo "  Update these release-version fields together."
+        return 1
+    fi
+
+    print_pass "Release versions are aligned: $manifest_version"
+    return 0
 }
 
 #######################################
@@ -559,6 +658,7 @@ main() {
     local run_all=false
     local run_lsp=false
     local run_grammar_rev=false
+    local run_release_version=false
     local run_api_version=false
     local run_build=false
     local run_grammar_build=false
@@ -579,6 +679,10 @@ main() {
                     ;;
                 --grammar-rev)
                     run_grammar_rev=true
+                    shift
+                    ;;
+                --release-version)
+                    run_release_version=true
                     shift
                     ;;
                 --api-version)
@@ -610,6 +714,7 @@ main() {
     if [[ "$run_all" == true ]]; then
         run_lsp=true
         run_grammar_rev=true
+        run_release_version=true
         run_api_version=true
         run_build=true
         run_grammar_build=true
@@ -623,6 +728,8 @@ main() {
     # Extract configuration
     local server_version=""
     local grammar_revision=""
+    local manifest_release_version=""
+    local cargo_package_version=""
     local manifest_lib_version=""
     local cargo_api_version=""
     
@@ -641,6 +748,22 @@ main() {
             record_result 1 "Failed to extract grammar revision"
         else
             print_info "Grammar revision: $grammar_revision"
+        fi
+    fi
+
+    if [[ "$run_release_version" == true ]]; then
+        print_info "Extracting top-level version from extension.toml..."
+        if ! manifest_release_version=$(extract_manifest_release_version); then
+            record_result 1 "Failed to extract extension.toml version"
+        else
+            print_info "Manifest version: $manifest_release_version"
+        fi
+
+        print_info "Extracting [package] version from Cargo.toml..."
+        if ! cargo_package_version=$(extract_cargo_package_version); then
+            record_result 1 "Failed to extract Cargo.toml [package] version"
+        else
+            print_info "Cargo package version: $cargo_package_version"
         fi
     fi
 
@@ -679,6 +802,16 @@ main() {
             record_result 0 "Grammar revision validation"
         else
             record_result 1 "Grammar revision validation"
+        fi
+        echo ""
+    fi
+
+    if [[ "$run_release_version" == true && -n "$manifest_release_version" && -n "$cargo_package_version" ]]; then
+        echo "--- Release Version Validation ---"
+        if validate_release_version_alignment "$manifest_release_version" "$cargo_package_version"; then
+            record_result 0 "Release version validation"
+        else
+            record_result 1 "Release version validation"
         fi
         echo ""
     fi

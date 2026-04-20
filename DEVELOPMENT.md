@@ -138,13 +138,21 @@ ln -s $(pwd) ~/.local/share/zed/extensions/installed/stata
 
 Use the version bump script:
 ```bash
-./tools/dev/update_version.sh 0.1.18
+./tools/dev/update_version.sh 0.5.1
 ```
 
 This updates:
-- `extension.toml` version
-- `Cargo.toml` version
+- `Cargo.toml` `[package].version`
+- top-level `extension.toml` `version`
 - Creates a git commit and tag
+
+It does **not** update `extension.toml [lib].version`. That field tracks the Zed
+extension API version and should stay aligned with `Cargo.toml`
+`zed_extension_api`.
+
+Guardrails:
+- `./tools/dev/validate.sh --release-version` checks that `Cargo.toml [package].version` and top-level `extension.toml version` match
+- `./tools/dev/validate.sh --api-version` checks that `extension.toml [lib].version` matches `Cargo.toml zed_extension_api`
 
 ### Updating Sight LSP Version
 

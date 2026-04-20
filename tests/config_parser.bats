@@ -65,11 +65,12 @@ EOF
 create_extension_toml() {
     local revision="$1"
     local lib_version="${2:-0.7.0}"
+    local release_version="${3:-0.5.0}"
     cat > "$TEMP_DIR/extension.toml" << EOF
 id = "stata"
 name = "Stata"
 description = "Language support for Stata using LSP"
-version = "0.1.26"
+version = "$release_version"
 schema_version = 1
 authors = ["Jonathan Marc Bearak"]
 repository = "https://github.com/jbearak/zed-stata"
@@ -91,10 +92,11 @@ EOF
 # Helper: Create a Cargo.toml with a specific zed_extension_api version
 create_cargo_toml() {
     local api_version="${1:-0.7.0}"
+    local package_version="${2:-0.5.0}"
     cat > "$TEMP_DIR/Cargo.toml" << EOF
 [package]
 name = "zed-stata"
-version = "0.5.0"
+version = "$package_version"
 edition = "2021"
 
 [lib]
@@ -315,7 +317,7 @@ EOF
     cat > "$TEMP_DIR/extension.toml" << 'EOF'
 id = "stata"
 name = "Stata"
-version = "0.1.26"
+version = "0.5.0"
 
 [lib]
 kind = "Rust"
@@ -333,7 +335,7 @@ EOF
     cat > "$TEMP_DIR/extension.toml" << 'EOF'
 id = "stata"
 name = "Stata"
-version = "0.1.26"
+version = "0.5.0"
 
 [grammars.stata]
 repository = "https://github.com/jbearak/tree-sitter-stata"
@@ -351,7 +353,7 @@ EOF
     cat > "$TEMP_DIR/extension.toml" << EOF
 id = "stata"
 name = "Stata"
-version = "0.1.26"
+version = "0.5.0"
 
 [grammars.other]
 repository = "https://github.com/example/tree-sitter-other"
@@ -373,14 +375,91 @@ EOF
 }
 
 #######################################
-# Property 3: API version alignment consistency
+# Property 3: Release version alignment consistency
+# For any valid extension.toml top-level version and Cargo.toml [package]
+# version, the validator SHALL extract both values correctly and report
+# whether they match exactly.
+#######################################
+
+@test "Property 3: extract manifest release version from top-level version" {
+    create_extension_toml "872da1d652dd32cc871ea4a3c3f84bdea7c68c8c" "0.7.0" "0.5.0"
+
+    local extracted
+    extracted=$(extract_manifest_release_version)
+
+    [ "$extracted" = "0.5.0" ]
+}
+
+@test "Property 3: extract cargo package version from Cargo.toml" {
+    create_cargo_toml "0.7.0" "0.5.0"
+
+    local extracted
+    extracted=$(extract_cargo_package_version)
+
+    [ "$extracted" = "0.5.0" ]
+}
+
+@test "Property 3: release version alignment succeeds when versions match" {
+    create_extension_toml "872da1d652dd32cc871ea4a3c3f84bdea7c68c8c" "0.7.0" "0.5.0"
+    create_cargo_toml "0.7.0" "0.5.0"
+
+    run validate_release_version_alignment
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Release versions are aligned"* ]]
+}
+
+@test "Property 3: release version alignment fails on mismatch" {
+    create_extension_toml "872da1d652dd32cc871ea4a3c3f84bdea7c68c8c" "0.7.0" "0.1.26"
+    create_cargo_toml "0.7.0" "0.5.0"
+
+    run validate_release_version_alignment
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"extension.toml version is 0.1.26 but Cargo.toml [package].version is 0.5.0"* ]]
+}
+
+@test "Property 3: error on missing top-level version" {
+    cat > "$TEMP_DIR/extension.toml" << 'EOF'
+id = "stata"
+name = "Stata"
+
+[lib]
+kind = "Rust"
+version = "0.7.0"
+EOF
+
+    run extract_manifest_release_version
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"ERROR: top-level version not found"* ]]
+}
+
+@test "Property 3: error on missing Cargo package version" {
+    cat > "$TEMP_DIR/Cargo.toml" << 'EOF'
+[package]
+name = "zed-stata"
+edition = "2021"
+
+[dependencies]
+zed_extension_api = "0.7.0"
+EOF
+
+    run extract_cargo_package_version
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"ERROR: [package] version not found"* ]]
+}
+
+#######################################
+# Property 4: API version alignment consistency
 # For any valid extension.toml [lib] version and Cargo.toml zed_extension_api
 # dependency, the validator SHALL extract both values correctly and report
 # whether they match exactly.
 # **Validates: Requirements 6.3**
 #######################################
 
-@test "Property 3: extract manifest lib version from [lib] section" {
+@test "Property 4: extract manifest lib version from [lib] section" {
     create_extension_toml "872da1d652dd32cc871ea4a3c3f84bdea7c68c8c" "0.7.0"
 
     local extracted
@@ -389,7 +468,7 @@ EOF
     [ "$extracted" = "0.7.0" ]
 }
 
-@test "Property 3: extract zed_extension_api version from Cargo.toml" {
+@test "Property 4: extract zed_extension_api version from Cargo.toml" {
     create_cargo_toml "0.7.0"
 
     local extracted
@@ -398,7 +477,7 @@ EOF
     [ "$extracted" = "0.7.0" ]
 }
 
-@test "Property 3: api version alignment succeeds when versions match" {
+@test "Property 4: api version alignment succeeds when versions match" {
     create_extension_toml "872da1d652dd32cc871ea4a3c3f84bdea7c68c8c" "0.7.0"
     create_cargo_toml "0.7.0"
 
@@ -408,7 +487,7 @@ EOF
     [[ "$output" == *"API versions are aligned"* ]]
 }
 
-@test "Property 3: api version alignment fails on mismatch" {
+@test "Property 4: api version alignment fails on mismatch" {
     create_extension_toml "872da1d652dd32cc871ea4a3c3f84bdea7c68c8c" "0.1.26"
     create_cargo_toml "0.7.0"
 
@@ -418,11 +497,11 @@ EOF
     [[ "$output" == *"extension.toml [lib].version is 0.1.26 but Cargo.toml zed_extension_api is 0.7.0"* ]]
 }
 
-@test "Property 3: error on missing lib version in [lib] section" {
+@test "Property 4: error on missing lib version in [lib] section" {
     cat > "$TEMP_DIR/extension.toml" << 'EOF'
 id = "stata"
 name = "Stata"
-version = "0.1.26"
+version = "0.5.0"
 
 [lib]
 kind = "Rust"
@@ -434,7 +513,7 @@ EOF
     [[ "$output" == *"ERROR: [lib] version not found"* ]]
 }
 
-@test "Property 3: error on missing zed_extension_api dependency" {
+@test "Property 4: error on missing zed_extension_api dependency" {
     cat > "$TEMP_DIR/Cargo.toml" << 'EOF'
 [package]
 name = "zed-stata"
