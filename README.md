@@ -47,7 +47,8 @@ Add the following to your Zed user settings:
 
 You can add this in either of these places:
 
-- User settings (`~/.config/zed/settings.json` on macOS/Linux, `%APPDATA%\\Zed\\settings.json` on Windows) to enable LSP-backed outline for all Stata files
+- User settings (`~/.config/zed/settings.json` on macOS/Linux, `%APPDATA%\Zed\settings.json` on Windows) to enable LSP-backed outline for all Stata files
+
 - Project settings (`.zed/settings.json` in a repository) to enable it only for that project
 
 Without this setting, Zed uses the tree-sitter outline query, which is currently much narrower than Sight's document symbols.
