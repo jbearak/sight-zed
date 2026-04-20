@@ -200,7 +200,7 @@ create_temp_extension_toml() {
     cat > "$tmpfile" << EOF
 id = "stata"
 name = "Stata"
-version = "0.1.10"
+version = "0.1.26"
 
 [grammars.stata]
 repository = "https://github.com/jbearak/tree-sitter-stata"

@@ -11,6 +11,7 @@
 #   --all           Run all validations (default)
 #   --lsp           Validate LSP release exists with required assets
 #   --grammar-rev   Validate grammar revision exists
+#   --api-version   Validate extension.toml [lib].version matches Cargo.toml zed_extension_api
 #   --build         Build extension WASM
 #   --grammar-build Build grammar from specified revision
 #   --help          Show this help message
@@ -78,6 +79,7 @@ Options:
   --all           Run all validations (default if no options specified)
   --lsp           Validate LSP release exists with required assets
   --grammar-rev   Validate grammar revision exists
+  --api-version   Validate extension.toml [lib].version matches Cargo.toml zed_extension_api
   --build         Build extension WASM
   --grammar-build Build grammar from specified revision
   --help          Show this help message
@@ -88,6 +90,7 @@ Environment Variables:
 Examples:
   ./validate.sh                 # Run all validations
   ./validate.sh --lsp           # Only check LSP release
+  ./validate.sh --api-version   # Only check manifest/API version alignment
   ./validate.sh --build         # Only build extension WASM
   ./validate.sh --lsp --build   # Check LSP and build extension
 
@@ -165,6 +168,70 @@ extract_grammar_revision() {
     echo "$revision"
 }
 
+# Extract [lib].version from extension.toml
+# Output: API version string (e.g., "0.7.0")
+extract_manifest_lib_version() {
+    local extension_toml="${REPO_ROOT}/extension.toml"
+
+    if [[ ! -f "$extension_toml" ]]; then
+        echo "ERROR: File not found: $extension_toml" >&2
+        return 1
+    fi
+
+    local version
+    version=$(awk '
+        /^\[lib\][[:space:]]*$/ { in_lib = 1; next }
+        /^\[/ { in_lib = 0 }
+        in_lib && /^[[:space:]]*version[[:space:]]*=/ {
+            if (match($0, /"[^"]+"/)) {
+                print substr($0, RSTART + 1, RLENGTH - 2)
+                found = 1
+                exit
+            }
+        }
+        END { if (!found) exit 1 }
+    ' "$extension_toml" 2>/dev/null || true)
+
+    if [[ -z "$version" ]]; then
+        echo "ERROR: [lib] version not found in $extension_toml" >&2
+        return 1
+    fi
+
+    echo "$version"
+}
+
+# Extract zed_extension_api dependency version from Cargo.toml
+# Output: API version string (e.g., "0.7.0")
+extract_zed_extension_api_version() {
+    local cargo_toml="${REPO_ROOT}/Cargo.toml"
+
+    if [[ ! -f "$cargo_toml" ]]; then
+        echo "ERROR: File not found: $cargo_toml" >&2
+        return 1
+    fi
+
+    local version
+    version=$(awk '
+        /^\[dependencies\][[:space:]]*$/ { in_dependencies = 1; next }
+        /^\[/ { in_dependencies = 0 }
+        in_dependencies && /^[[:space:]]*zed_extension_api[[:space:]]*=/ {
+            if (match($0, /"[^"]+"/)) {
+                print substr($0, RSTART + 1, RLENGTH - 2)
+                found = 1
+                exit
+            }
+        }
+        END { if (!found) exit 1 }
+    ' "$cargo_toml" 2>/dev/null || true)
+
+    if [[ -z "$version" ]]; then
+        echo "ERROR: zed_extension_api dependency not found in $cargo_toml" >&2
+        return 1
+    fi
+
+    echo "$version"
+}
+
 
 
 #######################################
@@ -187,6 +254,39 @@ normalize_version() {
     else
         echo "v${version}"
     fi
+}
+
+#######################################
+# Extension API Version Validator
+#######################################
+
+# Validate extension.toml [lib].version matches Cargo.toml zed_extension_api
+# Arguments:
+#   $1 - Optional manifest lib version
+#   $2 - Optional Cargo zed_extension_api version
+# Returns: 0 on success, 1 on failure
+validate_api_version_alignment() {
+    local manifest_version="${1:-}"
+    local cargo_version="${2:-}"
+
+    if [[ -z "$manifest_version" ]]; then
+        manifest_version=$(extract_manifest_lib_version) || return 1
+    fi
+
+    if [[ -z "$cargo_version" ]]; then
+        cargo_version=$(extract_zed_extension_api_version) || return 1
+    fi
+
+    print_info "Checking extension API version alignment..."
+
+    if [[ "$manifest_version" != "$cargo_version" ]]; then
+        print_fail "extension.toml [lib].version is $manifest_version but Cargo.toml zed_extension_api is $cargo_version"
+        echo "  Update extension.toml [lib].version when bumping zed_extension_api."
+        return 1
+    fi
+
+    print_pass "API versions are aligned: $manifest_version"
+    return 0
 }
 
 #######################################
@@ -459,6 +559,7 @@ main() {
     local run_all=false
     local run_lsp=false
     local run_grammar_rev=false
+    local run_api_version=false
     local run_build=false
     local run_grammar_build=false
     
@@ -478,6 +579,10 @@ main() {
                     ;;
                 --grammar-rev)
                     run_grammar_rev=true
+                    shift
+                    ;;
+                --api-version)
+                    run_api_version=true
                     shift
                     ;;
                 --build)
@@ -505,6 +610,7 @@ main() {
     if [[ "$run_all" == true ]]; then
         run_lsp=true
         run_grammar_rev=true
+        run_api_version=true
         run_build=true
         run_grammar_build=true
     fi
@@ -517,6 +623,8 @@ main() {
     # Extract configuration
     local server_version=""
     local grammar_revision=""
+    local manifest_lib_version=""
+    local cargo_api_version=""
     
     if [[ "$run_lsp" == true || "$run_build" == true ]]; then
         print_info "Extracting server version from src/lib.rs..."
@@ -533,6 +641,22 @@ main() {
             record_result 1 "Failed to extract grammar revision"
         else
             print_info "Grammar revision: $grammar_revision"
+        fi
+    fi
+
+    if [[ "$run_api_version" == true ]]; then
+        print_info "Extracting [lib] version from extension.toml..."
+        if ! manifest_lib_version=$(extract_manifest_lib_version); then
+            record_result 1 "Failed to extract extension.toml [lib] version"
+        else
+            print_info "Manifest [lib] version: $manifest_lib_version"
+        fi
+
+        print_info "Extracting zed_extension_api version from Cargo.toml..."
+        if ! cargo_api_version=$(extract_zed_extension_api_version); then
+            record_result 1 "Failed to extract Cargo.toml zed_extension_api version"
+        else
+            print_info "Cargo zed_extension_api version: $cargo_api_version"
         fi
     fi
     
@@ -558,7 +682,17 @@ main() {
         fi
         echo ""
     fi
-    
+
+    if [[ "$run_api_version" == true && -n "$manifest_lib_version" && -n "$cargo_api_version" ]]; then
+        echo "--- Extension API Version Validation ---"
+        if validate_api_version_alignment "$manifest_lib_version" "$cargo_api_version"; then
+            record_result 0 "Extension API version validation"
+        else
+            record_result 1 "Extension API version validation"
+        fi
+        echo ""
+    fi
+
     if [[ "$run_build" == true ]]; then
         echo "--- Extension Build Validation ---"
         if validate_extension_build; then
