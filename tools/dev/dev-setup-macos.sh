@@ -85,7 +85,7 @@ build_extension() {
   echo "Building extension..."
   cd "$REPO_ROOT"
   cargo build --release --target wasm32-wasip1
-  cp "$REPO_ROOT/target/wasm32-wasip1/release/sight_extension.wasm" "$REPO_ROOT/extension.wasm"
+  cp "$REPO_ROOT/target/wasm32-wasip1/release/zed_stata.wasm" "$REPO_ROOT/extension.wasm"
   print_success "Built extension.wasm"
 }
 

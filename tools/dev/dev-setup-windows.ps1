@@ -622,7 +622,7 @@ function Build-Extension {
     }
     if ($LASTEXITCODE -ne 0) { throw "cargo build failed." }
 
-    $builtWasm = Join-Path $RepoRoot 'target\wasm32-wasip2\release\sight_extension.wasm'
+    $builtWasm = Join-Path $RepoRoot 'target\wasm32-wasip2\release\zed_stata.wasm'
     if (-not (Test-Path $builtWasm)) {
         throw "Expected build output not found: $builtWasm"
     }

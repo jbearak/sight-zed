@@ -100,7 +100,7 @@ If you prefer to build manually without running the full setup:
 ```bash
 # Build extension WASM
 cargo build --release --target wasm32-wasip1
-cp target/wasm32-wasip1/release/sight_extension.wasm extension.wasm
+cp target/wasm32-wasip1/release/zed_stata.wasm extension.wasm
 
 # Build grammar (requires tree-sitter CLI)
 cd grammars/stata
@@ -112,7 +112,7 @@ tree-sitter build --wasm -o stata.wasm
 ```powershell
 # Build extension WASM (requires MSVC environment)
 cargo build --release --target wasm32-wasip2
-copy target\wasm32-wasip2\release\sight_extension.wasm extension.wasm
+copy target\wasm32-wasip2\release\zed_stata.wasm extension.wasm
 
 # Grammar must be downloaded (Windows cannot compile tree-sitter grammars)
 # The dev-setup-windows.ps1 script handles this automatically

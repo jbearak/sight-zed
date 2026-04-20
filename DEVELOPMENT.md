@@ -82,7 +82,7 @@ zed-stata/
 ```bash
 # macOS/Linux
 cargo build --release --target wasm32-wasip1
-cp target/wasm32-wasip1/release/sight_extension.wasm extension.wasm
+cp target/wasm32-wasip1/release/zed_stata.wasm extension.wasm
 
 # Windows (via dev-setup-windows.ps1)
 .\tools\dev\dev-setup-windows.ps1 -Yes

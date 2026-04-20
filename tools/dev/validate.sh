@@ -353,7 +353,7 @@ validate_extension_build() {
     fi
     
     # Check for output file
-    local wasm_file="${REPO_ROOT}/target/wasm32-wasip1/release/sight_extension.wasm"
+    local wasm_file="${REPO_ROOT}/target/wasm32-wasip1/release/zed_stata.wasm"
     if [[ ! -f "$wasm_file" ]]; then
         print_fail "WASM output file not found: $wasm_file"
         return 1

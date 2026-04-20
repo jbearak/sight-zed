@@ -167,7 +167,7 @@ Zed does not warn about this misconfiguration - the extension loads but the LSP 
 
 ```bash
 cargo build --release --target wasm32-wasip1
-cp target/wasm32-wasip1/release/sight_extension.wasm extension.wasm
+cp target/wasm32-wasip1/release/zed_stata.wasm extension.wasm
 ```
 
 Or use the dev setup script:

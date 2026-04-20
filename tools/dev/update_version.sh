@@ -142,7 +142,7 @@ fi
 if command -v cargo &> /dev/null; then
     echo "Rebuilding WASM extension..."
     cargo build --release --target wasm32-wasip1
-    cp target/wasm32-wasip1/release/sight_extension.wasm extension.wasm
+    cp target/wasm32-wasip1/release/zed_stata.wasm extension.wasm
     echo "Rebuilt extension.wasm"
 else
     echo "Warning: cargo not found, skipping WASM rebuild. You must rebuild manually before committing."
