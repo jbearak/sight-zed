@@ -4,14 +4,12 @@ const SERVER_VERSION: &str = "v0.5.0";
 const GITHUB_RELEASE_URL: &str = "https://github.com/jbearak/sight/releases/download";
 
 struct SightExtension {
-    cached_binary_path: Option<String>,
     cached_node_package_path: Option<String>,
 }
 
 impl zed::Extension for SightExtension {
     fn new() -> Self {
         Self {
-            cached_binary_path: None,
             cached_node_package_path: None,
         }
     }
@@ -21,71 +19,18 @@ impl zed::Extension for SightExtension {
         _language_server_id: &zed::LanguageServerId,
         _worktree: &zed::Worktree,
     ) -> Result<zed::Command> {
-        let (platform, _arch) = zed::current_platform();
+        let node_path = zed::node_binary_path()?;
+        let server_script = self.get_node_server_path()?;
 
-        // On Windows, the native binary doesn't work, so use Node.js instead
-        if platform == zed::Os::Windows {
-            let node_path = zed::node_binary_path()?;
-            let server_script = self.get_node_server_path()?;
-            Ok(zed::Command {
-                command: node_path,
-                args: vec![server_script, "--stdio".to_string()],
-                env: Default::default(),
-            })
-        } else {
-            let binary_path = self.get_server_binary_path()?;
-            Ok(zed::Command {
-                command: binary_path,
-                args: vec!["--stdio".to_string()],
-                env: Default::default(),
-            })
-        }
+        Ok(zed::Command {
+            command: node_path,
+            args: vec![server_script, "--stdio".to_string()],
+            env: Default::default(),
+        })
     }
 }
 
 impl SightExtension {
-    fn get_server_binary_path(&mut self) -> Result<String> {
-        if let Some(path) = &self.cached_binary_path {
-            if std::fs::metadata(path).is_ok() {
-                return Ok(path.clone());
-            }
-        }
-
-        let (platform, arch) = zed::current_platform();
-        let asset_name = match (platform, arch) {
-            (zed::Os::Mac, zed::Architecture::Aarch64) => "sight-darwin-arm64",
-            (zed::Os::Mac, zed::Architecture::X8664) => "sight-darwin-arm64", // Use ARM binary via Rosetta
-            (zed::Os::Linux, zed::Architecture::Aarch64) => "sight-linux-arm64",
-            (zed::Os::Linux, zed::Architecture::X8664) => "sight-linux-x64",
-            (zed::Os::Windows, _) => "sight-windows-x64.exe",
-            _ => return Err(format!("Unsupported platform: {:?} {:?}", platform, arch)),
-        };
-
-        // Use version-specific directory to ensure stable path resolution
-        let version_dir = format!("sight-{}", SERVER_VERSION);
-        let binary_path = format!("{}/{}", version_dir, asset_name);
-
-        if std::fs::metadata(&binary_path).is_err() {
-            std::fs::create_dir_all(&version_dir)
-                .map_err(|e| format!("Failed to create directory: {}", e))?;
-
-            // Download directly from GitHub releases URL (no API call needed)
-            let download_url = format!("{}/{}/{}", GITHUB_RELEASE_URL, SERVER_VERSION, asset_name);
-
-            zed::download_file(
-                &download_url,
-                &binary_path,
-                DownloadedFileType::Uncompressed,
-            )
-            .map_err(|e| format!("Failed to download {}: {}", asset_name, e))?;
-
-            zed::make_file_executable(&binary_path)?;
-        }
-
-        self.cached_binary_path = Some(binary_path.clone());
-        Ok(binary_path)
-    }
-
     fn get_node_server_path(&mut self) -> Result<String> {
         if let Some(path) = &self.cached_node_package_path {
             if std::fs::metadata(path).is_ok() {
@@ -100,7 +45,6 @@ impl SightExtension {
             std::fs::create_dir_all(&version_dir)
                 .map_err(|e| format!("Failed to create directory: {}", e))?;
 
-            // Download directly from GitHub releases URL (no API call needed)
             let download_url = format!("{}/{}/sight-server.js", GITHUB_RELEASE_URL, SERVER_VERSION);
 
             zed::download_file(
@@ -111,15 +55,13 @@ impl SightExtension {
             .map_err(|e| format!("Failed to download sight-server.js: {}", e))?;
         }
 
-        // Make path absolute to avoid resolution issues when Node is run from different working directories
-        // Use current_dir() instead of canonicalize() since the latter doesn't work in WASM
+        // Make the script path absolute because the LSP process is started from the worktree root.
         let absolute_path = if let Ok(current_dir) = std::env::current_dir() {
             current_dir
                 .join(&server_script)
                 .to_string_lossy()
                 .to_string()
         } else {
-            // Fallback to relative path if current_dir fails
             server_script.clone()
         };
 

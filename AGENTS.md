@@ -235,24 +235,22 @@ tools/
 
 ## Windows Architecture
 
-Windows requires special handling due to several platform-specific limitations:
+Windows still requires special handling for grammar/build setup, but the Sight LSP launch model is now the same on every platform:
 
-### Problem 1: Sight LSP Binary Crashes on Windows
+### Cross-Platform LSP Launch
 
-The pre-built `sight-windows-x64.exe` binary from the Sight releases crashes immediately on startup (exits with no output). This appears to be a bug in how the Sight LSP is compiled for Windows.
+The extension uses Zed's embedded Node.js to run `sight-server.js` on macOS, Linux, and Windows.
 
-**Solution**: On Windows, the extension uses Zed's embedded Node.js to run `sight-server.js` (a bundled JavaScript version of the LSP) instead of the native binary.
+**Why**: This avoids platform-specific native binary downloads, execute-bit issues, truncated native binary caches, and Rosetta-specific handling on macOS.
 
 ```rust
 // In src/lib.rs
-if platform == zed::Os::Windows {
-    let node_path = zed::node_binary_path()?;
-    let server_script = self.get_node_server_path()?;
-    // Run: node sight-server.js --stdio
-}
+let node_path = zed::node_binary_path()?;
+let server_script = self.get_node_server_path()?;
+// Run: node sight-server.js --stdio
 ```
 
-The `sight-server.js` file is downloaded from the same GitHub release as the native binaries.
+The `sight-server.js` file is downloaded from the Sight GitHub release matching `SERVER_VERSION`.
 
 ### Problem 2: Zed Cannot Compile Tree-Sitter Grammars on Windows
 
@@ -314,10 +312,10 @@ When installed to Zed:
 
 | Platform | LSP Approach |
 |----------|--------------|
-| macOS (ARM64) | Native binary: `sight-darwin-arm64` |
-| macOS (x64) | Native binary: `sight-darwin-arm64` (via Rosetta) |
-| Linux (ARM64) | Native binary: `sight-linux-arm64` |
-| Linux (x64) | Native binary: `sight-linux-x64` |
+| macOS (ARM64) | Node.js: `node sight-server.js --stdio` |
+| macOS (x64) | Node.js: `node sight-server.js --stdio` |
+| Linux (ARM64) | Node.js: `node sight-server.js --stdio` |
+| Linux (x64) | Node.js: `node sight-server.js --stdio` |
 | Windows | Node.js: `node sight-server.js --stdio` |
 
 ### Updating for Windows
@@ -325,7 +323,7 @@ When installed to Zed:
 When releasing a new version:
 
 1. Update `SERVER_VERSION` in `src/lib.rs`
-2. Ensure the release includes `sight-server.js` (for Windows Node.js fallback)
+2. Ensure the release includes `sight-server.js`
 3. If the grammar changed, rebuild and publish `tree-sitter-stata.wasm`
 4. Run `tools/dev/dev-setup-windows.ps1` on Windows to verify everything works
 

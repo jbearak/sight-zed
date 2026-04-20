@@ -36,8 +36,8 @@ TOTAL_CHECKS=0
 PASSED_CHECKS=0
 FAILED_CHECKS=0
 
-# Required LSP binary assets
-REQUIRED_ASSETS=()
+# Required LSP release assets
+REQUIRED_ASSETS=("sight-server.js")
 
 # GitHub repositories
 LSP_REPO="jbearak/sight"
