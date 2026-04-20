@@ -6,7 +6,7 @@ When a new version of the Sight LSP is released:
 
 1. Edit `src/lib.rs`
 2. Update `SERVER_VERSION` constant to the new tag (e.g., `"v0.1.12"`)
-3. The extension downloads binaries from GitHub releases at `jbearak/sight`
+3. The extension downloads `sight-server.js` from GitHub releases at `jbearak/sight`
 
 ## Jupyter Stata Kernel on Windows
 
@@ -308,15 +308,7 @@ When installed to Zed:
 └── extension.toml
 ```
 
-### LSP Binary Resolution by Platform
-
-| Platform | LSP Approach |
-|----------|--------------|
-| macOS (ARM64) | Node.js: `node sight-server.js --stdio` |
-| macOS (x64) | Node.js: `node sight-server.js --stdio` |
-| Linux (ARM64) | Node.js: `node sight-server.js --stdio` |
-| Linux (x64) | Node.js: `node sight-server.js --stdio` |
-| Windows | Node.js: `node sight-server.js --stdio` |
+The LSP launch command is identical on every platform: Zed runs `node sight-server.js --stdio` with its embedded Node.js.
 
 ### Updating for Windows
 

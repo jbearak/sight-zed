@@ -59,6 +59,11 @@ create_mock_release_response() {
     echo "$response"
 }
 
+# Emit a mock curl response body followed by the expected HTTP status line.
+emit_mock_curl_response() {
+    printf '%s\n%s\n' "$1" "$2"
+}
+
 # Helper: Check which assets are missing from a set
 # Arguments:
 #   $1 - Space-separated list of available assets
@@ -131,7 +136,7 @@ generate_random_version() {
     [ "$missing_count" -eq "${#REQUIRED_ASSETS[@]}" ]
 }
 
-@test "Property 3: single asset missing - identifies exactly one missing" {
+@test "Property 3: required asset missing - identifies the missing asset" {
     local available_assets=""
     local missing
     missing=$(check_missing_assets "$available_assets")
@@ -139,12 +144,12 @@ generate_random_version() {
     [ "$missing" = "sight-server.js" ]
 }
 
-@test "Property 3: multiple assets missing - identifies all missing" {
+@test "Property 3: unrelated assets present - still identifies required asset as missing" {
     local available_assets="some-other-asset"
     local missing
     missing=$(check_missing_assets "$available_assets")
     
-    [[ "$missing" == *"sight-server.js"* ]]
+    [ "$missing" = "sight-server.js" ]
 }
 
 @test "Property 3: extra assets present - still identifies required correctly" {
@@ -391,39 +396,37 @@ generate_random_version() {
 #######################################
 
 @test "Property 3: validate_lsp_release reports missing release correctly" {
-    # This test verifies error reporting for missing releases
-    # We use a version that definitely doesn't exist
-    
-    # Mock curl to return 404
+    # This test verifies error reporting for missing releases via HTTP status.
+    local mock_response_body='{"message":"Not Found"}'
+    local mock_http_code="404"
+
     curl() {
-        return 1
+        emit_mock_curl_response "$mock_response_body" "$mock_http_code"
     }
-    export -f curl
+    export -f curl emit_mock_curl_response
+    export mock_response_body mock_http_code
     
     run validate_lsp_release "v999.999.999"
     
     [ "$status" -eq 1 ]
-    [[ "$output" == *"not found"* ]] || [[ "$output" == *"FAIL"* ]]
+    [[ "$output" == *"Release not found: v999.999.999"* ]]
 }
 
 @test "Property 3: validate_lsp_release reports missing assets correctly" {
-    # This test verifies error reporting for missing assets
-    # We need to mock the curl response to return incomplete assets
-    
-    # Create a mock response with only some assets
-    local mock_response='{"tag_name": "v1.0.0", "assets": [{"name": "sight-linux-x64"}]}'
-    
-    # Mock curl to return our response
+    # This test verifies the HTTP 200 path that reports missing assets.
+    local mock_response_body='{"tag_name": "v1.0.0", "assets": [{"name": "sight-linux-x64"}]}'
+    local mock_http_code="200"
+
     curl() {
-        echo "$mock_response"
-        return 0
+        emit_mock_curl_response "$mock_response_body" "$mock_http_code"
     }
-    export -f curl
-    export mock_response
+    export -f curl emit_mock_curl_response
+    export mock_response_body mock_http_code
     
     run validate_lsp_release "v1.0.0"
     
     # Should fail due to missing assets
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Missing assets"* ]] || [[ "$output" == *"FAIL"* ]]
+    [[ "$output" == *"Missing assets in release v1.0.0:"* ]]
+    [[ "$output" == *"sight-server.js"* ]]
 }
