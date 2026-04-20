@@ -29,6 +29,29 @@ Install from the Zed extension marketplace by searching for "Sight" or "Stata".
 
 Syntax highlighting, completions, and diagnostics will work immediately once you open a ".do" file.
 
+## Outline Configuration
+
+Zed can populate the outline and breadcrumbs from Sight's LSP `textDocument/documentSymbol` response instead of the tree-sitter outline query.
+
+Add the following to your Zed user settings:
+
+```json
+{
+  "languages": {
+    "Stata": {
+      "document_symbols": "on"
+    }
+  }
+}
+```
+
+You can add this in either of these places:
+
+- User settings (`~/.config/zed/settings.json` on macOS/Linux, `%APPDATA%\\Zed\\settings.json` on Windows) to enable LSP-backed outline for all Stata files
+- Project settings (`.zed/settings.json` in a repository) to enable it only for that project
+
+Without this setting, Zed uses the tree-sitter outline query, which is currently much narrower than Sight's document symbols.
+
 ## Send to Stata (Optional)
 
 Execute Stata code directly from Zed with keyboard shortcuts. Works with both the Stata application and terminal sessions.
