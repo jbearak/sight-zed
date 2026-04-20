@@ -2,7 +2,7 @@
 #
 # validate.sh - Extension Build Validation Suite
 #
-# Validates that the Sight Zed extension can build successfully with its
+# Validates that the Stata Zed extension can build successfully with its
 # specified LSP and tree-sitter grammar revisions.
 #
 # Usage: ./validate.sh [OPTIONS]
