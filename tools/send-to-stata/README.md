@@ -323,7 +323,7 @@ If you prefer not to use the installer:
    ```json
    [
      {
-       "label": "Stata: Send Statement",
+       "label": "Stata: Do Statement",
        "command": "python3 -c 'import os,sys; sys.exit(0 if os.environ.get(\\\"ZED_SELECTED_TEXT\\\", \\\"\\\") else 1)' && python3 -c 'import os,sys; sys.stdout.write(os.environ.get(\\\"ZED_SELECTED_TEXT\\\", \\\"\\\"))' | send-to-stata.sh --statement --stdin --file \"$ZED_FILE\" || send-to-stata.sh --statement --file \"$ZED_FILE\" --row \"$ZED_ROW\"",
        "use_new_terminal": false,
        "allow_concurrent_runs": true,
@@ -331,7 +331,7 @@ If you prefer not to use the installer:
        "hide": "on_success"
      },
      {
-       "label": "Stata: Send File",
+       "label": "Stata: Do File",
        "command": "send-to-stata.sh --file-mode --file \"$ZED_FILE\"",
        "use_new_terminal": false,
        "allow_concurrent_runs": true,
@@ -355,7 +355,7 @@ If you prefer not to use the installer:
        "hide": "on_success"
      },
      {
-       "label": "Stata: CD into Workspace Folder",
+       "label": "Stata: CD to Workspace",
        "command": "send-to-stata.sh --cd-workspace --workspace \"$ZED_WORKTREE_ROOT\"",
        "use_new_terminal": false,
        "allow_concurrent_runs": true,
@@ -363,7 +363,7 @@ If you prefer not to use the installer:
        "hide": "on_success"
      },
      {
-       "label": "Stata: CD into File Folder",
+       "label": "Stata: CD to File Directory",
        "command": "send-to-stata.sh --cd-file --file \"$ZED_FILE\"",
        "use_new_terminal": false,
        "allow_concurrent_runs": true,
@@ -388,7 +388,7 @@ If you prefer not to use the installer:
      }
    ]
    ```
-   > **Note**: The "Send Statement" and "Include Statement" tasks use stdin mode (`--stdin`) to handle Stata compound strings (e.g., `` `"text"' ``) and other shell metacharacters correctly. The command must not inline the selection into the zsh command line; use an environment read (e.g. via `python3`) rather than Zed interpolation to avoid parse errors when the selection contains backticks.
+   > **Note**: The "Do Statement" and "Include Statement" tasks use stdin mode (`--stdin`) to handle Stata compound strings (e.g., `` `"text"' ``) and other shell metacharacters correctly. The command must not inline the selection into the zsh command line; use an environment read (e.g. via `python3`) rather than Zed interpolation to avoid parse errors when the selection contains backticks.
 
 3. Add keybindings to `~/.config/zed/keymap.json`:
    ```json
@@ -396,12 +396,12 @@ If you prefer not to use the installer:
      {
        "context": "Editor && extension == do",
        "bindings": {
-         "cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send Statement"}]]],
-         "shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send File"}]]],
+         "cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Do Statement"}]]],
+         "shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Do File"}]]],
          "alt-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include Statement"}]]],
          "alt-shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include File"}]]],
-         "ctrl-shift-w": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: CD into Workspace Folder"}]]],
-         "ctrl-shift-f": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: CD into File Folder"}]]],
+         "ctrl-shift-w": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: CD to Workspace"}]]],
+         "ctrl-shift-f": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: CD to File Directory"}]]],
          "ctrl-shift-up": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Do Upward Lines"}]]],
          "ctrl-shift-down": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Do Downward Lines"}]]],
          "shift-enter": ["workspace::SendKeystrokes", "cmd-c ctrl-` cmd-v enter"],

@@ -224,7 +224,7 @@ generate_stata_tasks() {
   cat <<EOF
 [
   {
-    "label": "Stata: Send Statement",
+    "label": "Stata: Do Statement",
     "command": "python3 -c 'import os,sys; sys.exit(0 if os.environ.get(\"ZED_SELECTED_TEXT\", \"\") else 1)' && python3 -c 'import os,sys; sys.stdout.write(os.environ.get(\"ZED_SELECTED_TEXT\", \"\"))' | send-to-stata.sh --statement --stdin --file \"\$ZED_FILE\" || send-to-stata.sh --statement --file \"\$ZED_FILE\" --row \"\$ZED_ROW\"${activate_suffix}",
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
@@ -232,7 +232,7 @@ generate_stata_tasks() {
     "hide": "on_success"
   },
   {
-    "label": "Stata: Send File",
+    "label": "Stata: Do File",
     "command": "send-to-stata.sh --file-mode --file \"\$ZED_FILE\"${activate_suffix}",
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
@@ -256,7 +256,7 @@ generate_stata_tasks() {
     "hide": "on_success"
   },
   {
-    "label": "Stata: CD into Workspace Folder",
+    "label": "Stata: CD to Workspace",
     "command": "send-to-stata.sh --cd-workspace --workspace \"\$ZED_WORKTREE_ROOT\"${activate_suffix}",
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
@@ -264,7 +264,7 @@ generate_stata_tasks() {
     "hide": "on_success"
   },
   {
-    "label": "Stata: CD into File Folder",
+    "label": "Stata: CD to File Directory",
     "command": "send-to-stata.sh --cd-file --file \"\$ZED_FILE\"${activate_suffix}",
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
@@ -294,7 +294,7 @@ EOF
 # Task definitions to install (legacy, kept for backward compatibility in tests)
 # Note: Args must be in command string, not args array (Zed doesn't pass args array correctly)
 # Note: Zed uses ${VAR:default} syntax (no dash), not shell's ${VAR:-default}
-# Note: Send Statement uses stdin mode for robust compound string handling.
+# Note: Do Statement uses stdin mode for robust compound string handling.
 # IMPORTANT: Do NOT inline selected text into the command via ${ZED_SELECTED_TEXT:}.
 # Zed's interpolation happens before the shell parses the command; if the selection
 # contains backticks (e.g. Stata compound strings), zsh will treat them as command
@@ -307,7 +307,7 @@ STATA_TASKS=$(
   cat <<'EOF'
 [
   {
-    "label": "Stata: Send Statement",
+    "label": "Stata: Do Statement",
     "command": "python3 -c 'import os,sys; sys.exit(0 if os.environ.get(\"ZED_SELECTED_TEXT\", \"\") else 1)' && python3 -c 'import os,sys; sys.stdout.write(os.environ.get(\"ZED_SELECTED_TEXT\", \"\"))' | send-to-stata.sh --statement --stdin --file \"$ZED_FILE\" || send-to-stata.sh --statement --file \"$ZED_FILE\" --row \"$ZED_ROW\"",
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
@@ -315,7 +315,7 @@ STATA_TASKS=$(
     "hide": "on_success"
   },
   {
-    "label": "Stata: Send File",
+    "label": "Stata: Do File",
     "command": "send-to-stata.sh --file-mode --file \"$ZED_FILE\"",
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
@@ -339,7 +339,7 @@ STATA_TASKS=$(
     "hide": "on_success"
   },
   {
-    "label": "Stata: CD into Workspace Folder",
+    "label": "Stata: CD to Workspace",
     "command": "send-to-stata.sh --cd-workspace --workspace \"$ZED_WORKTREE_ROOT\"",
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
@@ -347,7 +347,7 @@ STATA_TASKS=$(
     "hide": "on_success"
   },
   {
-    "label": "Stata: CD into File Folder",
+    "label": "Stata: CD to File Directory",
     "command": "send-to-stata.sh --cd-file --file \"$ZED_FILE\"",
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
@@ -417,14 +417,14 @@ install_keybindings() {
   {
     "context": "Editor && extension == do",
     "bindings": {
-      "cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send Statement"}]]],
-      "shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Send File"}]]],
+      "cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Do Statement"}]]],
+      "shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Do File"}]]],
       "alt-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include Statement"}]]],
       "alt-shift-cmd-enter": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Include File"}]]],
       "shift-enter": ["workspace::SendKeystrokes", "cmd-c ctrl-` cmd-v enter"],
       "alt-enter": ["workspace::SendKeystrokes", "cmd-left shift-cmd-right cmd-c ctrl-` cmd-v enter"],
-      "ctrl-shift-w": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: CD into Workspace Folder"}]]],
-      "ctrl-shift-f": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: CD into File Folder"}]]],
+      "ctrl-shift-w": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: CD to Workspace"}]]],
+      "ctrl-shift-f": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: CD to File Directory"}]]],
       "ctrl-shift-up": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Do Upward Lines"}]]],
       "ctrl-shift-down": ["action::Sequence", ["workspace::Save", ["task::Spawn", {"task_name": "Stata: Do Downward Lines"}]]]
     }

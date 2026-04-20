@@ -32,11 +32,11 @@ Describe "Windows Installer Task Generation (ActivateStata)" {
 
             $newTasks = @(
                 @{
-                    label = "Stata: Send Statement"
+                    label = "Stata: Do Statement"
                     command = "& `"$exePath`" -Statement$activateStataArg -File `"`$ZED_FILE`" -Row `$ZED_ROW"
                 },
                 @{
-                    label = "Stata: Send File"
+                    label = "Stata: Do File"
                     command = "& `"$exePath`" -FileMode$activateStataArg -File `"`$ZED_FILE`""
                 },
                 @{
@@ -75,11 +75,11 @@ Describe "Windows Installer Task Generation (ActivateStata)" {
 
             $tasks += @(
                 @{
-                    label = "Stata: Send Statement"
+                    label = "Stata: Do Statement"
                     command = "& `"$exePath`" -Statement$activateStataArg -File `"`$ZED_FILE`" -Row `$ZED_ROW"
                 },
                 @{
-                    label = "Stata: Send File"
+                    label = "Stata: Do File"
                     command = "& `"$exePath`" -FileMode$activateStataArg -File `"`$ZED_FILE`""
                 },
                 @{
