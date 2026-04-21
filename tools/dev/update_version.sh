@@ -98,9 +98,13 @@ update_manifest_release_version() {
 
 validate_release_version_format() {
     local version="$1"
-    # Strict SemVer 2.0.0: pre-release starts with '-' and build metadata with '+',
-    # both composed of dot-separated identifiers of [0-9A-Za-z-].
-    local semver_regex='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+    # Strict SemVer 2.0.0: numeric identifiers must not have leading zeros.
+    # Pre-release identifiers are either numeric (0|[1-9][0-9]*) or
+    # alphanumeric (must contain at least one letter/hyphen).
+    # Build metadata identifiers have no leading-zero restriction.
+    local numid='(0|[1-9][0-9]*)'
+    local pre_id='(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)'
+    local semver_regex="^${numid}\.${numid}\.${numid}(-${pre_id}(\.${pre_id})*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?\$"
 
     if [[ ! "$version" =~ $semver_regex ]]; then
         echo "Error: version '$version' is not a supported semver string" >&2
@@ -159,7 +163,7 @@ if [[ -z "$NEW_VERSION" ]]; then
         exit 1
     fi
 
-    if ! [[ "$CURRENT_CARGO_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    if ! [[ "$CURRENT_CARGO_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
         echo "Error: Current Cargo package version '$CURRENT_CARGO_VERSION' is not in MAJOR.MINOR.PATCH format" >&2
         exit 1
     fi
