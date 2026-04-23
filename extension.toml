@@ -1,7 +1,7 @@
 id = "stata"
 name = "Stata"
 description = "Stata language support for Zed"
-version = "0.5.0"
+version = "0.5.1"
 schema_version = 1
 authors = ["Jonathan Marc Bearak"]
 repository = "https://github.com/jbearak/zed-stata"
