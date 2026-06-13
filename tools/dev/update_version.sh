@@ -242,22 +242,27 @@ if [[ -n "$SIGHT_VERSION" ]]; then
     ./tools/dev/validate.sh --lsp
 fi
 
+# Build the extension as a sanity check (and to refresh the local copy used by
+# the symlink/copy dev install). We do NOT commit extension.wasm: Zed compiles
+# it from source — the marketplace CI runs extension_cli against this repo, and
+# `zed: install dev extension` compiles locally via rustup. The wasm is
+# gitignored; see "How extension.wasm Is Built" in AGENTS.md.
 if command -v cargo >/dev/null 2>&1; then
-    echo "Rebuilding WASM extension..."
+    echo "Building WASM extension (sanity check; not committed)..."
     cargo build --release --target wasm32-wasip1
     cp target/wasm32-wasip1/release/zed_stata.wasm extension.wasm
-    echo "Rebuilt extension.wasm"
+    echo "Built extension.wasm (local only; gitignored)"
 else
-    echo "Error: cargo not found; cannot rebuild extension.wasm" >&2
+    echo "Error: cargo not found; cannot build extension.wasm" >&2
     exit 1
 fi
 
-files_to_commit=(Cargo.toml extension.toml extension.wasm)
+files_to_commit=(Cargo.toml extension.toml)
 if [[ -n "$SIGHT_VERSION" ]]; then
     files_to_commit+=(src/lib.rs)
 fi
 
-git add -f "${files_to_commit[@]}"
+git add "${files_to_commit[@]}"
 git commit -m "Bump version to $NEW_VERSION"
 git tag "v$NEW_VERSION"
 echo "Committed and tagged v$NEW_VERSION"

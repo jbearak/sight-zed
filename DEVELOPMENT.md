@@ -54,7 +54,7 @@ zed-stata/
 ├── Cargo.toml                  # Rust project manifest
 ├── Cargo.lock                  # Rust dependency lockfile
 ├── extension.toml              # Zed extension manifest
-├── extension.wasm              # Built extension (committed)
+├── extension.wasm              # Built extension (gitignored; Zed builds from source)
 │
 ├── AGENTS.md                   # AI agent instructions
 ├── DEVELOPMENT.md              # Development guide (this file)
@@ -164,11 +164,19 @@ Guardrails:
 1. Edit `extension.toml`
 2. Update the `rev` field under `[grammars.stata]`
 
-## Why extension.wasm is Committed
+## How extension.wasm is Built
 
-Zed extensions are distributed directly from git repositories. When users install an extension, Zed clones the repo and expects the pre-built WASM to be present. There's no build step during installation.
+`extension.wasm` is **not** committed — Zed compiles it from source. For the
+marketplace, Zed's CI runs `extension_cli` against this repo and compiles
+`src/lib.rs` (and the tree-sitter grammar) to WebAssembly, packaging an archive
+that users download. For `zed: install dev extension`, Zed compiles the Rust
+locally via your rustup toolchain.
 
-After building, commit the updated `extension.wasm` for users to receive the new version.
+The dev-setup scripts build `extension.wasm` locally because they symlink/copy
+the repo into Zed's `extensions/installed` directory, where Zed loads the
+pre-built file instead of recompiling. The file is gitignored (`*.wasm`), so
+build it locally — you don't commit it. See "How extension.wasm Is Built" in
+AGENTS.md for details.
 
 ## Checksum Updates
 

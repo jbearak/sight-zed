@@ -93,6 +93,13 @@ pwsh -File .\tools\dev\dev-setup-windows.ps1 -Uninstall
 
 ## Building the Extension Manually
 
+> **Note:** `extension.wasm` is gitignored and is **not** committed — Zed compiles
+> it from source (the marketplace CI runs `extension_cli` against the repo, and
+> `zed: install dev extension` compiles locally via rustup). You build it locally
+> here only because the dev-setup scripts symlink/copy the repo into Zed's
+> `extensions/installed` directory, where Zed loads the pre-built file directly
+> instead of recompiling.
+
 If you prefer to build manually without running the full setup:
 
 ### macOS
