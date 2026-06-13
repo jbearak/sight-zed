@@ -117,6 +117,9 @@
 ; Operators (including interaction #)
 (operator) @operator
 
+; Factor variable operators (i., c., o., b#., ibn., etc.)
+(factor_operator) @operator
+
 ; =============================================================================
 ; MATA BLOCKS
 ; =============================================================================
