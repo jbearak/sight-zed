@@ -168,7 +168,9 @@ jobs:
           fi
           echo "current_ext_version=$CURRENT_EXT_VERSION" >> "$GITHUB_OUTPUT"
 
-          # Run update script (updates src/lib.rs, Cargo.toml, extension.toml, rebuilds WASM, commits)
+          # Run update script (updates src/lib.rs, Cargo.toml, extension.toml,
+          # builds WASM as a sanity check, commits version files). extension.wasm
+          # is gitignored and not committed — Zed compiles it from source.
           chmod +x tools/dev/update_version.sh
           ./tools/dev/update_version.sh --sight-version "$LATEST_VERSION"
 
@@ -238,7 +240,7 @@ jobs:
             "### Changes" \
             "- SERVER_VERSION: ${CURRENT_VERSION} -> ${LATEST_VERSION}" \
             "- Extension version: ${CURRENT_EXT_VERSION} -> ${NEW_EXT_VERSION}" \
-            "- Rebuilt extension.wasm" \
+            "- Verified extension.wasm builds (Zed compiles it from source; not committed)" \
             "- Updated dev-setup-windows.ps1 SightServer checksum" \
             "" \
             "### Testing Checklist" \

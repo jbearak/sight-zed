@@ -70,7 +70,9 @@ pwsh -File .\tools\dev\dev-setup-windows.ps1 -Yes
 This will:
 1. Install build dependencies (Chocolatey, Rust, MSVC, WASI SDK, etc.)
 2. Build the extension WASM (`extension.wasm`)
-3. Download pre-built tree-sitter grammar (Windows cannot compile grammars)
+3. Download pre-built tree-sitter grammar (Windows cannot compile grammars) from
+   the [tree-sitter-stata releases](https://github.com/jbearak/tree-sitter-stata/releases),
+   pinned to a known tag (currently `v0.1.1`) and checksum-verified
 4. Download the language server for dev testing
 5. Copy extension files to Zed's extensions directory
 6. Install Send-to-Stata integration
@@ -93,6 +95,13 @@ pwsh -File .\tools\dev\dev-setup-windows.ps1 -Uninstall
 
 ## Building the Extension Manually
 
+> **Note:** `extension.wasm` is gitignored and is **not** committed — Zed compiles
+> it from source (the marketplace CI runs `extension_cli` against the repo, and
+> `zed: install dev extension` compiles locally via rustup). You build it locally
+> here only because the dev-setup scripts symlink/copy the repo into Zed's
+> `extensions/installed` directory, where Zed loads the pre-built file directly
+> instead of recompiling.
+
 If you prefer to build manually without running the full setup:
 
 ### macOS
@@ -114,8 +123,11 @@ tree-sitter build --wasm -o stata.wasm
 cargo build --release --target wasm32-wasip2
 copy target\wasm32-wasip2\release\zed_stata.wasm extension.wasm
 
-# Grammar must be downloaded (Windows cannot compile tree-sitter grammars)
-# The dev-setup-windows.ps1 script handles this automatically
+# Grammar must be downloaded (Windows cannot compile tree-sitter grammars).
+# dev-setup-windows.ps1 fetches the pre-built grammars/stata.wasm from
+# https://github.com/jbearak/tree-sitter-stata/releases (pinned to v0.1.1,
+# checksum-verified) and removes any grammars/stata/ source dir so Zed won't
+# try to compile it.
 ```
 
 ## Installing the Extension Locally
