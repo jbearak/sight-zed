@@ -75,8 +75,8 @@ $script:Checksums = @{
     # WASI SDK 24 - x86_64 Windows (ARM64 Windows not available in this release)
     WasiSdkX64 = "0f934c6e7e171b5627c81b697a9e57e96d65cd889f56ce6077350de48978afd3"
 
-    # Tree-sitter-stata grammar WASM v0.1.0
-    TreeSitterGrammar = "357d74471e1c8e316805f882c4b942438ee1c54b5f23687ac001d710b826a237"
+    # Tree-sitter-stata grammar WASM v0.1.1
+    TreeSitterGrammar = "203db5c3640576479a04c7f68205d23fe1868fce370e2c76604c7c701aae5737"
 
     # Sight language server v0.6.1
     SightServer = "896c184d621489cd52d61987d72263130ef8a5606dcf62aad8de917b376aec48"
@@ -571,18 +571,10 @@ function Download-TreeSitterGrammar {
 
     $destWasm = Join-Path $grammarsDir 'stata.wasm'
 
-    # Try to get latest release, fall back to v0.1.0
-    $fallbackVersion = "v0.1.0"
-    $grammarVersion = $fallbackVersion
-
-    try {
-        Write-Host "Checking for latest tree-sitter-stata release..."
-        $releaseInfo = Invoke-RestMethod -Uri "https://api.github.com/repos/jbearak/tree-sitter-stata/releases/latest" -ErrorAction Stop
-        $grammarVersion = $releaseInfo.tag_name
-        Write-Host "Found latest release: $grammarVersion" -ForegroundColor Green
-    } catch {
-        Write-Host "Could not fetch latest release, using fallback: $fallbackVersion" -ForegroundColor Yellow
-    }
+    # Pin to a known grammar release so the downloaded wasm matches the rev pinned
+    # in extension.toml and so we can verify its checksum. Bump this (and the
+    # TreeSitterGrammar checksum above) when updating the grammar.
+    $grammarVersion = "v0.1.1"
 
     $grammarUrl = "https://github.com/jbearak/tree-sitter-stata/releases/download/$grammarVersion/tree-sitter-stata.wasm"
 
@@ -593,12 +585,7 @@ function Download-TreeSitterGrammar {
         throw "Failed to download grammar WASM"
     }
 
-    # Skip checksum verification for non-fallback versions (checksum is only known for fallback)
-    if ($grammarVersion -eq $fallbackVersion) {
-        Test-FileChecksum -Path $destWasm -ExpectedHash $script:Checksums.TreeSitterGrammar -Description "tree-sitter-stata grammar"
-    } else {
-        Write-Host "Skipping checksum verification for version $grammarVersion (checksum only known for $fallbackVersion)" -ForegroundColor Yellow
-    }
+    Test-FileChecksum -Path $destWasm -ExpectedHash $script:Checksums.TreeSitterGrammar -Description "tree-sitter-stata grammar"
 
     $size = (Get-Item $destWasm).Length
     Write-Host "Downloaded grammar: grammars\stata.wasm ($size bytes)" -ForegroundColor Green

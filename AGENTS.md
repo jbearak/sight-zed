@@ -143,6 +143,19 @@ When the tree-sitter-stata grammar is updated:
 2. Update the `rev` field under `[grammars.stata]` to the new commit SHA
 3. The grammar is fetched from `https://github.com/jbearak/tree-sitter-stata`
 
+For the marketplace (and `zed: install dev extension`), Zed fetches that `rev`
+and compiles the grammar to WASM from source. Windows local dev cannot compile
+grammars, so it instead downloads a pre-built `tree-sitter-stata.wasm` from the
+matching GitHub release. When bumping the grammar, also update the pinned Windows
+download so the two stay in sync:
+
+- `tools/dev/dev-setup-windows.ps1`: `$grammarVersion` (currently `v0.1.1`) and
+  the `TreeSitterGrammar` checksum
+- `tools/dev/update-dev-checksums.ps1`: the `$grammarUrl` release tag
+
+Run `pwsh -File tools/dev/update-dev-checksums.ps1` to recompute the checksum
+after bumping the tag.
+
 ## Language Server Configuration Gotcha
 
 **CRITICAL**: The `extension.toml` must use `languages` (plural, array) not `language` (singular, string):
@@ -284,21 +297,36 @@ The `sight-server.js` file is downloaded from the Sight GitHub release matching 
 
 Zed compiles tree-sitter grammars to WASM internally, but this compilation fails on Windows. The grammar compilation requires a working WASM toolchain that Zed doesn't have access to on Windows.
 
-**Solution**: We pre-build the grammar WASM and distribute it with the extension.
+**Solution**: For local Windows dev, we download a pre-built grammar WASM.
+(Marketplace installs are unaffected: Zed's CI compiles the grammar from source on
+Linux and bundles `grammars/stata.wasm` into the archive that Windows users
+download — they never compile it locally.)
 
 The grammar WASM is:
 1. Built on macOS/Linux using the WASI SDK
 2. Published to tree-sitter-stata releases as `tree-sitter-stata.wasm`
-3. Downloaded by `tools/dev/dev-setup-windows.ps1` and placed in `grammars/stata.wasm`
-4. Referenced in `extension.toml` with `[grammars.stata]` and `path = "grammars/stata.wasm"`
+3. Downloaded by `tools/dev/dev-setup-windows.ps1` — pinned to a known release tag
+   (currently `v0.1.1`) and checksum-verified — and placed in `grammars/stata.wasm`
+4. Loaded by Zed from the installed-extension layout at runtime
 
-**Critical**: The `extension.toml` must include:
+**How the pre-built grammar is consumed**: `extension.toml` references the grammar
+*source*, not a local path:
 ```toml
 [grammars.stata]
-path = "grammars/stata.wasm"
+repository = "https://github.com/jbearak/tree-sitter-stata"
+rev = "..."
 ```
+Zed uses that `repository`/`rev` to fetch and compile the grammar on the
+marketplace CI and during `zed: install dev extension`. Because that compile step
+fails on Windows, the dev-setup script instead copies the repo into Zed's
+`extensions/installed` directory, where Zed loads the pre-built `grammars/stata.wasm`
+directly (installed extensions are not recompiled). The script also deletes the
+`grammars/stata/` source directory so Zed does not attempt to compile it.
 
-This tells Zed to use the pre-built WASM instead of compiling from source. Without this section, Zed won't load the grammar even if the WASM file is present.
+> Note: an earlier version of this doc claimed `extension.toml` must use
+> `[grammars.stata]` with `path = "grammars/stata.wasm"`. That is not how this repo
+> works — it uses `repository`/`rev`, and the pre-built wasm is supplied via the
+> installed-extension layout described above.
 
 ### Problem 3: Extension WASM Compilation on Windows
 
