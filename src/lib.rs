@@ -1,6 +1,6 @@
 use zed_extension_api::{self as zed, DownloadedFileType, Result};
 
-const SERVER_VERSION: &str = "v0.7.1";
+const SERVER_VERSION: &str = "v0.7.2";
 const GITHUB_RELEASE_URL: &str = "https://github.com/jbearak/sight/releases/download";
 
 struct SightExtension {
