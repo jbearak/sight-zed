@@ -75,8 +75,8 @@ $script:Checksums = @{
     # WASI SDK 24 - x86_64 Windows (ARM64 Windows not available in this release)
     WasiSdkX64 = "0f934c6e7e171b5627c81b697a9e57e96d65cd889f56ce6077350de48978afd3"
 
-    # Tree-sitter-stata grammar WASM v0.1.2
-    TreeSitterGrammar = "62b5a84c063bfdca96bcdfe98c7e18d831b3a24191d4dc321932628370325e3a"
+    # Tree-sitter-stata grammar WASM v0.2.0
+    TreeSitterGrammar = "a411fbcb8e6fe236bac2c4631f802185773f9f73ef1cfc78e29606042731b261"
 
     # Sight language server v0.8.0
     SightServer = "0b65a61abbe9d7cddbf5fc749e8bfb2328f66960902e50ea8c631db92c9103c6"
@@ -574,7 +574,7 @@ function Download-TreeSitterGrammar {
     # Pin to a known grammar release so the downloaded wasm matches the rev pinned
     # in extension.toml and so we can verify its checksum. Bump this (and the
     # TreeSitterGrammar checksum above) when updating the grammar.
-    $grammarVersion = "v0.1.2"
+    $grammarVersion = "v0.2.0"
 
     $grammarUrl = "https://github.com/jbearak/tree-sitter-stata/releases/download/$grammarVersion/tree-sitter-stata.wasm"
 

@@ -16,7 +16,7 @@ param()
 
 $ErrorActionPreference = 'Stop'
 
-$grammarUrl = "https://github.com/jbearak/tree-sitter-stata/releases/download/v0.1.1/tree-sitter-stata.wasm"
+$grammarUrl = "https://github.com/jbearak/tree-sitter-stata/releases/download/v0.2.0/tree-sitter-stata.wasm"
 
 # Download to project grammars directory
 $grammarsDir = Join-Path $PSScriptRoot 'grammars'

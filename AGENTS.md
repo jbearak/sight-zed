@@ -137,24 +137,65 @@ To uninstall including config:
 
 ## Updating the Tree-Sitter Grammar
 
-When the tree-sitter-stata grammar is updated:
+The grammar lives in a **separate repo** (`jbearak/tree-sitter-stata`) and is
+pinned here by commit SHA. For the marketplace and `zed: install dev extension`,
+Zed fetches that `rev` and compiles the grammar to WASM from source. **Windows
+local dev cannot compile grammars**, so it instead downloads a pre-built
+`tree-sitter-stata.wasm` from the matching GitHub *release* (checksum-verified).
+macOS/Linux dev (`tools/dev/dev-setup-macos.sh`) builds the grammar from source,
+so it has nothing to pin.
 
-1. Edit `extension.toml`
-2. Update the `rev` field under `[grammars.stata]` to the new commit SHA
-3. The grammar is fetched from `https://github.com/jbearak/tree-sitter-stata`
+Follow these steps **in order** whenever the grammar changes. The current pinned
+release is **v0.2.0**.
 
-For the marketplace (and `zed: install dev extension`), Zed fetches that `rev`
-and compiles the grammar to WASM from source. Windows local dev cannot compile
-grammars, so it instead downloads a pre-built `tree-sitter-stata.wasm` from the
-matching GitHub release. When bumping the grammar, also update the pinned Windows
-download so the two stay in sync:
+### 1. Release the grammar (in the `tree-sitter-stata` repo)
 
-- `tools/dev/dev-setup-windows.ps1`: `$grammarVersion` (currently `v0.1.1`) and
-  the `TreeSitterGrammar` checksum
+1. Make the grammar change; regenerate and test: `tree-sitter generate` then
+   `tree-sitter test` (both need the sandbox disabled — they require a writable
+   tree-sitter cache lock), plus `bun test` (run `bun install` first).
+2. Bump the version in **all four** files: `package.json`, `Cargo.toml`,
+   `tree-sitter.json` (`metadata.version`), and `Cargo.lock`.
+3. **Regenerate `parser.c` after the version bump** and commit it. The grammar
+   version is embedded in `parser.c` (`.metadata.minor_version`); the release CI
+   runs `tree-sitter generate` then `git diff --exit-code src/parser.c`, so a
+   bumped `tree-sitter.json` with a stale `parser.c` fails CI.
+4. Commit, tag `vX.Y.Z`, push `main` and the tag. The tag triggers
+   `release.yml`, which publishes `tree-sitter-stata.wasm` and
+   `tree-sitter-stata.tar.gz` to the GitHub release. **Wait for this release to
+   succeed** — step 3 below downloads that wasm.
+
+### 2. Point this extension at the new grammar
+
+1. `extension.toml`: update `rev` under `[grammars.stata]` to the new commit SHA.
+2. Update `languages/stata/highlights.scm` (and other `languages/stata/*.scm`
+   queries) if node types changed.
+
+### 3. Update the pinned Windows pre-built grammar (must match the new release)
+
+All three must point at the same release tag, and the checksum must match that
+release's `tree-sitter-stata.wasm`:
+
+- `tools/dev/dev-setup-windows.ps1`: `$grammarVersion` **and** the
+  `TreeSitterGrammar` SHA-256 checksum
 - `tools/dev/update-dev-checksums.ps1`: the `$grammarUrl` release tag
+- `install-grammar.ps1`: the `$grammarUrl` release tag (quick helper; no checksum)
 
-Run `pwsh -File tools/dev/update-dev-checksums.ps1` to recompute the checksum
-after bumping the tag.
+Then recompute and write the checksum with:
+
+```
+pwsh -File tools/dev/update-dev-checksums.ps1
+```
+
+(Requires the release's `tree-sitter-stata.wasm` to exist first. The script reads
+`$grammarUrl` from itself, downloads the wasm, and rewrites the
+`TreeSitterGrammar` checksum in `dev-setup-windows.ps1`.)
+
+### 4. Verify
+
+- `tools/dev/validate.sh --grammar-rev` — confirms the `rev` in `extension.toml`
+  exists upstream.
+- Bump any docs that name the pinned tag: this section, the "How the pre-built
+  grammar is consumed" note below, and `tools/dev/README.md`.
 
 ## Language Server Configuration Gotcha
 
@@ -306,7 +347,7 @@ The grammar WASM is:
 1. Built on macOS/Linux using the WASI SDK
 2. Published to tree-sitter-stata releases as `tree-sitter-stata.wasm`
 3. Downloaded by `tools/dev/dev-setup-windows.ps1` — pinned to a known release tag
-   (currently `v0.1.1`) and checksum-verified — and placed in `grammars/stata.wasm`
+   (currently `v0.2.0`) and checksum-verified — and placed in `grammars/stata.wasm`
 4. Loaded by Zed from the installed-extension layout at runtime
 
 **How the pre-built grammar is consumed**: `extension.toml` references the grammar

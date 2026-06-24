@@ -72,7 +72,7 @@ This will:
 2. Build the extension WASM (`extension.wasm`)
 3. Download pre-built tree-sitter grammar (Windows cannot compile grammars) from
    the [tree-sitter-stata releases](https://github.com/jbearak/tree-sitter-stata/releases),
-   pinned to a known tag (currently `v0.1.1`) and checksum-verified
+   pinned to a known tag (currently `v0.2.0`) and checksum-verified
 4. Download the language server for dev testing
 5. Copy extension files to Zed's extensions directory
 6. Install Send-to-Stata integration
@@ -125,7 +125,7 @@ copy target\wasm32-wasip2\release\zed_stata.wasm extension.wasm
 
 # Grammar must be downloaded (Windows cannot compile tree-sitter grammars).
 # dev-setup-windows.ps1 fetches the pre-built grammars/stata.wasm from
-# https://github.com/jbearak/tree-sitter-stata/releases (pinned to v0.1.1,
+# https://github.com/jbearak/tree-sitter-stata/releases (pinned to v0.2.0,
 # checksum-verified) and removes any grammars/stata/ source dir so Zed won't
 # try to compile it.
 ```
