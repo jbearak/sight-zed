@@ -68,7 +68,10 @@
 
 ; Additional keywords parsed as identifiers
 ((identifier) @keyword
-  (#match? @keyword "^(in|using|do|run|include)$"))
+  (#match? @keyword "^(in|do|run|include)$"))
+
+; `using` keyword (introduces a file path in many commands)
+"using" @keyword
 
 ; =============================================================================
 ; TYPES
@@ -87,6 +90,10 @@
 
 ; Generic command names
 (command
+  name: (identifier) @function)
+
+; File command names (use, save, do, import, cd, erase, ...)
+(file_command
   name: (identifier) @function)
 
 ; =============================================================================
@@ -109,6 +116,9 @@
 
 ; Missing values
 (missing_value) @constant
+
+; File paths / filenames (arguments to file commands and `using` clauses)
+(file_path) @string.special.path
 
 ; =============================================================================
 ; OPERATORS
