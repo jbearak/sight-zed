@@ -48,7 +48,7 @@ try {
     Write-Host "  WASI SDK x64: $wasiSdkHash" -ForegroundColor Green
 
     # Tree-sitter-stata grammar
-    $grammarUrl = "https://github.com/jbearak/tree-sitter-stata/releases/download/v0.1.2/tree-sitter-stata.wasm"
+    $grammarUrl = "https://github.com/jbearak/tree-sitter-stata/releases/download/v0.2.0/tree-sitter-stata.wasm"
     $grammarPath = Join-Path $tempDir "stata.wasm"
     
     Write-Host "Downloading tree-sitter-stata grammar..." -ForegroundColor Yellow
