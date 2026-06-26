@@ -78,8 +78,8 @@ $script:Checksums = @{
     # Tree-sitter-stata grammar WASM v0.2.0
     TreeSitterGrammar = "a411fbcb8e6fe236bac2c4631f802185773f9f73ef1cfc78e29606042731b261"
 
-    # Sight language server v0.8.0
-    SightServer = "0b65a61abbe9d7cddbf5fc749e8bfb2328f66960902e50ea8c631db92c9103c6"
+    # Sight language server v0.8.4
+    SightServer = "d9dad6632aa26e8babe7d090581e9c2f23866683cb8cbe754922629fac72e02a"
 }
 
 function Test-FileChecksum {
@@ -632,7 +632,7 @@ function Download-LanguageServerForDev {
     # but downloads go to Zed's work directory. We need to copy/download the server to the repo
     # so it can be found during dev testing.
 
-    $serverVersion = "v0.8.0"
+    $serverVersion = "v0.8.4"
     $serverDir = Join-Path $RepoRoot "sight-node-$serverVersion"
     $serverScript = Join-Path $serverDir "sight-server.js"
 
