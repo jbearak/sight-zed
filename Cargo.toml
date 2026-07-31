@@ -1,6 +1,6 @@
 [package]
 name = "zed-stata"
-version = "0.5.9"
+version = "0.5.10"
 edition = "2021"
 license = "GPL-3.0"
 description = "Zed extension for Stata language support"
